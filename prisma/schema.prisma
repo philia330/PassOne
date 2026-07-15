@@ -1,0 +1,502 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  LEADER
+  SALES
+  TEKNISI
+  LOGISTIK
+}
+
+enum StatusFab {
+  PENDING
+  SURVEY
+  INSTALASI
+  SELESAI
+}
+
+enum StatusBaa {
+  PENDING
+  PROSES
+  SELESAI
+}
+
+enum KondisiMaterial {
+  BAIK
+  RUSAK
+}
+
+enum StatusOnt {
+  TERSEDIA
+  TERPASANG
+  RUSAK
+}
+
+model User {
+  id_user Int @id @default(autoincrement())
+
+  // Kode User
+  kode_user String @unique
+
+  nama String
+
+  username String @unique
+
+  password String
+
+  foto String?
+
+  role Role
+
+  no_hp String?
+
+  email String? @unique
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  fabs Fab[]
+
+  baas Baa[]
+
+  @@map("users")
+}
+
+model Area {
+  // Primary Key
+  id_area Int @id @default(autoincrement())
+
+  // Kode Area
+  kode_area String @unique
+
+  // Nama Area
+  nama_area String
+
+  // Keterangan
+  keterangan String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  pops Pop[]
+
+  fabs Fab[]
+}
+
+model Pop {
+  id_pop Int @id @default(autoincrement())
+
+  kode_pop String @unique
+
+  nama_pop String
+
+  alamat String
+
+  latitude Decimal
+
+  longitude Decimal
+
+  id_area Int
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  area Area @relation(fields: [id_area], references: [id_area])
+
+  olts Olt[]
+
+  onts Ont[]
+}
+
+// ======================================================
+// MODEL OLT (Optical Line Terminal)
+// Berfungsi sebagai perangkat utama di POP
+// ======================================================
+
+model Olt {
+  // Primary Key
+  id_olt Int @id @default(autoincrement())
+
+  kode_olt String @unique
+
+  // Nama OLT
+  nama_olt String
+
+  // Lokasi OLT
+  lokasi String
+
+  // Latitude Maps
+  latitude Decimal
+
+  // Longitude Maps
+  longitude Decimal
+
+  // Foreign Key ke POP
+  id_pop Int
+
+  // Waktu dibuat
+  createdAt DateTime @default(now())
+
+  // Waktu terakhir diubah
+  updatedAt DateTime @updatedAt
+
+  // Relasi ke POP (1 POP memiliki banyak OLT)
+  pop Pop @relation(fields: [id_pop], references: [id_pop])
+
+  // Relasi ke ODP (1 OLT memiliki banyak ODP)
+  odps Odp[]
+
+  // Relasi ke BAA
+  baas Baa[]
+}
+
+// ======================================================
+// MODEL ODP (Optical Distribution Point)
+// Berfungsi sebagai titik distribusi kabel ke pelanggan
+// ======================================================
+
+model Odp {
+  // Primary Key
+  id_odp Int @id @default(autoincrement())
+
+  kode_odp String @unique
+
+  // Nama ODP
+  nama_odp String
+
+  // Alamat ODP
+  alamat String
+
+  // Latitude Maps
+  latitude Decimal
+
+  // Longitude Maps
+  longitude Decimal
+
+  // Foreign Key ke OLT
+  id_olt Int
+
+  // Waktu dibuat
+  createdAt DateTime @default(now())
+
+  // Waktu terakhir diubah
+  updatedAt DateTime @updatedAt
+
+  // Relasi ke OLT
+  olt Olt @relation(fields: [id_olt], references: [id_olt])
+
+  // Relasi ke ONT
+  onts Ont[]
+}
+
+// ======================================================
+// MODEL ONT (Optical Network Terminal)
+// Perangkat yang dipasang di rumah pelanggan
+// ======================================================
+
+model Ont {
+  // Primary Key
+  id_ont Int @id @default(autoincrement())
+
+  // Nomor Serial ONT
+  serial_number String @unique
+
+  // Nama pelanggan (sesuai class diagram)
+  pelanggan String
+
+  // Status ONT
+  status StatusOnt @default(TERSEDIA)
+
+  // Foreign Key ke POP
+  id_pop Int
+
+  // Foreign Key ke ODP
+  id_odp Int
+
+  // Waktu dibuat
+  createdAt DateTime @default(now())
+
+  // Waktu terakhir diubah
+  updatedAt DateTime @updatedAt
+
+  // Relasi ke POP
+  pop Pop @relation(fields: [id_pop], references: [id_pop])
+
+  // Relasi ke ODP
+  odp Odp @relation(fields: [id_odp], references: [id_odp])
+
+  // Relasi ke BAA
+  baas Baa[]
+}
+
+// ======================================================
+// MODEL PAKET INTERNET
+// Digunakan saat pelanggan melakukan pemasangan
+// ======================================================
+
+model Paket {
+  // Primary Key
+  id_paket Int @id @default(autoincrement())
+
+  kode_paket String @unique
+
+  // Nama Paket
+  nama_paket String
+
+  // Kecepatan Internet
+  kecepatan String
+
+  // Harga Paket
+  harga Decimal @db.Decimal(12, 2)
+
+  // Keterangan
+  keterangan String?
+
+  // Waktu dibuat
+  createdAt DateTime @default(now())
+
+  // Waktu terakhir diubah
+  updatedAt DateTime @updatedAt
+
+  // Relasi ke FAB
+  fabs Fab[]
+}
+
+// ======================================================
+// MODEL MATERIAL
+// Menyimpan data inventaris material yang digunakan
+// ======================================================
+
+model Material {
+  // Primary Key
+  id_material Int @id @default(autoincrement())
+
+  // Kode Material (ditampilkan ke user)
+  kode_material String @unique
+
+  // Nama Material
+  nama_material String
+
+  // Jumlah stok tersedia
+  stok Int @default(0)
+
+  // Minimal stok sebelum muncul peringatan
+  minimal_stok Int @default(5)
+
+  // Satuan Material
+  // Contoh: Unit, PCS, Meter
+  satuan String
+
+  // Harga Material
+  harga Decimal
+
+  // Kondisi Material
+  kondisi KondisiMaterial @default(BAIK)
+
+  // Keterangan
+  keterangan String?
+
+  // Waktu dibuat
+  createdAt DateTime @default(now())
+
+  // Waktu terakhir diubah
+  updatedAt DateTime @updatedAt
+
+  // Relasi ke Detail BAA
+  baaDetails BaaDetail[]
+}
+
+// ======================================================
+// MODEL FAB (Form Aktivasi Berlangganan)
+// Menyimpan data pelanggan yang mengajukan pemasangan
+// ======================================================
+
+model Fab {
+  // Primary Key
+  id_fab Int @id @default(autoincrement())
+
+  // Kode FAB
+  kode_fab String @unique
+
+  // Nama Pelanggan
+  nama_pelanggan String
+
+  // Nomor Induk Kependudukan
+  nik String @unique
+
+  // Nomor Handphone
+  no_hp String
+
+  // Alamat Lengkap
+  alamat String
+
+  // Latitude lokasi pelanggan
+  latitude Decimal
+
+  // Longitude lokasi pelanggan
+  longitude Decimal
+
+  // Status FAB
+  status StatusFab @default(PENDING)
+
+  // ==========================
+  // FOREIGN KEY
+  // ==========================
+
+  // Area pelanggan
+  id_area Int
+
+  // Paket internet yang dipilih
+  id_paket Int
+
+  // Sales yang menginput FAB
+  id_user Int
+
+  // ==========================
+  // Waktu
+  // ==========================
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // ==========================
+  // RELASI
+  // ==========================
+
+  area Area @relation(fields: [id_area], references: [id_area])
+
+  paket Paket @relation(fields: [id_paket], references: [id_paket])
+
+  user User @relation(fields: [id_user], references: [id_user])
+
+  // Satu FAB dapat memiliki data BAA
+  baas Baa[]
+}
+
+// ======================================================
+// MODEL BAA (Berita Acara Aktivasi)
+// Menyimpan hasil instalasi pelanggan
+// ======================================================
+
+model Baa {
+  // Primary Key
+  id_baa Int @id @default(autoincrement())
+
+  // Kode BAA
+  kode_baa String @unique
+
+  // Tanggal Instalasi
+  tanggal_instalasi DateTime
+
+  // Status BAA
+  status StatusBaa @default(PENDING)
+
+  // Catatan Teknisi
+  catatan String?
+
+  foto_instalasi String?
+
+  // ==========================
+  // FOREIGN KEY
+  // ==========================
+
+  // Data FAB
+  id_fab Int
+
+  // Teknisi yang mengerjakan
+  id_user Int
+
+  // OLT yang digunakan
+  id_olt Int
+
+  // ONT yang dipasang
+  id_ont Int
+
+  // ==========================
+  // Waktu
+  // ==========================
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // ==========================
+  // RELASI
+  // ==========================
+
+  fab Fab @relation(fields: [id_fab], references: [id_fab])
+
+  user User @relation(fields: [id_user], references: [id_user])
+
+  olt Olt @relation(fields: [id_olt], references: [id_olt])
+
+  ont Ont @relation(fields: [id_ont], references: [id_ont])
+
+  // Detail material yang digunakan
+  baaDetails BaaDetail[]
+}
+
+// ======================================================
+// MODEL BAA DETAIL
+// Menyimpan daftar material yang digunakan pada instalasi
+// ======================================================
+
+model BaaDetail {
+  // Primary Key
+  id_baa_detail Int @id @default(autoincrement())
+
+  // ==========================
+  // FOREIGN KEY
+  // ==========================
+
+  // BAA
+  id_baa Int
+
+  // Material
+  id_material Int
+
+  // ==========================
+  // DATA
+  // ==========================
+
+  // Jumlah material yang digunakan
+  jumlah Int
+
+  // Keterangan
+  keterangan String?
+
+  // ==========================
+  // WAKTU
+  // ==========================
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // ==========================
+  // RELASI
+  // ==========================
+
+  baa Baa @relation(fields: [id_baa], references: [id_baa])
+
+  material Material @relation(fields: [id_material], references: [id_material])
+}
