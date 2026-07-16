@@ -205,6 +205,7 @@ model Odp {
 
   // Relasi ke ONT
   onts Ont[]
+  Baa  Baa[]
 }
 
 // ======================================================
@@ -398,41 +399,72 @@ model Fab {
 // ======================================================
 
 model Baa {
-  // Primary Key
+  // ==========================
+  // PRIMARY KEY
+  // ==========================
+
   id_baa Int @id @default(autoincrement())
 
-  // Kode BAA
+  // Kode unik BAA
   kode_baa String @unique
 
-  // Tanggal Instalasi
+  // ==========================
+  // DATA INSTALASI
+  // ==========================
+
   tanggal_instalasi DateTime
 
-  // Status BAA
+  // Hasil pengukuran power optik
+  rx_power_dbm Decimal?
+
+  tx_power_dbm Decimal?
+
+  // Hasil speedtest
+  speed_download String?
+
+  speed_upload String?
+
+  // Ping
+  ping_ms Decimal?
+
+  // Status pekerjaan
   status StatusBaa @default(PENDING)
 
-  // Catatan Teknisi
+  // Catatan teknisi
   catatan String?
 
+  // Foto hasil instalasi
   foto_instalasi String?
 
   // ==========================
   // FOREIGN KEY
   // ==========================
 
-  // Data FAB
+  // FAB yang dikerjakan
   id_fab Int
 
-  // Teknisi yang mengerjakan
+  // Teknisi
   id_user Int
 
-  // OLT yang digunakan
+  // OLT
   id_olt Int
 
-  // ONT yang dipasang
+  // ODP
+  id_odp Int
+
+  // ONT
   id_ont Int
 
   // ==========================
-  // Waktu
+  // PORT
+  // ==========================
+
+  port_olt Int?
+
+  port_odp Int?
+
+  // ==========================
+  // TIMESTAMP
   // ==========================
 
   createdAt DateTime @default(now())
@@ -443,15 +475,24 @@ model Baa {
   // RELASI
   // ==========================
 
+  // FAB yang dikerjakan
   fab Fab @relation(fields: [id_fab], references: [id_fab])
 
+  // Teknisi yang mengerjakan instalasi
   user User @relation(fields: [id_user], references: [id_user])
 
+  // Perangkat jaringan
   olt Olt @relation(fields: [id_olt], references: [id_olt])
+
+  odp Odp @relation(fields: [id_odp], references: [id_odp])
 
   ont Ont @relation(fields: [id_ont], references: [id_ont])
 
-  // Detail material yang digunakan
+  // =====================================================
+  // DETAIL MATERIAL
+  // Satu BAA dapat menggunakan banyak material
+  // =====================================================
+
   baaDetails BaaDetail[]
 }
 
