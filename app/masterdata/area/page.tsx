@@ -1,143 +1,122 @@
-// app/masterdata/area/page.tsx
-import { prisma } from "@/lib/prisma";
-import Link from "next/link";
-import { deleteArea } from "./actions";
-import DeleteForm from "./DeleteForm"; 
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Card, CardContent } from "@/components/ui/card";
+import { MapPin } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-export default async function AreaPage() {
-  const areas = await prisma.area.findMany({
-    orderBy: {
-      kode_area: "asc",
-    },
-  });
+import { getAreas } from "./actions";
+
+import { AreaFormDialog } from "./components/AreaFormDialog";
+import { DeleteAreaDialog } from "./components/DeleteAreaDialog";
+import { AreaSearch } from "./components/AreaSearch";
+import { AreaPagination } from "./components/AreaPagination";
+
+export default async function AreaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}) {
+  const params = await searchParams;
+  const search = params.search ?? "";
+  const page = Number(params.page ?? 1);
+
+  const { data: areas, total, totalPages } = await getAreas(search, page);
 
   return (
-    <main className="min-h-screen bg-gray-50 p-8">
-      {/* Header */}
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">
-            Master Data Area
-          </h1>
+    <div className="mx-auto max-w-7xl space-y-6 p-6">
+      <PageHeader
+        title="Data Area"
+        description="Kelola wilayah cakupan layanan ISP"
+      />
 
-          <p className="mt-1 text-gray-500">
-            Kelola seluruh data Area jaringan PASSNET.
-          </p>
-        </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="rounded-3xl border-0 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-lg">
+          <CardContent className="flex items-center justify-between p-6">
+            <div>
+              <p className="text-sm text-white/80">Total Area</p>
+              <h2 className="mt-2 text-4xl font-bold">{total}</h2>
+              <p className="mt-1 text-sm text-white/80">Wilayah Terdaftar</p>
+            </div>
 
-        <Link
-          href="/masterdata/area/create"
-          className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:bg-blue-700"
-        >
-          + Tambah Area
-        </Link>
+            <div className="rounded-2xl bg-white/20 p-4">
+              <MapPin className="h-8 w-8" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Statistik */}
-      <div className="mb-8 grid gap-6 md:grid-cols-3">
-        <div className="rounded-2xl border bg-white p-6 shadow-sm">
-          <p className="text-sm text-gray-500">Total Area</p>
-          <h2 className="mt-2 text-4xl font-bold text-blue-600">
-            {areas.length}
-          </h2>
-          <p className="mt-2 text-sm text-gray-400">Area Terdaftar</p>
-        </div>
-      </div>
-
-      {/* Card Table */}
-      <div className="rounded-2xl border bg-white shadow-sm">
-        {/* Header Table */}
-        <div className="flex flex-col gap-4 border-b p-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">Daftar Area</h2>
-            <p className="text-sm text-gray-500">
-              Semua data area yang telah tersimpan.
-            </p>
+      <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl">
+        <CardContent className="space-y-6 p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <AreaSearch defaultValue={search} />
+            <AreaFormDialog mode="create" />
           </div>
 
-          <input
-            type="text"
-            placeholder="Cari kode area atau nama area..."
-            className="w-full rounded-xl border px-4 py-3 outline-none transition focus:border-blue-500 md:w-80"
-          />
-        </div>
+          <div className="overflow-x-auto rounded-2xl border">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50">
+                  <TableHead>Kode Area</TableHead>
+                  <TableHead>Nama Area</TableHead>
+                  <TableHead>Keterangan</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead className="bg-slate-100">
-              <tr>
-                <th className="px-5 py-4 text-left text-sm font-semibold text-gray-700">No</th>
-                <th className="px-5 py-4 text-left text-sm font-semibold text-gray-700">Kode Area</th>
-                <th className="px-5 py-4 text-left text-sm font-semibold text-gray-700">Nama Area</th>
-                <th className="px-5 py-4 text-left text-sm font-semibold text-gray-700">Keterangan</th>
-                <th className="px-5 py-4 text-center text-sm font-semibold text-gray-700">Aksi</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {areas.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-16 text-center">
-                    <div className="flex flex-col items-center">
-                      <div className="mb-4 text-6xl">📍</div>
-                      <h3 className="text-xl font-semibold">Belum Ada Data Area</h3>
-                      <p className="mt-2 text-gray-500">Silakan tambahkan Area pertama.</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                areas.map((area, index) => (
-                  <tr key={area.id_area} className="border-t transition hover:bg-blue-50">
-                    <td className="px-5 py-4 font-medium">{index + 1}</td>
-                    <td className="px-5 py-4">
-                      <span className="rounded-lg bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">
-                        {area.kode_area}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 font-medium text-gray-700">{area.nama_area}</td>
-                    <td className="px-5 py-4">
-                      {area.keterangan ? (
-                        <span className="rounded-lg bg-green-100 px-3 py-1 text-sm text-green-700">
-                          {area.keterangan}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex justify-center gap-3">
-                        <Link
-                          href={`/masterdata/area/edit/${area.id_area}`}
-                          className="rounded bg-yellow-500 px-3 py-1 text-white hover:bg-yellow-600 inline-block text-center"
-                        >
-                          Edit
-                        </Link>
-
-                        <DeleteForm
-                            id={area.id_area}
-                            nama={area.nama_area}
-                            action={deleteArea}
-                            />
+              <TableBody>
+                {areas.map((area) => (
+                  <TableRow key={area.id_area} className="hover:bg-slate-50">
+                    <TableCell className="font-medium">
+                      {area.kode_area}
+                    </TableCell>
+                    <TableCell>{area.nama_area}</TableCell>
+                    <TableCell>{area.keterangan ?? "-"}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <AreaFormDialog
+                          mode="edit"
+                          data={{
+                            id_area: area.id_area,
+                            nama_area: area.nama_area,
+                            keterangan: area.keterangan,
+                          }}
+                        />
+                        <DeleteAreaDialog
+                          id={area.id_area}
+                          name={area.nama_area}
+                        />
                       </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
 
-        {/* Footer */}
-        <div className="flex items-center justify-between border-t p-5">
-          <p className="text-sm text-gray-500">
-            Total Data : <span className="font-semibold">{areas.length}</span>
-          </p>
-          <button className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-100">
-            Refresh
-          </button>
-        </div>
-      </div>
-    </main>
+                {areas.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="py-10 text-center text-slate-400"
+                    >
+                      {search
+                        ? "Tidak ada data Area yang cocok dengan pencarian"
+                        : "Belum ada data Area"}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex justify-end">
+            <AreaPagination page={page} totalPages={totalPages} />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

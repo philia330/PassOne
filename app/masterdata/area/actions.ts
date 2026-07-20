@@ -1,107 +1,103 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
-/**
- * Generate kode area otomatis: AR001, AR002, AR003, dst
- */
-export async function getNextAreaCode(): Promise<string> {
+const PAGE_SIZE = 10;
+
+// ======================================================
+// Generate kode_area otomatis, mengisi celah nomor kosong
+// Format: AREA-001, AREA-002, dst
+// ======================================================
+const generateKodeArea = async (): Promise<string> => {
   const areas = await prisma.area.findMany({
-    where: { kode_area: { startsWith: "AR" } },
     select: { kode_area: true },
+    orderBy: { kode_area: "asc" },
   });
 
-  // Ambil semua angka dari kode yang ada, urutkan dari kecil ke besar
   const numbers = areas
-    .map((area) => {
-      const match = area.kode_area.match(/^AR(\d+)$/);
-      return match ? parseInt(match[1], 10) : null;
-    })
-    .filter((n): n is number => n !== null)
+    .map((a) => parseInt(a.kode_area.split("-")[1], 10))
     .sort((a, b) => a - b);
 
-  // Cari angka terkecil yang belum terpakai (mengisi celah/gap dari data yang dihapus)
   let next = 1;
-  for (const num of numbers) {
-    if (num === next) {
+  for (const n of numbers) {
+    if (n === next) {
       next++;
-    } else if (num > next) {
+    } else {
       break;
     }
   }
 
-  return `AR${String(next).padStart(3, "0")}`;
-}
+  return `AREA-${String(next).padStart(3, "0")}`;
+};
 
-/**
- * Server Action
- * Menyimpan data Area baru ke database (kode_area otomatis)
- */
-export async function createArea(formData: FormData) {
-  const nama_area = formData.get("nama_area")?.toString().trim() ?? "";
-  const keterangan = formData.get("keterangan")?.toString().trim() || null;
+// ======================================================
+// Ambil data Area dengan search & pagination
+// ======================================================
+export const getAreas = async (search: string = "", page: number = 1) => {
+  const where = search
+    ? {
+        OR: [
+          { kode_area: { contains: search } },
+          { nama_area: { contains: search } },
+          { keterangan: { contains: search } },
+        ],
+      }
+    : {};
 
-  const kode_area = await getNextAreaCode();
+  const [data, total] = await Promise.all([
+    prisma.area.findMany({
+      where,
+      orderBy: { kode_area: "asc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.area.count({ where }),
+  ]);
 
-  if (!nama_area) {
-    throw new Error("Nama Area wajib diisi.");
-  }
+  return {
+    data,
+    total,
+    totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+  };
+};
+
+// ======================================================
+// Tambah Area
+// ======================================================
+export const createArea = async (formData: FormData) => {
+  const kode_area = await generateKodeArea();
+  const nama_area = formData.get("nama_area") as string;
+  const keteranganRaw = formData.get("keterangan") as string;
+  const keterangan = keteranganRaw.trim() ? keteranganRaw : null;
 
   await prisma.area.create({
-    data: {
-      kode_area,
-      nama_area,
-      keterangan,
-    },
-  });
-
-  revalidatePath("/masterdata/area");
-  redirect("/masterdata/area");
-}
-
-/**
- * Server Action
- * Update data Area
- */
-export async function updateArea(id_area: number, formData: FormData) {
-  const kode_area = formData.get("kode_area")?.toString().trim() ?? "";
-  const nama_area = formData.get("nama_area")?.toString().trim() ?? "";
-  const keterangan = formData.get("keterangan")?.toString().trim() || null;
-
-  if (!kode_area || !nama_area) {
-    throw new Error("Kode Area dan Nama Area wajib diisi.");
-  }
-
-  const cekArea = await prisma.area.findFirst({
-    where: {
-      kode_area,
-      NOT: { id_area },
-    },
-  });
-
-  if (cekArea) {
-    throw new Error("Kode Area sudah digunakan.");
-  }
-
-  await prisma.area.update({
-    where: { id_area },
     data: { kode_area, nama_area, keterangan },
   });
 
   revalidatePath("/masterdata/area");
-  redirect("/masterdata/area");
-}
+};
 
-/**
- * Server Action
- * Menghapus data Area berdasarkan id
- */
-export async function deleteArea(id_area: number) {
-  await prisma.area.delete({
-    where: { id_area },
+// ======================================================
+// Update Area
+// ======================================================
+export const updateArea = async (id: number, formData: FormData) => {
+  const nama_area = formData.get("nama_area") as string;
+  const keteranganRaw = formData.get("keterangan") as string;
+  const keterangan = keteranganRaw.trim() ? keteranganRaw : null;
+
+  await prisma.area.update({
+    where: { id_area: id },
+    data: { nama_area, keterangan },
   });
 
   revalidatePath("/masterdata/area");
-}
+};
+
+// ======================================================
+// Hapus Area
+// ======================================================
+export const deleteArea = async (id: number) => {
+  await prisma.area.delete({ where: { id_area: id } });
+  revalidatePath("/masterdata/area");
+};
