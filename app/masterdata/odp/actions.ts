@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+// import { requireRole, requireAuth } from "@/lib/auth/guards"; // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge dari Project Lead
+// import { logActivity } from "@/lib/activity-log"; // TODO: aktifkan lagi setelah lib/activity-log.ts & auth.ts di-merge dari Project Lead
 
 const PAGE_SIZE = 10;
 
@@ -49,6 +51,8 @@ export const getOdps = async (
   search: string = "",
   page: number = 1
 ) => {
+  // await requireAuth(); // TODO: aktifkan setelah auth.ts di-merge — modul baca data minimal wajib login
+
   const where = search
     ? {
         OR: [
@@ -109,6 +113,8 @@ export const getOdps = async (
 // ======================================================
 
 export const getOlts = async () => {
+  // await requireAuth(); // TODO: aktifkan setelah auth.ts di-merge
+
   return prisma.olt.findMany({
     select: {
       id_olt: true,
@@ -125,6 +131,8 @@ export const getOlts = async () => {
 // ======================================================
 
 export const createOdp = async (formData: FormData) => {
+  // await requireRole(["ADMIN"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+
   const kode_odp = await generateKodeOdp();
 
   const nama_odp = formData.get("nama_odp") as string;
@@ -143,7 +151,7 @@ export const createOdp = async (formData: FormData) => {
     10
   );
 
-  await prisma.odp.create({
+  const odp = await prisma.odp.create({
     data: {
       kode_odp,
       nama_odp,
@@ -153,6 +161,8 @@ export const createOdp = async (formData: FormData) => {
       id_olt,
     },
   });
+
+  // await logActivity("ODP_CREATED", `ODP ${odp.nama_odp} dibuat.`);
 
   revalidatePath("/masterdata/odp");
 };
@@ -165,6 +175,8 @@ export const updateOdp = async (
   id: number,
   formData: FormData
 ) => {
+  // await requireRole(["ADMIN"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+
   const nama_odp = formData.get("nama_odp") as string;
   const alamat = formData.get("alamat") as string;
 
@@ -181,7 +193,7 @@ export const updateOdp = async (
     10
   );
 
-  await prisma.odp.update({
+  const odp = await prisma.odp.update({
     where: {
       id_odp: id,
     },
@@ -194,6 +206,8 @@ export const updateOdp = async (
     },
   });
 
+  // await logActivity("ODP_UPDATED", `ODP ${odp.nama_odp} diperbarui.`);
+
   revalidatePath("/masterdata/odp");
 };
 
@@ -202,11 +216,15 @@ export const updateOdp = async (
 // ======================================================
 
 export const deleteOdp = async (id: number) => {
-  await prisma.odp.delete({
+  // await requireRole(["ADMIN"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+
+  const odp = await prisma.odp.delete({
     where: {
       id_odp: id,
     },
   });
+
+  // await logActivity("ODP_DELETED", `ODP ${odp.nama_odp} dihapus.`);
 
   revalidatePath("/masterdata/odp");
 };

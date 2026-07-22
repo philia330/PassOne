@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -22,6 +23,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createOlt, updateOlt } from "../actions";
+
+const OltMapPicker = dynamic(
+  () => import("./OltMapPicker").then((mod) => mod.OltMapPicker),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[220px] items-center justify-center rounded-2xl border bg-white text-slate-400">
+        Memuat peta...
+      </div>
+    ),
+  }
+);
 
 type Pop = {
   id_pop: number;
@@ -51,6 +64,18 @@ export const OltFormDialog = ({
   const [popValue, setPopValue] = useState(
     data?.id_pop ? String(data.id_pop) : ""
   );
+
+  const [lat, setLat] = useState<number>(
+    data?.latitude ? Number(data.latitude) : 0
+  );
+  const [lng, setLng] = useState<number>(
+    data?.longitude ? Number(data.longitude) : 0
+  );
+
+  const handlePick = (pickedLat: number, pickedLng: number) => {
+    setLat(pickedLat);
+    setLng(pickedLng);
+  };
 
   const handleSubmit = async (formData: FormData) => {
     setIsSubmitting(true);
@@ -95,7 +120,7 @@ export const OltFormDialog = ({
         )}
       </DialogTrigger>
       
-      <DialogContent className="rounded-3xl sm:max-w-lg">
+      <DialogContent className="rounded-3xl sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {mode === "create" ? "Tambah OLT" : "Edit OLT"}
@@ -128,6 +153,12 @@ export const OltFormDialog = ({
             />
           </div>
 
+          {/* Peta pilih lokasi */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Lokasi di Peta</label>
+            <OltMapPicker lat={lat} lng={lng} onPick={handlePick} />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Latitude</label>
@@ -135,7 +166,8 @@ export const OltFormDialog = ({
                 name="latitude"
                 type="number"
                 step="any"
-                defaultValue={data?.latitude}
+                value={lat === 0 ? "" : lat}
+                onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
                 placeholder="-6.178306"
                 required
                 className="h-12 rounded-2xl border-slate-200 focus-visible:ring-purple-500"
@@ -147,7 +179,8 @@ export const OltFormDialog = ({
                 name="longitude"
                 type="number"
                 step="any"
-                defaultValue={data?.longitude}
+                value={lng === 0 ? "" : lng}
+                onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
                 placeholder="106.631889"
                 required
                 className="h-12 rounded-2xl border-slate-200 focus-visible:ring-purple-500"

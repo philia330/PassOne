@@ -14,6 +14,7 @@ import { OltFormDialog } from "./components/OltFormDialog";
 import { DeleteOltDialog } from "./components/DeleteOltDialog";
 import { OltSearch } from "./components/OltSearch";
 import { OltPagination } from "./components/OltPagination";
+import { OltMapDialog } from "./components/OltMapDialog";
 
 export default async function OltPage({
   searchParams,
@@ -41,28 +42,19 @@ export default async function OltPage({
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-  <Card className="rounded-3xl border-0 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-lg">
-    <CardContent className="flex items-center justify-between p-6">
-      <div>
-        <p className="text-sm text-white/80">
-          Total OLT
-        </p>
-
-        <h2 className="mt-2 text-4xl font-bold">
-          {total}
-        </h2>
-
-        <p className="mt-1 text-sm text-white/80">
-          Perangkat Terdaftar
-        </p>
+        <Card className="rounded-3xl border-0 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-lg">
+          <CardContent className="flex items-center justify-between p-6">
+            <div>
+              <p className="text-sm text-white/80">Total OLT</p>
+              <h2 className="mt-2 text-4xl font-bold">{total}</h2>
+              <p className="mt-1 text-sm text-white/80">Perangkat Terdaftar</p>
+            </div>
+            <div className="rounded-2xl bg-white/20 p-4">
+              <Router className="h-8 w-8" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
-
-      <div className="rounded-2xl bg-white/20 p-4">
-  <Router className="h-8 w-8" />
-</div>
-    </CardContent>
-  </Card>
-</div>
 
       <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl">
         <CardContent className="space-y-6 p-6">
@@ -97,6 +89,11 @@ export default async function OltPage({
                     <TableCell>{olt.longitude.toString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <OltMapDialog
+                          nama={olt.nama_olt}
+                          lat={Number(olt.latitude)}
+                          lng={Number(olt.longitude)}
+                        />
                         <OltFormDialog
                           mode="edit"
                           pops={pops}
@@ -132,8 +129,8 @@ export default async function OltPage({
           </div>
 
           <div className="flex justify-end">
-  <OltPagination page={page} totalPages={totalPages} />
-</div>
+            <OltPagination page={page} totalPages={totalPages} />
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -27,6 +28,18 @@ import {
 
 import { createPop, updatePop } from "../actions";
 
+const PopMapPicker = dynamic(
+  () => import("./PopMapPicker").then((mod) => mod.PopMapPicker),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[220px] items-center justify-center rounded-2xl border bg-white text-slate-400">
+        Memuat peta...
+      </div>
+    ),
+  }
+);
+
 type Area = { id_area: number; nama_area: string };
 
 type PopData = {
@@ -53,6 +66,18 @@ export const PopFormDialog = ({
   const [areaValue, setAreaValue] = useState(
     data?.id_area ? String(data.id_area) : ""
   );
+
+  const [lat, setLat] = useState<number>(
+    data?.latitude ? Number(data.latitude) : 0
+  );
+  const [lng, setLng] = useState<number>(
+    data?.longitude ? Number(data.longitude) : 0
+  );
+
+  const handlePick = (pickedLat: number, pickedLng: number) => {
+    setLat(pickedLat);
+    setLng(pickedLng);
+  };
 
   const handleSubmit = async (formData: FormData) => {
     setIsSubmitting(true);
@@ -99,7 +124,7 @@ export const PopFormDialog = ({
         )}
       </DialogTrigger>
 
-      <DialogContent className="rounded-3xl sm:max-w-lg">
+      <DialogContent className="rounded-3xl sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {mode === "create" ? "Tambah POP" : "Edit POP"}
@@ -133,13 +158,20 @@ export const PopFormDialog = ({
             />
           </div>
 
+          {/* Peta pilih lokasi */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Lokasi di Peta</label>
+            <PopMapPicker lat={lat} lng={lng} onPick={handlePick} />
+          </div>
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Latitude</label>
             <Input
               name="latitude"
               type="number"
               step="any"
-              defaultValue={data?.latitude}
+              value={lat === 0 ? "" : lat}
+              onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
               placeholder="-6.178306"
               required
               className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500"
@@ -152,7 +184,8 @@ export const PopFormDialog = ({
               name="longitude"
               type="number"
               step="any"
-              defaultValue={data?.longitude}
+              value={lng === 0 ? "" : lng}
+              onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
               placeholder="106.631889"
               required
               className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500"

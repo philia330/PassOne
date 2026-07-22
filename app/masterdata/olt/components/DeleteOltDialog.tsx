@@ -38,15 +38,17 @@ export const DeleteOltDialog = ({ id, name }: { id: number; name: string }) => {
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
-        <Button
-  variant="ghost"
-  size="icon"
-  className="cursor-pointer rounded-xl"
->
-          <Trash2 className="h-4 w-4 text-rose-500" />
-        </Button>
-      </AlertDialogTrigger>
+      <AlertDialogTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon"
+            className="cursor-pointer rounded-xl"
+          >
+            <Trash2 className="h-4 w-4 text-rose-500" />
+          </Button>
+        }
+      />
       <AlertDialogContent className="rounded-3xl">
         <AlertDialogHeader>
           <AlertDialogTitle>Hapus data OLT?</AlertDialogTitle>

@@ -16,6 +16,7 @@ import { PopFormDialog } from "./components/PopFormDialog";
 import { DeletePopDialog } from "./components/DeletePopDialog";
 import { PopSearch } from "./components/PopSearch";
 import { PopPagination } from "./components/PopPagination";
+import { PopMapDialog } from "./components/PopMapDialog";
 
 export default async function PopPage({
   searchParams,
@@ -88,6 +89,11 @@ export default async function PopPage({
                     <TableCell>{pop.longitude.toString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <PopMapDialog
+                          nama={pop.nama_pop}
+                          lat={Number(pop.latitude)}
+                          lng={Number(pop.longitude)}
+                        />
                         <PopFormDialog
                           mode="edit"
                           areas={areas}

@@ -14,6 +14,7 @@ import { getOdps, getOlts } from "./actions";
 
 import { OdpFormDialog } from "./components/OdpFormDialog";
 import { DeleteOdpDialog } from "./components/DeleteOdpDialog";
+import { OdpMapDialog } from "./components/OdpMapDialog";
 import { OdpSearch } from "./components/OdpSearch";
 import { OdpPagination } from "./components/OdpPagination";
 
@@ -127,6 +128,15 @@ export default async function OdpPage({
 
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <OdpMapDialog
+                          odpNama={odp.nama_odp}
+                          odpLat={Number(odp.latitude)}
+                          odpLng={Number(odp.longitude)}
+                          oltNama={odp.olt?.nama_olt ?? "-"}
+                          oltLat={Number(odp.olt?.latitude)}
+                          oltLng={Number(odp.olt?.longitude)}
+                        />
+
                         <OdpFormDialog
                           mode="edit"
                           olts={olts}
