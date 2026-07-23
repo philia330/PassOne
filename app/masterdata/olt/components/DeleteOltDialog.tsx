@@ -27,7 +27,7 @@ export const DeleteOltDialog = ({ id, name }: { id: number; name: string }) => {
       await deleteOlt(id);
       toast.success("OLT berhasil dihapus");
       setOpen(false);
-    } catch (error) {
+    } catch {
       toast.error(
         "Gagal menghapus, pastikan OLT ini tidak sedang dipakai oleh data ODP"
       );
@@ -53,18 +53,24 @@ export const DeleteOltDialog = ({ id, name }: { id: number; name: string }) => {
         <AlertDialogHeader>
           <AlertDialogTitle>Hapus data OLT?</AlertDialogTitle>
           <AlertDialogDescription>
-            Data <span className="font-semibold">{name}</span> akan dihapus
-            permanen dan tidak dapat dikembalikan.
+            Data{" "}
+            <span className="font-semibold text-slate-800 dark:text-white">
+              {name}
+            </span>{" "}
+            akan dihapus permanen dan tidak dapat dikembalikan.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="rounded-2xl" disabled={isDeleting}>
+          <AlertDialogCancel
+            className="cursor-pointer rounded-2xl"
+            disabled={isDeleting}
+          >
             Batal
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
-            className="rounded-2xl bg-rose-600 hover:bg-rose-700"
+            className="cursor-pointer rounded-2xl bg-rose-600 text-white hover:bg-rose-700"
           >
             {isDeleting ? "Menghapus..." : "Hapus"}
           </AlertDialogAction>

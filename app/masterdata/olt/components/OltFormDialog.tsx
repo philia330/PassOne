@@ -29,7 +29,7 @@ const OltMapPicker = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[220px] items-center justify-center rounded-2xl border bg-white text-slate-400">
+      <div className="flex h-[220px] items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
         Memuat peta...
       </div>
     ),
@@ -88,7 +88,7 @@ export const OltFormDialog = ({
         toast.success("OLT berhasil diperbarui");
       }
       setOpen(false);
-    } catch (error) {
+    } catch {
       toast.error("Terjadi kesalahan, silakan coba lagi");
     } finally {
       setIsSubmitting(false);
@@ -116,11 +116,11 @@ export const OltFormDialog = ({
             Tambah OLT
           </>
         ) : (
-          <Pencil className="h-4 w-4 text-slate-500" />
+          <Pencil className="h-4 w-4 text-slate-500 dark:text-slate-400" />
         )}
       </DialogTrigger>
-      
-      <DialogContent className="rounded-3xl sm:max-w-lg max-h-[90vh] overflow-y-auto">
+
+      <DialogContent className="max-h-[90vh] rounded-3xl overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
             {mode === "create" ? "Tambah OLT" : "Edit OLT"}
@@ -138,7 +138,7 @@ export const OltFormDialog = ({
               defaultValue={data?.nama_olt}
               placeholder="Contoh: OLT Huawei Tanggerang 1"
               required
-              className="h-12 rounded-2xl border-slate-200 focus-visible:ring-purple-500"
+              className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
 
@@ -149,7 +149,7 @@ export const OltFormDialog = ({
               defaultValue={data?.lokasi}
               placeholder="Contoh: Jl. Merdeka No. 10, Tanggerang"
               required
-              className="h-12 rounded-2xl border-slate-200 focus-visible:ring-purple-500"
+              className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
 
@@ -170,7 +170,7 @@ export const OltFormDialog = ({
                 onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
                 placeholder="-6.178306"
                 required
-                className="h-12 rounded-2xl border-slate-200 focus-visible:ring-purple-500"
+                className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </div>
             <div className="space-y-2">
@@ -183,7 +183,7 @@ export const OltFormDialog = ({
                 onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
                 placeholder="106.631889"
                 required
-                className="h-12 rounded-2xl border-slate-200 focus-visible:ring-purple-500"
+                className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </div>
           </div>
@@ -191,7 +191,7 @@ export const OltFormDialog = ({
           <div className="space-y-2">
             <label className="text-sm font-medium">POP</label>
             <Select value={popValue} onValueChange={setPopValue}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 focus:ring-purple-500">
+              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                 <SelectValue placeholder="Pilih POP" />
               </SelectTrigger>
               <SelectContent>
@@ -202,28 +202,28 @@ export const OltFormDialog = ({
                 ))}
               </SelectContent>
             </Select>
-            {/* shadcn Select (Radix) tidak submit ke FormData otomatis,
-                jadi nilainya dititipkan lewat hidden input ini */}
             <input type="hidden" name="id_pop" value={popValue} required />
           </div>
 
-         <DialogFooter>
-  <Button
-    type="button"
-    variant="outline"
-    className="cursor-pointer h-11 rounded-2xl"
-    onClick={() => setOpen(false)}
-  >
-    Batal
-  </Button>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSubmitting}
+              className="h-11 cursor-pointer rounded-2xl"
+              onClick={() => setOpen(false)}
+            >
+              Batal
+            </Button>
 
- <Button
-  type="submit"
-  className="cursor-pointer h-11 rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 font-semibold text-white"
->
-  Simpan
-</Button>
-</DialogFooter>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="h-11 cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 font-semibold text-white"
+            >
+              {isSubmitting ? "Menyimpan..." : "Simpan"}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

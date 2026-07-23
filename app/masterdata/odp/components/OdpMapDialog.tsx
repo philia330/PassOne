@@ -16,7 +16,7 @@ const OdpRouteMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[300px] items-center justify-center rounded-2xl border bg-white text-slate-400">
+      <div className="flex h-[300px] items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
         Memuat peta...
       </div>
     ),
@@ -50,18 +50,22 @@ export const OdpMapDialog = ({
         size="icon"
         onClick={() => setOpen(true)}
         title="Lihat Peta"
-        className="cursor-pointer"
+        className="cursor-pointer rounded-xl"
       >
-        <MapPin className="h-4 w-4 text-sky-600" />
+        <MapPin className="h-4 w-4 text-sky-600 dark:text-sky-400" />
       </Button>
 
-      <DialogContent className="sm:max-w-4xl">
+      <DialogContent className="rounded-3xl sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>
-  <span className="text-yellow-500">Jalur ODP: {odpNama}</span>
-  {" — "}
-  <span className="text-sky-400">OLT: {oltNama}</span>
-</DialogTitle>
+            <span className="text-amber-500 dark:text-amber-400">
+              Jalur ODP: {odpNama}
+            </span>
+            <span className="text-slate-400 dark:text-slate-500"> — </span>
+            <span className="text-sky-600 dark:text-sky-400">
+              OLT: {oltNama}
+            </span>
+          </DialogTitle>
         </DialogHeader>
 
         {open && (

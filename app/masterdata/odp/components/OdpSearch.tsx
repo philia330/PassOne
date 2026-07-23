@@ -36,13 +36,13 @@ export const OdpSearch = ({
 
   return (
     <div className="relative w-full max-w-xs">
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
 
       <Input
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Cari kode, nama, alamat, atau OLT..."
-        className="h-11 rounded-2xl border-slate-200 pl-9 focus-visible:ring-purple-500"
+        className="h-11 rounded-2xl border-slate-200 bg-white pl-9 focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
       />
     </div>
   );

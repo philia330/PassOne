@@ -66,8 +66,10 @@ export const DeletePopDialog = ({
 
           <AlertDialogDescription>
             Data{" "}
-            <span className="font-semibold">{name}</span> akan dihapus
-            permanen dan tidak dapat dikembalikan.
+            <span className="font-semibold text-slate-800 dark:text-white">
+              {name}
+            </span>{" "}
+            akan dihapus permanen dan tidak dapat dikembalikan.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -82,7 +84,7 @@ export const DeletePopDialog = ({
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
-            className="cursor-pointer rounded-2xl bg-rose-600 hover:bg-rose-700"
+            className="cursor-pointer rounded-2xl bg-rose-600 hover:bg-rose-700 text-white"
           >
             {isDeleting ? "Menghapus..." : "Hapus"}
           </AlertDialogAction>

@@ -31,13 +31,12 @@ export const OdpPagination = ({
   if (totalPages <= 1) return null;
 
   return (
-    <Pagination>
+    <Pagination className="my-2">
       <PaginationContent>
-
         <PaginationItem>
           <PaginationPrevious
-            className={`cursor-pointer ${
-              page === 1 ? "pointer-events-none opacity-50" : ""
+            className={`cursor-pointer dark:hover:bg-slate-800 dark:hover:text-slate-100 ${
+              page === 1 ? "pointer-events-none opacity-50 dark:opacity-40" : ""
             }`}
             onClick={() => page > 1 && goTo(page - 1)}
           />
@@ -46,7 +45,7 @@ export const OdpPagination = ({
         {Array.from({ length: totalPages }).map((_, index) => (
           <PaginationItem key={index}>
             <PaginationLink
-              className="cursor-pointer"
+              className="cursor-pointer dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
               isActive={page === index + 1}
               onClick={() => goTo(index + 1)}
             >
@@ -57,9 +56,9 @@ export const OdpPagination = ({
 
         <PaginationItem>
           <PaginationNext
-            className={`cursor-pointer ${
+            className={`cursor-pointer dark:hover:bg-slate-800 dark:hover:text-slate-100 ${
               page === totalPages
-                ? "pointer-events-none opacity-50"
+                ? "pointer-events-none opacity-50 dark:opacity-40"
                 : ""
             }`}
             onClick={() =>
@@ -67,7 +66,6 @@ export const OdpPagination = ({
             }
           />
         </PaginationItem>
-
       </PaginationContent>
     </Pagination>
   );

@@ -86,12 +86,12 @@ export const OntFormDialog = ({
       <DialogTrigger
         render={
           mode === "create" ? (
-            <Button className="cursor-pointer h-11 rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white" />
+            <Button className="h-11 cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-md hover:opacity-90" />
           ) : (
             <Button
               variant="ghost"
               size="icon"
-              className="cursor-pointer rounded-xl"
+              className="cursor-pointer rounded-xl dark:hover:bg-slate-800 dark:hover:text-slate-100"
             />
           )
         }
@@ -102,56 +102,80 @@ export const OntFormDialog = ({
             Tambah ONT
           </>
         ) : (
-          <Pencil className="h-4 w-4 text-slate-500" />
+          <Pencil className="h-4 w-4 text-slate-500 dark:text-slate-400" />
         )}
       </DialogTrigger>
 
-      <DialogContent className="rounded-3xl sm:max-w-lg">
+      <DialogContent className="rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-slate-900 dark:text-slate-100">
             {mode === "create" ? "Tambah ONT" : "Edit ONT"}
           </DialogTitle>
 
-          <DialogDescription>
+          <DialogDescription className="text-slate-500 dark:text-slate-400">
             Lengkapi data ONT di bawah ini.
           </DialogDescription>
         </DialogHeader>
 
         <form action={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Serial Number</label>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Serial Number
+            </label>
             <Input
               name="serial_number"
               defaultValue={data?.serial_number}
               placeholder="Contoh: SN-HW-00123456"
               required
-              className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500"
+              className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Nama Pelanggan</label>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Nama Pelanggan
+            </label>
             <Input
               name="pelanggan"
               defaultValue={data?.pelanggan}
               placeholder="Contoh: Budi Santoso"
               required
-              className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500"
+              className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Status</label>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Status
+            </label>
 
-            <Select value={statusValue} onValueChange={(v) => setStatusValue(v as typeof statusValue)}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 focus:ring-purple-500">
+            <Select
+              value={statusValue}
+              onValueChange={(v) => setStatusValue(v as typeof statusValue)}
+            >
+              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
                 <SelectValue placeholder="Pilih status" />
               </SelectTrigger>
 
-              <SelectContent>
-                <SelectItem value="TERSEDIA">Tersedia</SelectItem>
-                <SelectItem value="TERPASANG">Terpasang</SelectItem>
-                <SelectItem value="RUSAK">Rusak</SelectItem>
+              <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                <SelectItem
+                  value="TERSEDIA"
+                  className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
+                >
+                  Tersedia
+                </SelectItem>
+                <SelectItem
+                  value="TERPASANG"
+                  className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
+                >
+                  Terpasang
+                </SelectItem>
+                <SelectItem
+                  value="RUSAK"
+                  className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
+                >
+                  Rusak
+                </SelectItem>
               </SelectContent>
             </Select>
 
@@ -159,16 +183,22 @@ export const OntFormDialog = ({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">POP</label>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              POP
+            </label>
 
             <Select value={popValue} onValueChange={setPopValue}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 focus:ring-purple-500">
+              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
                 <SelectValue placeholder="Pilih POP" />
               </SelectTrigger>
 
-              <SelectContent>
+              <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
                 {pops.map((pop) => (
-                  <SelectItem key={pop.id_pop} value={String(pop.id_pop)}>
+                  <SelectItem
+                    key={pop.id_pop}
+                    value={String(pop.id_pop)}
+                    className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
+                  >
                     {pop.nama_pop}
                   </SelectItem>
                 ))}
@@ -179,16 +209,22 @@ export const OntFormDialog = ({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">ODP</label>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              ODP
+            </label>
 
             <Select value={odpValue} onValueChange={setOdpValue}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 focus:ring-purple-500">
+              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
                 <SelectValue placeholder="Pilih ODP" />
               </SelectTrigger>
 
-              <SelectContent>
+              <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
                 {odps.map((odp) => (
-                  <SelectItem key={odp.id_odp} value={String(odp.id_odp)}>
+                  <SelectItem
+                    key={odp.id_odp}
+                    value={String(odp.id_odp)}
+                    className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
+                  >
                     {odp.nama_odp}
                   </SelectItem>
                 ))}
@@ -198,11 +234,11 @@ export const OntFormDialog = ({
             <input type="hidden" name="id_odp" value={odpValue} required />
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-2">
             <Button
               type="button"
               variant="outline"
-              className="cursor-pointer rounded-2xl"
+              className="cursor-pointer rounded-2xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               onClick={() => setOpen(false)}
             >
               Batal
@@ -211,7 +247,7 @@ export const OntFormDialog = ({
             <Button
               type="submit"
               disabled={isSubmitting || !popValue || !odpValue}
-              className="cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white"
+              className="cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-md hover:opacity-90"
             >
               {isSubmitting ? "Menyimpan..." : "Simpan"}
             </Button>
