@@ -21,6 +21,11 @@ enum Role {
   LOGISTIK
 }
 
+enum JenisKelamin {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
 enum StatusFab {
   PENDING
   SURVEY
@@ -56,6 +61,8 @@ model User {
   username String @unique
 
   password String
+
+  jkl JenisKelamin
 
   foto String?
 
@@ -533,4 +540,57 @@ model BaaDetail {
   baa Baa @relation(fields: [id_baa], references: [id_baa])
 
   material Material @relation(fields: [id_material], references: [id_material])
+}
+
+enum ActivityType {
+  // User
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  USER_DEACTIVATED
+  LOGIN
+
+  // Transaksi (kamu pegang)
+  FAB_CREATED
+  FAB_UPDATED
+  BAA_CREATED
+  BAA_UPDATED
+
+  // Master Data (dipegang tim)
+  AREA_CREATED
+  AREA_UPDATED
+  POP_CREATED
+  POP_UPDATED
+  OLT_CREATED
+  OLT_UPDATED
+  ODP_CREATED
+  ODP_UPDATED
+  ONT_CREATED
+  ONT_UPDATED
+  PAKET_CREATED
+  PAKET_UPDATED
+  MATERIAL_CREATED
+  MATERIAL_UPDATED
+
+  // Pengaturan
+  SETTINGS_UPDATED
+}
+
+model ActivityLog {
+  id_log      Int          @id @default(autoincrement())
+  type        ActivityType
+  description String
+  id_user     Int?
+  createdAt   DateTime     @default(now())
+
+  @@map("activity_logs")
+}
+
+model Settings {
+  id_setting  Int      @id @default(autoincrement())
+  key         String   @unique   // contoh: "app_name", "login_logo", "login_title", "login_subtitle"
+  value       String   @db.Text
+  updatedAt   DateTime @updatedAt
+
+  @@map("settings")
 }

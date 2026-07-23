@@ -1,0 +1,42 @@
+"use client";
+
+import { useState } from "react";
+import Sidebar from "@/components/dashboard/sidebar";
+import Navbar from "@/components/dashboard/navbar";
+
+type Settings = {
+  app_name: string;
+  app_subtitle: string;
+};
+
+export default function DashboardShell({
+  settings,
+  children,
+}: {
+  settings: Settings;
+  children: React.ReactNode;
+}) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  return (
+    <div className="flex h-screen overflow-hidden">
+      {/* Overlay gelap di belakang sidebar, cuma muncul di mobile pas sidebar terbuka */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+        />
+      )}
+
+      <Sidebar settings={settings} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Navbar settings={settings} onMenuClick={() => setSidebarOpen(true)} />
+
+        <main className="flex-1 overflow-y-auto bg-slate-100 p-4 dark:bg-slate-950 sm:p-6 lg:p-8">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
