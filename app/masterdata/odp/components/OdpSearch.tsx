@@ -41,7 +41,7 @@ export const OdpSearch = ({
       <Input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Cari kode, nama, alamat, atau OLT..."
+        placeholder="Cari kode, nama, alamat, atau ODP..."
         className="h-11 rounded-2xl border-slate-200 pl-9 focus-visible:ring-purple-500"
       />
     </div>

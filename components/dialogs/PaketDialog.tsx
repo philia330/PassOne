@@ -38,17 +38,19 @@ export const PaketDialog = ({ mode, paket, kodeOtomatis }: PaketDialogProps) => 
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {mode === "create" ? (
-          <Button className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white">
-            <Plus className="mr-2 h-4 w-4" /> Tambah Paket
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm" className="rounded-xl">
-            <Pencil className="h-4 w-4" />
-          </Button>
-        )}
-      </DialogTrigger>
+      <DialogTrigger
+        render={
+          mode === "create" ? (
+            <Button className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white">
+              <Plus className="mr-2 h-4 w-4" /> Tambah Paket
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" className="rounded-xl">
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )
+        }
+      />
 
       <DialogContent className="rounded-3xl sm:max-w-[600px]">
         <DialogHeader>

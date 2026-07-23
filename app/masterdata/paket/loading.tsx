@@ -1,10 +1,6 @@
-import { Skeleton } from "@/components/ui/skeleton";
+// app/masterdata/user/loading.tsx (contoh, sama persis buat modul lain, ganti nama file doang)
+import TableSkeleton from "@/components/shared/table-skeleton";
 
 export default function Loading() {
-  return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <Skeleton className="h-24 rounded-3xl" />
-      <Skeleton className="h-96 rounded-3xl" />
-    </div>
-  );
-}*/
+  return <TableSkeleton rows={8} />;
+}
