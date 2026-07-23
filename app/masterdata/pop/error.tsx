@@ -1,7 +1,7 @@
-/*
-// app/masterdata/pop/error.tsx
 "use client";
+
 import ErrorState from "@/components/shared/error-state";
+
 export default function Error({
   error,
   reset,
@@ -11,4 +11,3 @@ export default function Error({
 }) {
   return <ErrorState error={error} reset={reset} title="Gagal Memuat Data POP" />;
 }
-  */
