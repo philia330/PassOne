@@ -117,7 +117,7 @@ export const navigation: NavigationGroup[] = [
     items: [
       {
         title: "FAB",
-        href: "/fab",
+        href: "jaringan/fab",
         icon: FileText,
         roles: [
           Role.ADMIN,
@@ -127,7 +127,7 @@ export const navigation: NavigationGroup[] = [
       },
       {
         title: "BAA",
-        href: "/baa",
+        href: "jaringan/baa",
         icon: FileText,
         roles: [
           Role.ADMIN,

@@ -46,7 +46,6 @@ function PaginationLink({
 }: PaginationLinkProps) {
   return (
     <Button
-<<<<<<< HEAD
       variant={isActive ? "outline" : "ghost"}
       size={size}
       className={cn(className)}
@@ -60,20 +59,6 @@ function PaginationLink({
         />
       }
     />
-=======
-      asChild
-      variant={isActive ? "outline" : "ghost"}
-      size={size}
-      className={cn(className)}
-    >
-      <a
-        aria-current={isActive ? "page" : undefined}
-        data-slot="pagination-link"
-        data-active={isActive}
-        {...props}
-      />
-    </Button>
->>>>>>> origin/feature/jaringan
   )
 }
 

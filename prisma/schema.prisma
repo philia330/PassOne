@@ -640,7 +640,6 @@ model BaaDetail {
 
   material Material @relation(fields: [id_material], references: [id_material])
 }
-<<<<<<< HEAD
 
 enum ActivityType {
   // User
@@ -694,5 +693,3 @@ model Settings {
 
   @@map("settings")
 }
-=======
->>>>>>> origin/feature/jaringan
