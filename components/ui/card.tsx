@@ -38,7 +38,11 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-title"
       className={cn(
+<<<<<<< HEAD
         "font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
+=======
+        "text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
+>>>>>>> origin/feature/jaringan
         className
       )}
       {...props}
