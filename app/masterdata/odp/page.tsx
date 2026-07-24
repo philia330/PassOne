@@ -81,6 +81,7 @@ export default async function OdpPage({
                   <TableHead className="dark:text-slate-300">OLT</TableHead>
                   <TableHead className="dark:text-slate-300">Latitude</TableHead>
                   <TableHead className="dark:text-slate-300">Longitude</TableHead>
+                  <TableHead className="dark:text-slate-300">Dibuat</TableHead>
                   <TableHead className="text-right dark:text-slate-300">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -99,6 +100,13 @@ export default async function OdpPage({
                     <TableCell className="dark:text-slate-300">{odp.olt?.nama_olt}</TableCell>
                     <TableCell className="dark:text-slate-400">{odp.latitude.toString()}</TableCell>
                     <TableCell className="dark:text-slate-400">{odp.longitude.toString()}</TableCell>
+                    <TableCell className="text-slate-500 dark:text-slate-400">
+                      {new Date(odp.createdAt).toLocaleDateString("id-ID", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <OdpMapDialog
@@ -130,7 +138,7 @@ export default async function OdpPage({
                 {odps.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       className="py-10 text-center text-slate-400 dark:text-slate-500"
                     >
                       {search
@@ -194,6 +202,14 @@ export default async function OdpPage({
                 </p>
                 <p className="text-xs text-slate-400 dark:text-slate-500">
                   {odp.latitude.toString()}, {odp.longitude.toString()}
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Dibuat:{" "}
+                  {new Date(odp.createdAt).toLocaleDateString("id-ID", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
                 </p>
               </div>
             ))}

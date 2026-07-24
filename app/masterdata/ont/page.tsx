@@ -82,6 +82,7 @@ export default async function OntPage({
                   <TableHead className="dark:text-slate-300">Status</TableHead>
                   <TableHead className="dark:text-slate-300">POP</TableHead>
                   <TableHead className="dark:text-slate-300">ODP</TableHead>
+                  <TableHead className="dark:text-slate-300">Dibuat</TableHead>
                   <TableHead className="text-right dark:text-slate-300">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -105,6 +106,13 @@ export default async function OntPage({
                     </TableCell>
                     <TableCell className="dark:text-slate-300">{ont.pop?.nama_pop}</TableCell>
                     <TableCell className="dark:text-slate-300">{ont.odp?.nama_odp}</TableCell>
+                    <TableCell className="text-slate-500 dark:text-slate-400">
+                      {new Date(ont.createdAt).toLocaleDateString("id-ID", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <OntFormDialog
@@ -132,7 +140,7 @@ export default async function OntPage({
                 {onts.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="py-10 text-center text-slate-400 dark:text-slate-500"
                     >
                       {search
@@ -197,6 +205,14 @@ export default async function OntPage({
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   ODP: {ont.odp?.nama_odp ?? "-"}
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Dibuat:{" "}
+                  {new Date(ont.createdAt).toLocaleDateString("id-ID", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
                 </p>
               </div>
             ))}

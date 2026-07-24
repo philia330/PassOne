@@ -68,6 +68,7 @@ export default async function AreaPage({
                   <TableHead className="dark:text-slate-300">Kode Area</TableHead>
                   <TableHead className="dark:text-slate-300">Nama Area</TableHead>
                   <TableHead className="dark:text-slate-300">Keterangan</TableHead>
+                  <TableHead className="dark:text-slate-300">Dibuat</TableHead>
                   <TableHead className="text-right dark:text-slate-300">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -86,6 +87,13 @@ export default async function AreaPage({
                     </TableCell>
                     <TableCell className="dark:text-slate-300">
                       {area.keterangan ?? "-"}
+                    </TableCell>
+                    <TableCell className="text-slate-500 dark:text-slate-400">
+                      {new Date(area.createdAt).toLocaleDateString("id-ID", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -109,7 +117,7 @@ export default async function AreaPage({
                 {areas.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={4}
+                      colSpan={5}
                       className="py-10 text-center text-slate-400 dark:text-slate-500"
                     >
                       {search
@@ -154,6 +162,14 @@ export default async function AreaPage({
 
                 <p className="text-sm text-slate-600 dark:text-slate-300">
                   {area.keterangan ?? "-"}
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Dibuat:{" "}
+                  {new Date(area.createdAt).toLocaleDateString("id-ID", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
                 </p>
               </div>
             ))}

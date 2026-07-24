@@ -75,6 +75,7 @@ export default async function PopPage({
                   <TableHead>Area</TableHead>
                   <TableHead>Latitude</TableHead>
                   <TableHead>Longitude</TableHead>
+                  <TableHead>Dibuat</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -93,6 +94,13 @@ export default async function PopPage({
                     <TableCell className="dark:text-slate-300">{pop.area?.nama_area}</TableCell>
                     <TableCell className="dark:text-slate-300">{pop.latitude.toString()}</TableCell>
                     <TableCell className="dark:text-slate-300">{pop.longitude.toString()}</TableCell>
+                    <TableCell className="text-slate-500 dark:text-slate-400">
+                      {new Date(pop.createdAt).toLocaleDateString("id-ID", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <PopMapDialog
@@ -126,7 +134,7 @@ export default async function PopPage({
                 {pops.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       className="py-10 text-center text-slate-400 dark:text-slate-500"
                     >
                       {search
@@ -197,6 +205,15 @@ export default async function PopPage({
 
                 <p className="text-xs text-slate-400 dark:text-slate-500">
                   {pop.latitude.toString()}, {pop.longitude.toString()}
+                </p>
+
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Dibuat:{" "}
+                  {new Date(pop.createdAt).toLocaleDateString("id-ID", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
                 </p>
               </div>
             ))}
