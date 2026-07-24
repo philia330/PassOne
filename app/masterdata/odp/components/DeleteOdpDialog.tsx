@@ -56,11 +56,11 @@ export const DeleteOdpDialog = ({
             variant="ghost"
             size="icon"
             className="cursor-pointer rounded-xl"
-          />
+          >
+            <Trash2 className="h-4 w-4 text-rose-500" />
+          </Button>
         }
-      >
-        <Trash2 className="h-4 w-4 text-rose-500" />
-      </AlertDialogTrigger>
+      />
 
       <AlertDialogContent className="rounded-3xl">
         <AlertDialogHeader>
@@ -70,11 +70,10 @@ export const DeleteOdpDialog = ({
 
           <AlertDialogDescription>
             Data{" "}
-            <span className="font-semibold">
+            <span className="font-semibold text-slate-800 dark:text-white">
               {name}
             </span>{" "}
-            akan dihapus permanen dan tidak dapat
-            dikembalikan.
+            akan dihapus permanen dan tidak dapat dikembalikan.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -89,7 +88,7 @@ export const DeleteOdpDialog = ({
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
-            className="cursor-pointer rounded-2xl bg-rose-600 hover:bg-rose-700"
+            className="cursor-pointer rounded-2xl bg-rose-600 text-white hover:bg-rose-700"
           >
             {isDeleting ? "Menghapus..." : "Hapus"}
           </AlertDialogAction>

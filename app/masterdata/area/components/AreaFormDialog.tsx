@@ -76,7 +76,7 @@ export const AreaFormDialog = ({
             Tambah Area
           </>
         ) : (
-          <Pencil className="h-4 w-4 text-slate-500" />
+          <Pencil className="h-4 w-4 text-slate-500 dark:text-slate-400" />
         )}
       </DialogTrigger>
 
@@ -93,26 +93,26 @@ export const AreaFormDialog = ({
 
         <form action={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Nama Area</label>
+            <label className="text-sm font-medium dark:text-slate-300">Nama Area</label>
             <Input
               name="nama_area"
               defaultValue={data?.nama_area}
               placeholder="Contoh: Tanggerang Selatan"
               required
-              className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500"
+              className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">
+            <label className="text-sm font-medium dark:text-slate-300">
               Keterangan{" "}
-              <span className="font-normal text-slate-400">(opsional)</span>
+              <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
             </label>
             <Input
               name="keterangan"
               defaultValue={data?.keterangan ?? ""}
               placeholder="Contoh: Mencakup wilayah Ciputat dan sekitarnya"
-              className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500"
+              className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
 

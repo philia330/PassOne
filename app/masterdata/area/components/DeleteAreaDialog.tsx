@@ -57,7 +57,7 @@ export const DeleteAreaDialog = ({
           />
         }
       >
-        <Trash2 className="h-4 w-4 text-rose-500" />
+        <Trash2 className="h-4 w-4 text-rose-500 dark:text-rose-400" />
       </AlertDialogTrigger>
 
       <AlertDialogContent className="rounded-3xl">
@@ -82,7 +82,7 @@ export const DeleteAreaDialog = ({
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
-            className="cursor-pointer rounded-2xl bg-rose-600 hover:bg-rose-700"
+            className="cursor-pointer rounded-2xl bg-rose-600 hover:bg-rose-700 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
           >
             {isDeleting ? "Menghapus..." : "Hapus"}
           </AlertDialogAction>

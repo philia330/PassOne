@@ -36,7 +36,7 @@ export const PopPagination = ({
         <PaginationItem>
           <PaginationPrevious
             className={`cursor-pointer ${
-              page === 1 ? "pointer-events-none opacity-50" : ""
+              page === 1 ? "pointer-events-none opacity-50 dark:opacity-40" : ""
             }`}
             onClick={() => page > 1 && goTo(page - 1)}
           />
@@ -57,7 +57,7 @@ export const PopPagination = ({
         <PaginationItem>
           <PaginationNext
             className={`cursor-pointer ${
-              page === totalPages ? "pointer-events-none opacity-50" : ""
+              page === totalPages ? "pointer-events-none opacity-50 dark:opacity-40" : ""
             }`}
             onClick={() => page < totalPages && goTo(page + 1)}
           />

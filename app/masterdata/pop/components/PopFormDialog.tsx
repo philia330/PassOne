@@ -33,7 +33,7 @@ const PopMapPicker = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[220px] items-center justify-center rounded-2xl border bg-white text-slate-400">
+      <div className="flex h-[220px] items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
         Memuat peta...
       </div>
     ),
@@ -120,7 +120,7 @@ export const PopFormDialog = ({
             Tambah POP
           </>
         ) : (
-          <Pencil className="h-4 w-4 text-slate-500" />
+          <Pencil className="h-4 w-4 text-slate-500 dark:text-slate-400" />
         )}
       </DialogTrigger>
 
@@ -143,7 +143,7 @@ export const PopFormDialog = ({
               defaultValue={data?.nama_pop}
               placeholder="Contoh: POP Tanggerang Pusat"
               required
-              className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500"
+              className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             />
           </div>
 
@@ -154,7 +154,7 @@ export const PopFormDialog = ({
               defaultValue={data?.alamat}
               placeholder="Contoh: Jl. Merdeka No.10, Tanggerang"
               required
-              className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500"
+              className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             />
           </div>
 
@@ -174,7 +174,7 @@ export const PopFormDialog = ({
               onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
               placeholder="-6.178306"
               required
-              className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500"
+              className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             />
           </div>
 
@@ -188,7 +188,7 @@ export const PopFormDialog = ({
               onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
               placeholder="106.631889"
               required
-              className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500"
+              className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             />
           </div>
 
@@ -196,7 +196,7 @@ export const PopFormDialog = ({
             <label className="text-sm font-medium">Area</label>
 
             <Select value={areaValue} onValueChange={setAreaValue}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 focus:ring-purple-500">
+              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                 <SelectValue placeholder="Pilih Area" />
               </SelectTrigger>
 

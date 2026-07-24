@@ -37,7 +37,7 @@ export default async function OdpPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-6">
+    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
       <PageHeader
         title="Data ODP"
         description="Kelola perangkat Optical Distribution Point (ODP)"
@@ -48,17 +48,9 @@ export default async function OdpPage({
         <Card className="rounded-3xl border-0 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-lg">
           <CardContent className="flex items-center justify-between p-6">
             <div>
-              <p className="text-sm text-white/80">
-                Total ODP
-              </p>
-
-              <h2 className="mt-2 text-5xl font-bold">
-                {total}
-              </h2>
-
-              <p className="mt-1 text-sm text-white/80">
-                Perangkat Terdaftar
-              </p>
+              <p className="text-sm text-white/80">Total ODP</p>
+              <h2 className="mt-2 text-5xl font-bold">{total}</h2>
+              <p className="mt-1 text-sm text-white/80">Perangkat Terdaftar</p>
             </div>
 
             <div className="rounded-2xl bg-white/20 p-4">
@@ -68,31 +60,29 @@ export default async function OdpPage({
         </Card>
       </div>
 
-      {/* Table */}
-      <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl">
-        <CardContent className="space-y-6 p-6">
+      {/* Table & Content Card */}
+      <Card className="rounded-3xl border border-slate-200 bg-white shadow-xl transition-all hover:shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+        <CardContent className="space-y-6 p-4 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <OdpSearch defaultValue={search} />
-
-            <OdpFormDialog
-              mode="create"
-              olts={olts}
-            />
+            <OdpFormDialog mode="create" olts={olts} />
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border">
+          {/* ====================================================== */}
+          {/* Versi Tabel - hanya muncul di layar medium ke atas (md:) */}
+          {/* ====================================================== */}
+          <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 md:block">
             <Table>
               <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead>Kode ODP</TableHead>
-                  <TableHead>Nama ODP</TableHead>
-                  <TableHead>Alamat</TableHead>
-                  <TableHead>OLT</TableHead>
-                  <TableHead>Latitude</TableHead>
-                  <TableHead>Longitude</TableHead>
-                  <TableHead className="text-right">
-                    Aksi
-                  </TableHead>
+                <TableRow className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/50">
+                  <TableHead className="dark:text-slate-300">Kode ODP</TableHead>
+                  <TableHead className="dark:text-slate-300">Nama ODP</TableHead>
+                  <TableHead className="dark:text-slate-300">Alamat</TableHead>
+                  <TableHead className="dark:text-slate-300">OLT</TableHead>
+                  <TableHead className="dark:text-slate-300">Latitude</TableHead>
+                  <TableHead className="dark:text-slate-300">Longitude</TableHead>
+                  <TableHead className="dark:text-slate-300">Dibuat</TableHead>
+                  <TableHead className="text-right dark:text-slate-300">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -100,32 +90,23 @@ export default async function OdpPage({
                 {odps.map((odp) => (
                   <TableRow
                     key={odp.id_odp}
-                    className="hover:bg-slate-50"
+                    className="border-b border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
                   >
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium dark:text-slate-200">
                       {odp.kode_odp}
                     </TableCell>
-
-                    <TableCell>
-                      {odp.nama_odp}
+                    <TableCell className="dark:text-slate-300">{odp.nama_odp}</TableCell>
+                    <TableCell className="dark:text-slate-300">{odp.alamat}</TableCell>
+                    <TableCell className="dark:text-slate-300">{odp.olt?.nama_olt}</TableCell>
+                    <TableCell className="dark:text-slate-400">{odp.latitude.toString()}</TableCell>
+                    <TableCell className="dark:text-slate-400">{odp.longitude.toString()}</TableCell>
+                    <TableCell className="text-slate-500 dark:text-slate-400">
+                      {new Date(odp.createdAt).toLocaleDateString("id-ID", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
                     </TableCell>
-
-                    <TableCell>
-                      {odp.alamat}
-                    </TableCell>
-
-                    <TableCell>
-                      {odp.olt?.nama_olt}
-                    </TableCell>
-
-                    <TableCell>
-                      {odp.latitude.toString()}
-                    </TableCell>
-
-                    <TableCell>
-                      {odp.longitude.toString()}
-                    </TableCell>
-
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <OdpMapDialog
@@ -136,7 +117,6 @@ export default async function OdpPage({
                           oltLat={Number(odp.olt?.latitude)}
                           oltLng={Number(odp.olt?.longitude)}
                         />
-
                         <OdpFormDialog
                           mode="edit"
                           olts={olts}
@@ -149,11 +129,7 @@ export default async function OdpPage({
                             id_olt: odp.id_olt,
                           }}
                         />
-
-                        <DeleteOdpDialog
-                          id={odp.id_odp}
-                          name={odp.nama_odp}
-                        />
+                        <DeleteOdpDialog id={odp.id_odp} name={odp.nama_odp} />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -162,8 +138,8 @@ export default async function OdpPage({
                 {odps.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
-                      className="py-10 text-center text-slate-400"
+                      colSpan={8}
+                      className="py-10 text-center text-slate-400 dark:text-slate-500"
                     >
                       {search
                         ? "Tidak ada data ODP yang cocok dengan pencarian"
@@ -175,11 +151,80 @@ export default async function OdpPage({
             </Table>
           </div>
 
+          {/* ====================================================== */}
+          {/* Versi Card - hanya muncul di HP (di bawah breakpoint md:) */}
+          {/* ====================================================== */}
+          <div className="grid gap-3 md:hidden">
+            {odps.map((odp) => (
+              <div
+                key={odp.id_odp}
+                className="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-800/40"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-slate-900 dark:text-slate-100">
+                      {odp.nama_odp}
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {odp.kode_odp}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    <OdpMapDialog
+                      odpNama={odp.nama_odp}
+                      odpLat={Number(odp.latitude)}
+                      odpLng={Number(odp.longitude)}
+                      oltNama={odp.olt?.nama_olt ?? "-"}
+                      oltLat={Number(odp.olt?.latitude)}
+                      oltLng={Number(odp.olt?.longitude)}
+                    />
+                    <OdpFormDialog
+                      mode="edit"
+                      olts={olts}
+                      data={{
+                        id_odp: odp.id_odp,
+                        nama_odp: odp.nama_odp,
+                        alamat: odp.alamat,
+                        latitude: odp.latitude.toString(),
+                        longitude: odp.longitude.toString(),
+                        id_olt: odp.id_olt,
+                      }}
+                    />
+                    <DeleteOdpDialog id={odp.id_odp} name={odp.nama_odp} />
+                  </div>
+                </div>
+
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  {odp.alamat}
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  OLT: {odp.olt?.nama_olt ?? "-"}
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  {odp.latitude.toString()}, {odp.longitude.toString()}
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Dibuat:{" "}
+                  {new Date(odp.createdAt).toLocaleDateString("id-ID", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </p>
+              </div>
+            ))}
+
+            {odps.length === 0 && (
+              <div className="rounded-2xl border border-slate-200 py-10 text-center text-slate-400 dark:border-slate-800 dark:text-slate-500">
+                {search
+                  ? "Tidak ada data ODP yang cocok dengan pencarian"
+                  : "Belum ada data ODP"}
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-end">
-            <OdpPagination
-              page={page}
-              totalPages={totalPages}
-            />
+            <OdpPagination page={page} totalPages={totalPages} />
           </div>
         </CardContent>
       </Card>
