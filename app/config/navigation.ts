@@ -9,6 +9,7 @@ import {
   Package,
   PackageOpen,
   FileText,
+  ClipboardList,
   Users,
   Settings,
 } from "lucide-react";
@@ -136,6 +137,12 @@ export const navigation: NavigationGroup[] = [
           Role.SALES,
         ],
       },
+      {
+      title: "Detail Material BAA",
+      href: "/baa-detail",
+      icon: ClipboardList,
+      roles: [Role.ADMIN, Role.LEADER, Role.TEKNISI, Role.LOGISTIK],
+    },
     ],
   },
 
