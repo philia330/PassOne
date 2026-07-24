@@ -51,6 +51,7 @@ export default function LoginForm({ settings }: { settings: Settings }) {
       const result = await signIn("credentials", {
         username,
         password,
+        rememberMe: rememberMe ? "true" : "false",
         redirect: false,
       });
 
@@ -104,11 +105,24 @@ export default function LoginForm({ settings }: { settings: Settings }) {
               />
 
               <Input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Masukkan Username atau Email"
-                className="h-14 rounded-2xl border-slate-200 bg-white pl-12 shadow-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
-              />
+  type="text"
+  value={username}
+  onChange={(e) => setUsername(e.target.value)}
+  placeholder="Masukkan Username atau Email"
+  className="
+    h-14
+    rounded-2xl
+    border-slate-200
+    bg-white
+    pl-12
+    text-slate-800
+    placeholder:text-slate-400
+    shadow-sm
+    focus:border-purple-500
+    focus:ring-2
+    focus:ring-purple-200
+  "
+/>
             </div>
           </div>
 
@@ -125,12 +139,25 @@ export default function LoginForm({ settings }: { settings: Settings }) {
               />
 
               <Input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type={showPassword ? "text" : "password"}
-                placeholder="Masukkan Password"
-                className="h-14 rounded-2xl border-slate-200 bg-white pl-12 pr-14 shadow-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
-              />
+  type={showPassword ? "text" : "password"}
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
+  placeholder="Masukkan Password"
+  className="
+    h-14
+    rounded-2xl
+    border-slate-200
+    bg-white
+    pl-12
+    pr-14
+    text-slate-800
+    placeholder:text-slate-400
+    shadow-sm
+    focus:border-purple-500
+    focus:ring-2
+    focus:ring-purple-200
+  "
+/>
 
               <button
                 type="button"
