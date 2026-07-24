@@ -12,6 +12,10 @@ export const OltSearch = ({ defaultValue }: { defaultValue: string }) => {
   const [value, setValue] = useState(defaultValue);
 
   useEffect(() => {
+    if (value === (searchParams.get("search") ?? "")) {
+      return;
+    }
+
     const timeout = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
 
@@ -27,7 +31,8 @@ export const OltSearch = ({ defaultValue }: { defaultValue: string }) => {
     }, 400);
 
     return () => clearTimeout(timeout);
-  }, [value, pathname, router, searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   return (
     <div className="relative w-full max-w-xs">

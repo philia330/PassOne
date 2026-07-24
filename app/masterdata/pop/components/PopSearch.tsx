@@ -13,6 +13,10 @@ export const PopSearch = ({ defaultValue }: { defaultValue: string }) => {
   const [value, setValue] = useState(defaultValue);
 
   useEffect(() => {
+    if (value === (searchParams.get("search") ?? "")) {
+      return;
+    }
+
     const timeout = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
 
@@ -28,7 +32,8 @@ export const PopSearch = ({ defaultValue }: { defaultValue: string }) => {
     }, 400);
 
     return () => clearTimeout(timeout);
-  }, [value, pathname, router, searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   return (
     <div className="relative w-full max-w-xs">
@@ -38,7 +43,7 @@ export const PopSearch = ({ defaultValue }: { defaultValue: string }) => {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Cari kode, nama, alamat, atau area..."
-        className="h-11 rounded-2xl border-slate-200 bg-white placeholder:text-slate-500 focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
+         className="h-11 rounded-2xl border-slate-200 bg-white pl-9 placeholder:text-slate-500 focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
       />
     </div>
   );
