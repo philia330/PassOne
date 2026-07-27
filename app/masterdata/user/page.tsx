@@ -1,15 +1,15 @@
 import { redirect } from "next/navigation";
 import { Users, UserX } from "lucide-react";
-
+ 
 import { PageHeader } from "@/components/layout/PageHeader";
 import Image from "next/image";
 import ImagePreview from "@/components/shared/image-preview";
-
+ 
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-
+ 
 import {
   Table,
   TableBody,
@@ -18,16 +18,40 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
+ 
 import { auth } from "@/lib/auth";
 import { getUsers } from "./actions";
-
+ 
 import { UserFormDialog } from "./components/UserFormDialog";
 import { DeleteUserDialog } from "./components/DeleteUserDialog";
 import { UserSearch } from "./components/UserSearch";
 import { UserPagination } from "./components/UserPagination";
 import EmptyState from "@/components/shared/empty-state";
-
+ 
+// ============ MAPPING WARNA BADGE ROLE ============
+// Tambahkan / ubah role di sini kalau ada role baru
+const ROLE_BADGE_STYLES: Record<string, string> = {
+  ADMIN:
+    "bg-pink-100 text-pink-700 dark:bg-pink-500/10 dark:text-pink-400",
+  LEADER:
+    "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400",
+  SALES:
+    "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400",
+  TEKNISI:
+    "bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400",
+  LOGISTIK:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
+};
+ 
+// fallback kalau ada role yang belum terdaftar di mapping di atas
+const DEFAULT_ROLE_STYLE =
+  "bg-slate-100 text-slate-700 dark:bg-slate-500/10 dark:text-slate-300";
+ 
+function getRoleBadgeClass(role: string) {
+  return ROLE_BADGE_STYLES[role] ?? DEFAULT_ROLE_STYLE;
+}
+// ====================================================
+ 
 export default async function UserPage({
   searchParams,
 }: {
@@ -37,30 +61,30 @@ export default async function UserPage({
   }>;
 }) {
   const session = await auth();
-
+ 
   if (!session?.user || session.user.role !== "ADMIN") {
     redirect("/dashboard");
   }
-
+ 
   const params = await searchParams;
-
+ 
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
-
+ 
   const {
     data: users,
     total,
     totalPages,
   } = await getUsers(search, page);
-
+ 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
-
+ 
       <PageHeader
         title="Data User"
         description="Kelola data pengguna PASSNET"
       />
-
+ 
       {/* Statistik */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="rounded-3xl border-0 bg-gradient-to-r from-indigo-600 via-violet-500 to-sky-500 text-white shadow-lg">
@@ -76,16 +100,16 @@ export default async function UserPage({
           </CardContent>
         </Card>
       </div>
-
+ 
       {/* Table / Card List */}
       <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
         <CardContent className="space-y-6 p-4 sm:p-6">
-
+ 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <UserSearch defaultValue={search} />
             <UserFormDialog mode="create" />
           </div>
-
+ 
           {users.length === 0 ? (
             <EmptyState
               icon={UserX}
@@ -115,7 +139,7 @@ export default async function UserPage({
                       <TableHead className="text-right dark:text-slate-400">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
-
+ 
                   <TableBody>
                     {users.map((user) => (
                       <TableRow
@@ -125,7 +149,7 @@ export default async function UserPage({
                         <TableCell className="font-medium dark:text-slate-200">
                           {user.kode_user}
                         </TableCell>
-
+ 
                         <TableCell>
                           <div className="h-12 w-12 overflow-hidden rounded-full border bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
                             {user.foto ? (
@@ -143,22 +167,26 @@ export default async function UserPage({
                             )}
                           </div>
                         </TableCell>
-
+ 
                         <TableCell className="dark:text-slate-300">{user.nama}</TableCell>
                         <TableCell className="dark:text-slate-300">{user.username}</TableCell>
                         <TableCell className="dark:text-slate-300">{user.email ?? "-"}</TableCell>
                         <TableCell className="dark:text-slate-300">
                           {user.jkl === "LAKI_LAKI" ? "Laki-laki" : "Perempuan"}
                         </TableCell>
-
+ 
                         <TableCell>
-                          <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${getRoleBadgeClass(
+                              user.role
+                            )}`}
+                          >
                             {user.role}
                           </span>
                         </TableCell>
-
+ 
                         <TableCell className="dark:text-slate-300">{user.no_hp ?? "-"}</TableCell>
-
+ 
                         <TableCell>
                           <span
                             className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -170,7 +198,7 @@ export default async function UserPage({
                             {user.status ? "Aktif" : "Nonaktif"}
                           </span>
                         </TableCell>
-
+ 
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <UserFormDialog mode="edit" data={user} />
@@ -182,7 +210,7 @@ export default async function UserPage({
                   </TableBody>
                 </Table>
               </div>
-
+ 
               {/* ============ MOBILE: CARD LIST ============ */}
               <div className="space-y-3 md:hidden">
                 {users.map((user) => (
@@ -206,7 +234,7 @@ export default async function UserPage({
                           </div>
                         )}
                       </div>
-
+ 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
@@ -215,15 +243,19 @@ export default async function UserPage({
                             </p>
                             <p className="text-xs text-slate-400 dark:text-slate-500">{user.kode_user}</p>
                           </div>
-
+ 
                           <div className="flex flex-shrink-0 gap-1">
                             <UserFormDialog mode="edit" data={user} />
                             <DeleteUserDialog id={user.id_user} name={user.nama} />
                           </div>
                         </div>
-
+ 
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400">
+                          <span
+                            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getRoleBadgeClass(
+                              user.role
+                            )}`}
+                          >
                             {user.role}
                           </span>
                           <span
@@ -236,7 +268,7 @@ export default async function UserPage({
                             {user.status ? "Aktif" : "Nonaktif"}
                           </span>
                         </div>
-
+ 
                         <div className="mt-3 space-y-1 text-sm text-slate-500 dark:text-slate-400">
                           <p>👤 {user.username}</p>
                           <p>✉️ {user.email ?? "-"}</p>
@@ -249,11 +281,11 @@ export default async function UserPage({
               </div>
             </>
           )}
-
+ 
           <div className="flex justify-end">
             <UserPagination page={page} totalPages={totalPages} />
           </div>
-
+ 
         </CardContent>
       </Card>
     </div>

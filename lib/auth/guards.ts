@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { Role } from "@prisma/client";
+import { redirect } from "next/navigation";
 import { checkPermission, PermissionModule, PermissionAction } from "./check-permissions";
 
 export class UnauthorizedError extends Error {
@@ -45,6 +46,16 @@ export async function requirePermission(module: PermissionModule, action: Permis
     throw new UnauthorizedError(
       `Role ${session.user.role} tidak punya izin "${action}" di modul "${module}".`
     );
+  }
+
+  return session;
+}
+
+export async function requirePageAccess(allowedRoles: Role[]) {
+  const session = await auth();
+
+  if (!session?.user || !allowedRoles.includes(session.user.role)) {
+    redirect("/dashboard");
   }
 
   return session;

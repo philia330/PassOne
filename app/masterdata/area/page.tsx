@@ -16,12 +16,15 @@ import { AreaFormDialog } from "./components/AreaFormDialog";
 import { DeleteAreaDialog } from "./components/DeleteAreaDialog";
 import { AreaSearch } from "./components/AreaSearch";
 import { AreaPagination } from "./components/AreaPagination";
+import { requirePageAccess } from "@/lib/auth/guards";
 
 export default async function AreaPage({
   searchParams,
 }: {
   searchParams: Promise<{ search?: string; page?: string }>;
 }) {
+  const session = await requirePageAccess(["ADMIN"]);
+
   const params = await searchParams;
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
