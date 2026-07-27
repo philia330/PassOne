@@ -29,12 +29,23 @@ export function UserSearch({
 
   const firstRender = useRef(true);
 
+  // Simpan pathname & searchParams terbaru di ref,
+  // supaya effect debounce di bawah TIDAK perlu "watch" objek ini
+  // (objeknya selalu baru tiap navigasi, kalau dijadikan dependency bikin infinite loop)
+  const pathnameRef = useRef(pathname);
+  const searchParamsRef = useRef(searchParams);
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+    searchParamsRef.current = searchParams;
+  });
+
   // Sinkronkan input jika URL berubah dari luar (misal tombol back browser)
   useEffect(() => {
     if (defaultValue !== search) {
       setSearch(defaultValue);
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultValue]);
 
   useEffect(() => {
@@ -44,7 +55,7 @@ export function UserSearch({
     }
 
     const timeout = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParamsRef.current.toString());
 
       if (search.trim().length > 0) {
         params.set("search", search.trim());
@@ -55,14 +66,16 @@ export function UserSearch({
       params.set("page", "1");
 
       startTransition(() => {
-        router.replace(`${pathname}?${params.toString()}`, {
+        router.replace(`${pathnameRef.current}?${params.toString()}`, {
           scroll: false,
         });
       });
     }, 500);
 
     return () => clearTimeout(timeout);
-  }, [search, pathname, router, searchParams]);
+    // Sengaja HANYA depend ke `search` — pathname/searchParams diakses lewat ref
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, router]);
 
   return (
     <div className="relative w-full max-w-sm">

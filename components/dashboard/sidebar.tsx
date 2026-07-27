@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { LogOut, UserCircle2, X } from "lucide-react";
+import ImagePreview from "@/components/shared/image-preview";
 
 import { navigation } from "@/app/config/navigation";
 import { RoleLabel } from "@/lib/auth/roles";
@@ -121,18 +122,19 @@ export default function Sidebar({
       {/* Footer: Profil + Logout */}
       <div className="flex-shrink-0 border-t border-slate-800 p-4">
         <div className="flex items-center gap-3 rounded-xl bg-slate-800 px-3 py-3">
-          {session?.user?.foto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={session.user.foto}
-              alt={session.user.nama}
-              className="h-11 w-11 flex-shrink-0 rounded-full object-cover ring-2 ring-slate-700"
-            />
-          ) : (
-            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-indigo-600/20 ring-2 ring-slate-700">
-              <UserCircle2 size={26} className="text-indigo-400" />
-            </div>
-          )}
+      {session?.user?.foto ? (
+        <ImagePreview
+          src={session.user.foto}
+          alt={session.user.nama}
+          width={44}
+          height={44}
+          className="h-11 w-11 flex-shrink-0 rounded-full object-cover ring-2 ring-slate-700"
+        />
+      ) : (
+        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-indigo-600/20 ring-2 ring-slate-700">
+          <UserCircle2 size={26} className="text-indigo-400" />
+        </div>
+      )}
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-white">

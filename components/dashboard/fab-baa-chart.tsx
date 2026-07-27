@@ -41,10 +41,10 @@ type ComparisonData = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: "#f59e0b",
-  SURVEY: "#6366f1",
-  INSTALASI: "#0ea5e9",
-  PROSES: "#0ea5e9",
+  PENDING: "#ef4444",
+  SURVEY: "#3b82f6",
+  INSTALASI: "#f97316",
+  PROSES: "#f97316",     // BAA pakai "PROSES" bukan "INSTALASI", samain warnanya
   SELESAI: "#10b981",
 };
 

@@ -3,6 +3,7 @@ import { Users, UserX } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import Image from "next/image";
+import ImagePreview from "@/components/shared/image-preview";
 
 import {
   Card,
@@ -128,14 +129,14 @@ export default async function UserPage({
                         <TableCell>
                           <div className="h-12 w-12 overflow-hidden rounded-full border bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
                             {user.foto ? (
-                              <Image
-                                src={user.foto}
-                                alt={user.nama}
-                                width={48}
-                                height={48}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
+                                <ImagePreview
+                                  src={user.foto}
+                                  alt={user.nama}
+                                  width={48}
+                                  height={48}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : ( 
                               <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-400 dark:text-slate-500">
                                 {user.nama.charAt(0).toUpperCase()}
                               </div>
