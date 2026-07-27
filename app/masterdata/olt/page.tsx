@@ -15,6 +15,7 @@ import { DeleteOltDialog } from "./components/DeleteOltDialog";
 import { OltSearch } from "./components/OltSearch";
 import { OltPagination } from "./components/OltPagination";
 import { OltMapDialog } from "./components/OltMapDialog";
+import { OltSecretCell } from "./components/OltSecretCell";
 
 export default async function OltPage({
   searchParams,
@@ -63,9 +64,6 @@ export default async function OltPage({
             <OltFormDialog mode="create" pops={pops} />
           </div>
 
-          {/* ====================================================== */}
-          {/* Versi Tabel - hanya muncul di layar medium ke atas (md:) */}
-          {/* ====================================================== */}
           <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 md:block">
             <Table>
               <TableHeader>
@@ -76,6 +74,9 @@ export default async function OltPage({
                   <TableHead className="dark:text-slate-300">POP</TableHead>
                   <TableHead className="dark:text-slate-300">Latitude</TableHead>
                   <TableHead className="dark:text-slate-300">Longitude</TableHead>
+                  <TableHead className="dark:text-slate-300">IP Address</TableHead>
+                  <TableHead className="dark:text-slate-300">Username</TableHead>
+                  <TableHead className="dark:text-slate-300">Password</TableHead>
                   <TableHead className="dark:text-slate-300">Dibuat</TableHead>
                   <TableHead className="text-right dark:text-slate-300">Aksi</TableHead>
                 </TableRow>
@@ -104,6 +105,11 @@ export default async function OltPage({
                     <TableCell className="text-slate-700 dark:text-slate-300">
                       {olt.longitude.toString()}
                     </TableCell>
+                    <TableCell>{olt.ip_olt ?? "-"}</TableCell>
+                    <TableCell>{olt.username_olt ?? "-"}</TableCell>
+                    <TableCell>
+                      <OltSecretCell value={olt.password_olt} />
+                    </TableCell>
                     <TableCell className="text-slate-500 dark:text-slate-400">
                       {new Date(olt.createdAt).toLocaleDateString("id-ID", {
                         day: "2-digit",
@@ -128,6 +134,9 @@ export default async function OltPage({
                             latitude: olt.latitude.toString(),
                             longitude: olt.longitude.toString(),
                             id_pop: olt.id_pop,
+                            ip_olt: olt.ip_olt,
+                            username_olt: olt.username_olt,
+                            password_olt: olt.password_olt,
                           }}
                         />
                         <DeleteOltDialog id={olt.id_olt} name={olt.nama_olt} />
@@ -139,7 +148,7 @@ export default async function OltPage({
                 {olts.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                      colSpan={11}
                       className="py-10 text-center text-slate-400 dark:text-slate-500"
                     >
                       {search
@@ -152,9 +161,6 @@ export default async function OltPage({
             </Table>
           </div>
 
-          {/* ====================================================== */}
-          {/* Versi Card - hanya muncul di HP (di bawah breakpoint md:) */}
-          {/* ====================================================== */}
           <div className="grid gap-3 md:hidden">
             {olts.map((olt) => (
               <div
@@ -186,6 +192,9 @@ export default async function OltPage({
                         latitude: olt.latitude.toString(),
                         longitude: olt.longitude.toString(),
                         id_pop: olt.id_pop,
+                        ip_olt: olt.ip_olt,
+                        username_olt: olt.username_olt,
+                        password_olt: olt.password_olt,
                       }}
                     />
                     <DeleteOltDialog id={olt.id_olt} name={olt.nama_olt} />
@@ -201,6 +210,18 @@ export default async function OltPage({
                 <p className="text-xs text-slate-400 dark:text-slate-500">
                   {olt.latitude.toString()}, {olt.longitude.toString()}
                 </p>
+                <div className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
+                  <span>IP:</span>
+                  <OltSecretCell value={olt.ip_olt} />
+                </div>
+                <div className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
+                  <span>Username:</span>
+                  <OltSecretCell value={olt.username_olt} />
+                </div>
+                <div className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
+                  <span>Password:</span>
+                  <OltSecretCell value={olt.password_olt} />
+                </div>
                 <p className="text-xs text-slate-400 dark:text-slate-500">
                   Dibuat:{" "}
                   {new Date(olt.createdAt).toLocaleDateString("id-ID", {

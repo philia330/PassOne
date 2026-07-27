@@ -73,6 +73,7 @@ export const getPops = async () => {
     select: {
       id_pop: true,
       nama_pop: true,
+      alamat: true,
     },
     orderBy: { nama_pop: "asc" },
   });
@@ -88,9 +89,22 @@ export const createOlt = async (formData: FormData) => {
   const latitude = parseFloat(formData.get("latitude") as string);
   const longitude = parseFloat(formData.get("longitude") as string);
   const id_pop = parseInt(formData.get("id_pop") as string, 10);
+  const ip_olt = (formData.get("ip_olt") as string) || null;
+  const username_olt = (formData.get("username_olt") as string) || null;
+  const password_olt = (formData.get("password_olt") as string) || null;
 
   const olt = await prisma.olt.create({
-    data: { kode_olt, nama_olt, lokasi, latitude, longitude, id_pop },
+    data: {
+      kode_olt,
+      nama_olt,
+      lokasi,
+      latitude,
+      longitude,
+      id_pop,
+      ip_olt,
+      username_olt,
+      password_olt,
+    },
   });
 
   // await logActivity("OLT_CREATED", `OLT ${olt.nama_olt} dibuat.`);
@@ -107,10 +121,22 @@ export const updateOlt = async (id: number, formData: FormData) => {
   const latitude = parseFloat(formData.get("latitude") as string);
   const longitude = parseFloat(formData.get("longitude") as string);
   const id_pop = parseInt(formData.get("id_pop") as string, 10);
+  const ip_olt = (formData.get("ip_olt") as string) || null;
+  const username_olt = (formData.get("username_olt") as string) || null;
+  const password_olt = (formData.get("password_olt") as string) || null;
 
   const olt = await prisma.olt.update({
     where: { id_olt: id },
-    data: { nama_olt, lokasi, latitude, longitude, id_pop },
+    data: {
+      nama_olt,
+      lokasi,
+      latitude,
+      longitude,
+      id_pop,
+      ip_olt,
+      username_olt,
+      password_olt,
+    },
   });
 
   // await logActivity("OLT_UPDATED", `OLT ${olt.nama_olt} diperbarui.`);
