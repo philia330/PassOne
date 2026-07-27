@@ -21,8 +21,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { FabDialog } from "@/components/dialogs/FabDialog";
-import { FabDeleteDialog } from "@/components/dialogs/FabDeleteDialog";
+import { FabDialog } from "@/app/jaringan/fab/components/FabDialog";
+import { FabDeleteDialog } from "@/app/jaringan/fab/components/FabDeleteDialog";
 import type { FabData, AreaOption, PaketOption, UserOption, StatusFab } from "@/types/fab";
 
 interface FabTableProps {
@@ -76,7 +76,7 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <Input
             type="text"
-            placeholder="Cari nama pelanggan / NIK..."
+            placeholder="Cari nama pelanggan"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="rounded-2xl h-12 pl-11 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"

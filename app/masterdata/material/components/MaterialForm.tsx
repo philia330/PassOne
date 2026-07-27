@@ -24,7 +24,12 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
   const [kondisi, setKondisi] = useState<"BAIK" | "RUSAK">(defaultValues?.kondisi ?? "BAIK");
 
   return (
-    <div className="grid grid-cols-2 gap-5">
+    // FIX: max-h-[65vh] overflow-y-auto -> form ini punya scroll sendiri,
+    // konsisten dengan FabForm/BaaForm, jadi tombol Simpan tetap bisa
+    // digapai walau isi form panjang, tidak cuma mengandalkan scroll dari
+    // DialogContent. p-1.5 -m-1.5 tetap dipakai supaya ring fokus ungu
+    // tidak kepotong di tepi area scroll.
+    <div className="grid grid-cols-2 gap-5 max-h-[65vh] overflow-y-auto p-1.5 -m-1.5">
       <div className="col-span-2 space-y-2">
         <Label
           htmlFor="kode_material_display"
@@ -54,7 +59,7 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
         <Input
           id="nama_material"
           name="nama_material"
-          placeholder="Kabel Fiber Optik"
+          placeholder="Masukkan nama material"
           defaultValue={defaultValues?.nama_material}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
           required
@@ -109,7 +114,7 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
         <Input
           id="satuan"
           name="satuan"
-          placeholder="Meter, PCS, Unit"
+          placeholder="Masukkan satuan, contoh: Meter, PCS, Unit"
           defaultValue={defaultValues?.satuan}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
           required
@@ -131,7 +136,7 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
             id="harga"
             name="harga"
             type="number"
-            placeholder="25000"
+            placeholder="Masukkan harga material"
             defaultValue={defaultValues?.harga}
             className="rounded-2xl h-12 pl-10 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
             required
@@ -143,7 +148,7 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
         <Label className="text-xs font-bold uppercase tracking-wide text-slate-500">
           Kondisi
         </Label>
-        <Select value={kondisi} onValueChange={(v) => setKondisi(v as "BAIK" | "RUSAK")}>
+        <Select value={kondisi} onValueChange={(v) => setKondisi((v ?? "BAIK") as "BAIK" | "RUSAK")}>
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
             <SelectValue />
           </SelectTrigger>
@@ -166,7 +171,7 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
           id="keterangan"
           name="keterangan"
           rows={3}
-          placeholder="Keterangan tambahan (opsional)"
+          placeholder="Tulis keterangan tambahan di sini (opsional)"
           defaultValue={defaultValues?.keterangan ?? ""}
           className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 resize-none"
         />

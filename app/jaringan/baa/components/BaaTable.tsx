@@ -21,9 +21,9 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { BaaDialog } from "@/components/dialogs/BaaDialog";
-import { BaaDeleteDialog } from "@/components/dialogs/BaaDeleteDialog";
-import { BaaViewDialog } from "@/components/dialogs/BaaViewDialog";
+import { BaaDialog } from "@/app/jaringan/baa/components/BaaDialog";
+import { BaaDeleteDialog } from "@/app/jaringan/baa/components/BaaDeleteDialog";
+import { BaaViewDialog } from "@/app/jaringan/baa/components/BaaViewDialog";
 import type {
   BaaData,
   StatusBaa,

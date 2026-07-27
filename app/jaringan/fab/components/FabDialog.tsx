@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { FabForm } from "@/components/forms/FabForm";
+import { FabForm } from "@/app/jaringan/fab/components/FabForm";
 import { createFab, updateFab } from "@/app/jaringan/fab/actions";
 import type { FabData, AreaOption, PaketOption, UserOption } from "@/types/fab";
 

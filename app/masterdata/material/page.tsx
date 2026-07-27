@@ -1,8 +1,8 @@
 import { Box } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
-import { MaterialDialog } from "@/components/dialogs/MaterialDialog";
-import { MaterialTable } from "@/components/tables/MaterialTable";
+import { MaterialDialog } from "@/app/masterdata/material/components/MaterialDialog";
+import { MaterialTable } from "@/app/masterdata/material/components/MaterialTable";
 
 export default async function MaterialPage() {
   const rawMaterial = await prisma.material.findMany({ orderBy: { createdAt: "desc" } });

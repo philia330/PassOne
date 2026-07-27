@@ -21,8 +21,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { FabDialog } from "@/components/dialogs/FabDialog";
-import { FabDeleteDialog } from "@/components/dialogs/FabDeleteDialog";
+import { FabDialog } from "@/app/jaringan/fab/components/FabDialog";
+import { FabDeleteDialog } from "@/app/jaringan/fab/components/FabDeleteDialog";
 import type { FabData, AreaOption, PaketOption, UserOption, StatusFab } from "@/types/fab";
 
 interface FabTableProps {

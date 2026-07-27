@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { BaaForm } from "@/components/forms/BaaForm";
+import { BaaForm } from "@/app/jaringan/baa/components/BaaForm";
 import { createBaa, updateBaa } from "@/app/jaringan/baa/actions";
 import type {
   BaaData,

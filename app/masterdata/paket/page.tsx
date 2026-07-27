@@ -1,8 +1,8 @@
 import { Router } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
-import { PaketDialog } from "@/components/dialogs/PaketDialog";
-import { PaketTable } from "@/components/tables/PaketTable";
+import { PaketDialog } from "@/app/masterdata/paket/components/PaketDialog";
+import { PaketTable } from "@/app/masterdata/paket/components/PaketTable";
 
 export default async function PaketPage() {
   const rawPaket = await prisma.paket.findMany({ orderBy: { createdAt: "desc" } });

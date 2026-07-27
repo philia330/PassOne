@@ -11,26 +11,26 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { MaterialForm } from "@/components/forms/MaterialForm";
-import { createMaterial, updateMaterial } from "@/app/masterdata/material/actions";
-import type { MaterialData } from "@/types/material";
+import { PaketForm } from "@/app/masterdata/paket/components/PaketForm";
+import { createPaket, updatePaket } from "@/app/masterdata/paket/actions";
+import type { PaketData } from "@/types/paket";
 
-interface MaterialDialogProps {
+interface PaketDialogProps {
   mode: "create" | "edit";
-  material?: MaterialData;
+  paket?: PaketData;
   kodeOtomatis?: string;
 }
 
-export const MaterialDialog = ({ mode, material, kodeOtomatis }: MaterialDialogProps) => {
+export const PaketDialog = ({ mode, paket, kodeOtomatis }: PaketDialogProps) => {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const handleSubmit = (formData: FormData) => {
     startTransition(async () => {
       if (mode === "create") {
-        await createMaterial(formData);
-      } else if (material) {
-        await updateMaterial(material.id_material, formData);
+        await createPaket(formData);
+      } else if (paket) {
+        await updatePaket(paket.id_paket, formData);
       }
       setOpen(false);
     });
@@ -42,7 +42,7 @@ export const MaterialDialog = ({ mode, material, kodeOtomatis }: MaterialDialogP
         render={
           mode === "create" ? (
             <Button className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white">
-              <Plus className="mr-2 h-4 w-4" /> Tambah Material
+              <Plus className="mr-2 h-4 w-4" /> Tambah Paket
             </Button>
           ) : (
             <Button variant="outline" size="sm" className="rounded-xl">
@@ -54,11 +54,11 @@ export const MaterialDialog = ({ mode, material, kodeOtomatis }: MaterialDialogP
 
       <DialogContent className="rounded-3xl sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>{mode === "create" ? "Tambah Material" : "Edit Material"}</DialogTitle>
+          <DialogTitle>{mode === "create" ? "Tambah Paket" : "Edit Paket"}</DialogTitle>
         </DialogHeader>
 
         <form action={handleSubmit}>
-          <MaterialForm defaultValues={material} kodeOtomatis={kodeOtomatis} />
+          <PaketForm defaultValues={paket} kodeOtomatis={kodeOtomatis} />
 
           <DialogFooter className="mt-6">
             <Button

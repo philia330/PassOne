@@ -57,6 +57,14 @@ const STATUS_LABEL: Record<StatusFab, string> = {
   SELESAI: "Selesai",
 };
 
+// Titik tengah default peta kalau user belum isi alamat/koordinat sama
+// sekali -- biar peta tetap kelihatan dari awal, tidak perlu nunggu
+// alamat diisi dulu. Ini CUMA posisi tampilan peta, bukan nilai yang
+// otomatis ikut tersimpan -- baru masuk ke field Latitude/Longitude
+// kalau user beneran klik/geser pin atau isi alamat/pencarian.
+const DEFAULT_MAP_LAT = -6.917464; // Bandung
+const DEFAULT_MAP_LNG = 107.619123;
+
 export const FabForm = ({
   defaultValues,
   kodeOtomatis,
@@ -176,6 +184,11 @@ export const FabForm = ({
   const lon = parseFloat(longitude);
   const hasValidCoords = !Number.isNaN(lat) && !Number.isNaN(lon);
 
+  // Titik yang DITAMPILKAN di peta: pakai koordinat asli kalau sudah ada,
+  // kalau belum, pakai default (Bandung) supaya peta tetap muncul dari awal.
+  const displayLat = hasValidCoords ? lat : DEFAULT_MAP_LAT;
+  const displayLng = hasValidCoords ? lon : DEFAULT_MAP_LNG;
+
   return (
     // FIX: p-1.5 -m-1.5 -> ngasih ruang buat ring fokus ungu di 4 sisi
     // supaya tidak kepotong batas scroll container, tanpa mengubah
@@ -206,7 +219,7 @@ export const FabForm = ({
         <Input
           id="nama_pelanggan"
           name="nama_pelanggan"
-          placeholder="	Masukkan nama pelanggan"
+          placeholder="Masukkan nama pelanggan"
           defaultValue={defaultValues?.nama_pelanggan}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
           required
@@ -345,55 +358,50 @@ export const FabForm = ({
         />
       </div>
 
-      {/* Peta di bawah kolom Latitude/Longitude, sesuai posisi yang diminta */}
+      {/* Peta di bawah kolom Latitude/Longitude -- SELALU muncul (default
+          Bandung) supaya tidak perlu isi alamat dulu buat lihat petanya. */}
       <div className="col-span-2 space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-xs text-slate-400">
-            {hasValidCoords ? "Klik atau geser pin untuk ubah titik lokasi" : "Isi alamat atau koordinat dulu untuk menampilkan peta"}
+            {hasValidCoords
+              ? "Klik atau geser pin untuk ubah titik lokasi"
+              : "Klik atau geser pin di peta untuk pilih lokasi pelanggan"}
           </p>
-          {hasValidCoords && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setMapExpanded((v) => !v)}
-              className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
-            >
-              {mapExpanded ? (
-                <>
-                  <Minimize2 className="mr-1 h-3.5 w-3.5" /> Perkecil
-                </>
-              ) : (
-                <>
-                  <Maximize2 className="mr-1 h-3.5 w-3.5" /> Perbesar
-                </>
-              )}
-            </Button>
-          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setMapExpanded((v) => !v)}
+            className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+          >
+            {mapExpanded ? (
+              <>
+                <Minimize2 className="mr-1 h-3.5 w-3.5" /> Perkecil
+              </>
+            ) : (
+              <>
+                <Maximize2 className="mr-1 h-3.5 w-3.5" /> Perbesar
+              </>
+            )}
+          </Button>
         </div>
 
-        {hasValidCoords ? (
-          <LocationPickerMap
-            lat={lat}
-            lng={lon}
-            height={mapExpanded ? "420px" : "220px"}
-            onChange={(newLat, newLng) => {
-              setLatitude(newLat.toFixed(6));
-              setLongitude(newLng.toFixed(6));
-            }}
-          />
-        ) : (
-          <div className="h-[220px] w-full rounded-2xl border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-xs text-slate-400">
-            Peta belum bisa ditampilkan
-          </div>
-        )}
+        <LocationPickerMap
+          lat={displayLat}
+          lng={displayLng}
+          height={mapExpanded ? "420px" : "220px"}
+          onChange={(newLat, newLng) => {
+            setLatitude(newLat.toFixed(6));
+            setLongitude(newLng.toFixed(6));
+          }}
+        />
       </div>
 
       <div className="space-y-2">
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <Building2 size={13} className="text-purple-500" /> Area
         </Label>
-        <Select value={idArea} onValueChange={setIdArea}>
+        <Select value={idArea} onValueChange={(v) => setIdArea(v ?? "")}>
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
             <SelectValue placeholder="Pilih area" />
           </SelectTrigger>
@@ -412,7 +420,7 @@ export const FabForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <Package size={13} className="text-purple-500" /> Paket Internet
         </Label>
-        <Select value={idPaket} onValueChange={setIdPaket}>
+        <Select value={idPaket} onValueChange={(v) => setIdPaket(v ?? "")}>
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
             <SelectValue placeholder="Pilih paket" />
           </SelectTrigger>
@@ -431,7 +439,7 @@ export const FabForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <UserCog size={13} className="text-purple-500" /> Sales
         </Label>
-        <Select value={idUser} onValueChange={setIdUser}>
+        <Select value={idUser} onValueChange={(v) => setIdUser(v ?? "")}>
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
             <SelectValue placeholder="Pilih sales" />
           </SelectTrigger>

@@ -21,8 +21,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { MaterialDialog } from "@/components/dialogs/MaterialDialog";
-import { MaterialDeleteDialog } from "@/components/dialogs/MaterialDeleteDialog";
+import { MaterialDialog } from "@/app/masterdata/material/components/MaterialDialog";
+import { MaterialDeleteDialog } from "@/app/masterdata/material/components/MaterialDeleteDialog";
 import type { MaterialData } from "@/types/material";
 
 interface MaterialTableProps {
