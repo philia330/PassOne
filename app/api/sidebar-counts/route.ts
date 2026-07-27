@@ -10,12 +10,13 @@ export async function GET() {
     return NextResponse.json({}, { status: 401 });
   }
 
-  const [area, pop, olt, odp, ont, material, paket, user, fab, baa] =
+  const [area, pop, olt, odp, portPon, ont, material, paket, user, fab, baa] =
     await Promise.all([
       prisma.area.count(),
       prisma.pop.count(),
       prisma.olt.count(),
       prisma.odp.count(),
+      prisma.portPon.count(),
       prisma.ont.count(),
       prisma.material.count(),
       prisma.paket.count(),
@@ -29,6 +30,7 @@ export async function GET() {
     "/masterdata/pop": pop,
     "/masterdata/olt": olt,
     "/masterdata/odp": odp,
+    "/masterdata/port-pon": portPon,
     "/masterdata/ont": ont,
     "/masterdata/material": material,
     "/masterdata/paket": paket,

@@ -10,6 +10,7 @@ import {
   PackageOpen,
   FileText,
   ClipboardList,
+  Cable,
   Users,
   Settings,
 } from "lucide-react";
@@ -82,6 +83,12 @@ export const navigation: NavigationGroup[] = [
           Role.ADMIN,
           Role.LOGISTIK,
         ],
+      },
+      {
+        title: "Port PON",
+        href: "/masterdata/port-pon",
+        icon: Cable,
+        roles: [Role.ADMIN, Role.TEKNISI],
       },
       {
         title: "Material",

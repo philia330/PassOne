@@ -46,13 +46,8 @@ export const OdpSearch = ({
       <Input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-<<<<<<< HEAD
-        placeholder="Cari kode, nama, alamat, atau ODP..."
-        className="h-11 rounded-2xl border-slate-200 pl-9 focus-visible:ring-purple-500"
-=======
         placeholder="Cari kode, nama, alamat, atau OLT..."
         className="h-11 rounded-2xl border-slate-200 bg-white pl-9 focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
->>>>>>> origin/feature/master-data
       />
     </div>
   );

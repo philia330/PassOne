@@ -187,11 +187,7 @@ export const OltFormDialog = ({
               readOnly
               placeholder="Pilih POP terlebih dahulu"
               required
-<<<<<<< HEAD
-              className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
-=======
               className="h-12 rounded-2xl border-slate-200 bg-slate-100 text-slate-600 focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-400 dark:placeholder:text-slate-500"
->>>>>>> origin/feature/master-data
             />
             <p className="text-xs text-slate-400 dark:text-slate-500">
               Lokasi otomatis mengikuti alamat POP yang dipilih.
@@ -233,35 +229,6 @@ export const OltFormDialog = ({
           </div>
 
           <div className="space-y-2">
-<<<<<<< HEAD
-            <label className="text-sm font-medium">POP</label>
-            <Select value={popValue} onValueChange={setPopValue}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                <SelectValue placeholder="Pilih POP" />
-              </SelectTrigger>
-              <SelectContent>
-                {pops.map((pop) => (
-                  <SelectItem key={pop.id_pop} value={String(pop.id_pop)}>
-                    {pop.nama_pop}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <input type="hidden" name="id_pop" value={popValue} required />
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isSubmitting}
-              className="h-11 cursor-pointer rounded-2xl"
-              onClick={() => setOpen(false)}
-            >
-              Batal
-            </Button>
-
-=======
             <label className="text-sm font-medium">
               IP Address{" "}
               <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
@@ -312,7 +279,6 @@ export const OltFormDialog = ({
               Batal
             </Button>
 
->>>>>>> origin/feature/master-data
             <Button
               type="submit"
               disabled={isSubmitting}
