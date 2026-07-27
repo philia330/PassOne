@@ -45,6 +45,11 @@ enum StatusOnt {
   RUSAK
 }
 
+enum StatusPort {
+  TERSEDIA
+  TERPAKAI
+}
+
 model User {
   id_user Int @id @default(autoincrement())
 
@@ -149,6 +154,15 @@ model Olt {
   // Longitude Maps
   longitude Decimal
 
+  // IP Address OLT
+  ip_olt String?
+
+  // Username login OLT
+  username_olt String?
+
+  // Password login OLT
+  password_olt String?
+
   // Foreign Key ke POP
   id_pop Int
 
@@ -166,6 +180,9 @@ model Olt {
 
   // Relasi ke BAA
   baas Baa[]
+
+   // Relasi ke Port PON
+  portPons PortPon[]
 }
 
 // ======================================================
@@ -206,6 +223,38 @@ model Odp {
   // Relasi ke ONT
   onts Ont[]
   Baa  Baa[]
+
+   // Relasi ke Port PON
+  portPons PortPon[]
+}
+
+// ======================================================
+// MODEL PORT PON
+// Menyimpan data port fisik per OLT (card GTGO/GTGH dsb)
+// ======================================================
+
+model PortPon {
+  id_port Int @id @default(autoincrement())
+
+  nomor_port Int
+
+  tipe_kartu String
+
+  status StatusPort @default(TERSEDIA)
+
+  id_olt Int
+
+  id_odp Int?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  olt Olt @relation(fields: [id_olt], references: [id_olt])
+
+  odp Odp? @relation(fields: [id_odp], references: [id_odp])
+
+  @@unique([id_olt, nomor_port])
 }
 
 // ======================================================

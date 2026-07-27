@@ -135,6 +135,34 @@ export const OdpFormDialog = ({
         </DialogHeader>
 
         <form action={handleSubmit} className="space-y-4">
+          {/* OLT dipindah ke paling atas */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">OLT</label>
+
+            <Select value={oltValue} onValueChange={setOltValue}>
+              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+  <SelectValue placeholder="Pilih OLT">
+    {(value: string) =>
+      olts.find((olt) => String(olt.id_olt) === value)?.nama_olt ?? "Pilih OLT"
+    }
+  </SelectValue>
+</SelectTrigger>
+
+              <SelectContent>
+                {olts.map((olt) => (
+                  <SelectItem
+                    key={olt.id_olt}
+                    value={String(olt.id_olt)}
+                  >
+                    {olt.nama_olt}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <input type="hidden" name="id_olt" value={oltValue} required />
+          </div>
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Nama ODP</label>
             <Input
@@ -191,29 +219,6 @@ export const OdpFormDialog = ({
                 className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">OLT</label>
-
-            <Select value={oltValue} onValueChange={setOltValue}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                <SelectValue placeholder="Contoh: OLT Huawei Tanggerang 1" />
-              </SelectTrigger>
-
-              <SelectContent>
-                {olts.map((olt) => (
-                  <SelectItem
-                    key={olt.id_olt}
-                    value={String(olt.id_olt)}
-                  >
-                    {olt.nama_olt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <input type="hidden" name="id_olt" value={oltValue} required />
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">

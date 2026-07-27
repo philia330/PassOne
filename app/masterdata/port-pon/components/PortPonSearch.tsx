@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-export const AreaSearch = ({ defaultValue }: { defaultValue: string }) => {
+export const PortPonSearch = ({ defaultValue }: { defaultValue: string }) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -42,7 +42,7 @@ export const AreaSearch = ({ defaultValue }: { defaultValue: string }) => {
       <Input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Cari kode, nama, atau keterangan..."
+        placeholder="Cari tipe kartu, OLT, atau ODP..."
         className="h-11 rounded-2xl border-slate-200 bg-white pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
       />
     </div>

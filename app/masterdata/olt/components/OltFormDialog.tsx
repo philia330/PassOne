@@ -1,11 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "./PasswordInput";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,7 @@ const OltMapPicker = dynamic(
 type Pop = {
   id_pop: number;
   nama_pop: string;
+  alamat: string;
 };
 
 type OltData = {
@@ -48,6 +50,9 @@ type OltData = {
   latitude: number | string;
   longitude: number | string;
   id_pop: number;
+  ip_olt?: string | null;
+  username_olt?: string | null;
+  password_olt?: string | null;
 };
 
 export const OltFormDialog = ({
@@ -71,6 +76,15 @@ export const OltFormDialog = ({
   const [lng, setLng] = useState<number>(
     data?.longitude ? Number(data.longitude) : 0
   );
+
+  const [lokasi, setLokasi] = useState<string>(data?.lokasi ?? "");
+
+  useEffect(() => {
+    const selectedPop = pops.find((p) => String(p.id_pop) === popValue);
+    if (selectedPop) {
+      setLokasi(selectedPop.alamat);
+    }
+  }, [popValue, pops]);
 
   const handlePick = (pickedLat: number, pickedLng: number) => {
     setLat(pickedLat);
@@ -131,6 +145,29 @@ export const OltFormDialog = ({
         </DialogHeader>
 
         <form action={handleSubmit} className="space-y-4">
+          {/* POP - paling atas */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">POP</label>
+            <Select value={popValue} onValueChange={setPopValue}>
+              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                <SelectValue placeholder="Pilih POP">
+                  {() =>
+                    pops.find((p) => String(p.id_pop) === popValue)?.nama_pop ??
+                    "Pilih POP"
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {pops.map((pop) => (
+                  <SelectItem key={pop.id_pop} value={String(pop.id_pop)}>
+                    {pop.nama_pop}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <input type="hidden" name="id_pop" value={popValue} required />
+          </div>
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Nama OLT</label>
             <Input
@@ -146,14 +183,17 @@ export const OltFormDialog = ({
             <label className="text-sm font-medium">Lokasi</label>
             <Input
               name="lokasi"
-              defaultValue={data?.lokasi}
-              placeholder="Contoh: Jl. Merdeka No. 10, Tanggerang"
+              value={lokasi}
+              readOnly
+              placeholder="Pilih POP terlebih dahulu"
               required
-              className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+              className="h-12 rounded-2xl border-slate-200 bg-slate-100 text-slate-600 focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-400 dark:placeholder:text-slate-500"
             />
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Lokasi otomatis mengikuti alamat POP yang dipilih.
+            </p>
           </div>
 
-          {/* Peta pilih lokasi */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Lokasi di Peta</label>
             <OltMapPicker lat={lat} lng={lng} onPick={handlePick} />
@@ -189,20 +229,43 @@ export const OltFormDialog = ({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">POP</label>
-            <Select value={popValue} onValueChange={setPopValue}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                <SelectValue placeholder="Pilih POP" />
-              </SelectTrigger>
-              <SelectContent>
-                {pops.map((pop) => (
-                  <SelectItem key={pop.id_pop} value={String(pop.id_pop)}>
-                    {pop.nama_pop}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <input type="hidden" name="id_pop" value={popValue} required />
+            <label className="text-sm font-medium">
+              IP Address{" "}
+              <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
+            </label>
+            <Input
+              name="ip_olt"
+              defaultValue={data?.ip_olt ?? ""}
+              placeholder="Contoh: 192.168.1.1"
+              className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Username{" "}
+                <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
+              </label>
+              <Input
+                name="username_olt"
+                defaultValue={data?.username_olt ?? ""}
+                placeholder="admin"
+                className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Password{" "}
+                <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
+              </label>
+              <PasswordInput
+                name="password_olt"
+                defaultValue={data?.password_olt ?? ""}
+                placeholder="••••••••"
+                className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+              />
+            </div>
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">

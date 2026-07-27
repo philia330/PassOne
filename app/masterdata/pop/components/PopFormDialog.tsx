@@ -136,6 +136,32 @@ export const PopFormDialog = ({
         </DialogHeader>
 
         <form action={handleSubmit} className="space-y-4">
+          {/* Area dipindah ke paling atas */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Area</label>
+
+            <Select value={areaValue} onValueChange={setAreaValue}>
+              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                <SelectValue placeholder="Pilih Area">
+                  {(value: string) =>
+                    areas.find((area) => String(area.id_area) === value)
+                      ?.nama_area ?? "Pilih Area"
+                  }
+                </SelectValue>
+              </SelectTrigger>
+
+              <SelectContent>
+                {areas.map((area) => (
+                  <SelectItem key={area.id_area} value={String(area.id_area)}>
+                    {area.nama_area}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <input type="hidden" name="id_area" value={areaValue} required />
+          </div>
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Nama POP</label>
             <Input
@@ -190,26 +216,6 @@ export const PopFormDialog = ({
               required
               className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Area</label>
-
-            <Select value={areaValue} onValueChange={setAreaValue}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                <SelectValue placeholder="Pilih Area" />
-              </SelectTrigger>
-
-              <SelectContent>
-                {areas.map((area) => (
-                  <SelectItem key={area.id_area} value={String(area.id_area)}>
-                    {area.nama_area}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <input type="hidden" name="id_area" value={areaValue} required />
           </div>
 
           <DialogFooter>
