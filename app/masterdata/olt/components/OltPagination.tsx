@@ -30,13 +30,15 @@ export const OltPagination = ({
   };
 
   return (
-    <Pagination>
+    <Pagination className="my-2">
       <PaginationContent>
         <PaginationItem>
           <PaginationPrevious
             onClick={() => page > 1 && goToPage(page - 1)}
             className={
-              page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"
+              page <= 1
+                ? "pointer-events-none opacity-50 dark:opacity-40"
+                : "cursor-pointer dark:hover:bg-slate-800 dark:hover:text-slate-100"
             }
           />
         </PaginationItem>
@@ -46,7 +48,7 @@ export const OltPagination = ({
             <PaginationLink
               isActive={p === page}
               onClick={() => goToPage(p)}
-              className="cursor-pointer"
+              className="cursor-pointer dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             >
               {p}
             </PaginationLink>
@@ -58,8 +60,8 @@ export const OltPagination = ({
             onClick={() => page < totalPages && goToPage(page + 1)}
             className={
               page >= totalPages
-                ? "pointer-events-none opacity-50"
-                : "cursor-pointer"
+                ? "pointer-events-none opacity-50 dark:opacity-40"
+                : "cursor-pointer dark:hover:bg-slate-800 dark:hover:text-slate-100"
             }
           />
         </PaginationItem>

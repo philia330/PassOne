@@ -28,17 +28,17 @@ export const OdpRouteMap = ({
   const centerLng = (odpLng + oltLng) / 2;
 
   return (
-    <div className="relative isolate w-full overflow-hidden rounded-2xl border">
+    <div className="relative isolate w-full overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
       <MapContainer
         key={`odp-route-${odpLat}-${odpLng}-${oltLat}-${oltLng}`}
         center={[centerLat, centerLng]}
         zoom={14}
         style={{ height: "300px", width: "100%" }}
-        className="w-full"
+        className="w-full z-0 dark:[&_.leaflet-tile]:invert dark:[&_.leaflet-tile]:hue-rotate-180 dark:[&_.leaflet-tile]:brightness-95 dark:[&_.leaflet-tile]:contrast-90 dark:[&_.leaflet-popup-content-wrapper]:bg-slate-900 dark:[&_.leaflet-popup-content-wrapper]:text-slate-100 dark:[&_.leaflet-popup-tip]:bg-slate-900"
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; OpenStreetMap contributors'
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
 
         <Polyline

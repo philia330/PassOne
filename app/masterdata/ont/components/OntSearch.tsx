@@ -13,6 +13,10 @@ export const OntSearch = ({ defaultValue }: { defaultValue: string }) => {
   const [value, setValue] = useState(defaultValue);
 
   useEffect(() => {
+    if (value === (searchParams.get("search") ?? "")) {
+      return;
+    }
+
     const timeout = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
 
@@ -28,17 +32,18 @@ export const OntSearch = ({ defaultValue }: { defaultValue: string }) => {
     }, 400);
 
     return () => clearTimeout(timeout);
-  }, [value, pathname, router, searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   return (
-    <div className="relative w-full max-w-xs">
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    <div className="relative w-full sm:w-80">
+      <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
 
       <Input
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Cari serial, pelanggan, POP, atau ODP..."
-        className="h-11 rounded-2xl border-slate-200 pl-9 focus-visible:ring-purple-500"
+        className="h-11 rounded-2xl border-slate-200 bg-white pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
       />
     </div>
   );

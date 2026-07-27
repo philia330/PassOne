@@ -1,4 +1,4 @@
-"use client";
+git "use client";
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -17,6 +17,10 @@ export const OdpSearch = ({
   const [value, setValue] = useState(defaultValue);
 
   useEffect(() => {
+    if (value === (searchParams.get("search") ?? "")) {
+      return;
+    }
+
     const timeout = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
 
@@ -32,11 +36,12 @@ export const OdpSearch = ({
     }, 400);
 
     return () => clearTimeout(timeout);
-  }, [value, pathname, router, searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   return (
     <div className="relative w-full max-w-xs">
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
 
       <Input
         value={value}

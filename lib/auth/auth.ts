@@ -7,6 +7,9 @@ import { authConfig } from "./auth.config";
 import { credentialsProvider } from "./credentials";
 import { Role } from "./roles";
 
+const REMEMBER_ME_MAX_AGE = 30 * 24 * 60 * 60; // 30 hari
+const DEFAULT_MAX_AGE = 12 * 60 * 60; // 12 jam
+
 export const {
   handlers,
   auth,
@@ -20,7 +23,7 @@ export const {
 
   session: {
     strategy: "jwt",
-    maxAge: 12 * 60 * 60, // 12 jam (dalam detik)
+    maxAge: DEFAULT_MAX_AGE, // dipakai sebagai default/fallback
   },
 
   providers: [
@@ -47,6 +50,12 @@ export const {
 
         token.foto = user.foto;
 
+        // Set expiry manual berdasarkan rememberMe
+        const rememberMe = (user as { rememberMe?: boolean }).rememberMe ?? false;
+
+        const now = Math.floor(Date.now() / 1000);
+
+        token.exp = now + (rememberMe ? REMEMBER_ME_MAX_AGE : DEFAULT_MAX_AGE);
       }
 
       return token;
