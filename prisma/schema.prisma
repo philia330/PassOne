@@ -21,14 +21,11 @@ enum Role {
   LOGISTIK
 }
 
-<<<<<<< HEAD
 enum JenisKelamin {
   LAKI_LAKI
   PEREMPUAN
 }
 
-=======
->>>>>>> origin/feature/jaringan
 enum StatusFab {
   PENDING
   SURVEY
@@ -65,11 +62,8 @@ model User {
 
   password String
 
-<<<<<<< HEAD
   jkl JenisKelamin
 
-=======
->>>>>>> origin/feature/jaringan
   foto String?
 
   role Role
@@ -218,11 +212,9 @@ model Odp {
 
   // Relasi ke ONT
   onts Ont[]
-<<<<<<< HEAD
-  Baa  Baa[]
-=======
+
+  // Relasi ke BAA
   Baa Baa[]
->>>>>>> origin/feature/jaringan
 }
 
 // ======================================================
@@ -416,31 +408,19 @@ model Fab {
 // ======================================================
 
 model Baa {
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/feature/jaringan
   // ==========================
   // PRIMARY KEY
   // ==========================
 
-<<<<<<< HEAD
   id_baa Int @id @default(autoincrement())
 
   // Kode unik BAA
   kode_baa String @unique
-=======
-  id_baa              Int        @id @default(autoincrement())
-
-  // Kode unik BAA
-  kode_baa            String     @unique
->>>>>>> origin/feature/jaringan
 
   // ==========================
   // DATA INSTALASI
   // ==========================
 
-<<<<<<< HEAD
   tanggal_instalasi DateTime
 
   // Hasil pengukuran power optik
@@ -464,38 +444,12 @@ model Baa {
 
   // Foto hasil instalasi
   foto_instalasi String?
-=======
-  tanggal_instalasi   DateTime
-
-  // Hasil pengukuran power optik
-  rx_power_dbm        Decimal?
-
-  tx_power_dbm        Decimal?
-
-  // Hasil speedtest
-  speed_download      String?
-
-  speed_upload        String?
-
-  // Ping
-  ping_ms             Decimal?
-
-  // Status pekerjaan
-  status              StatusBaa @default(PENDING)
-
-  // Catatan teknisi
-  catatan             String?
-
-  // Foto hasil instalasi
-  foto_instalasi      String?
->>>>>>> origin/feature/jaringan
 
   // ==========================
   // FOREIGN KEY
   // ==========================
 
   // FAB yang dikerjakan
-<<<<<<< HEAD
   id_fab Int
 
   // Teknisi
@@ -517,82 +471,38 @@ model Baa {
   port_olt Int?
 
   port_odp Int?
-=======
-  id_fab              Int
-
-  // Teknisi
-  id_user             Int
-
-  // OLT
-  id_olt              Int
-
-  // ODP
-  id_odp              Int
-
-  // ONT
-  id_ont              Int
-
-  // ==========================
-  // PORT
-  // ==========================
-
-  port_olt            Int?
-
-  port_odp            Int?
->>>>>>> origin/feature/jaringan
 
   // ==========================
   // TIMESTAMP
   // ==========================
 
-<<<<<<< HEAD
   createdAt DateTime @default(now())
 
   updatedAt DateTime @updatedAt
-=======
-  createdAt           DateTime @default(now())
-
-  updatedAt           DateTime @updatedAt
->>>>>>> origin/feature/jaringan
 
   // ==========================
   // RELASI
   // ==========================
 
-<<<<<<< HEAD
+  // FAB yang dikerjakan
   fab Fab @relation(fields: [id_fab], references: [id_fab])
 
+  // Teknisi yang mengerjakan instalasi
   user User @relation(fields: [id_user], references: [id_user])
 
+  // Perangkat jaringan
   olt Olt @relation(fields: [id_olt], references: [id_olt])
 
   odp Odp @relation(fields: [id_odp], references: [id_odp])
 
   ont Ont @relation(fields: [id_ont], references: [id_ont])
 
-  // Material yang digunakan
-  baaDetails BaaDetail[]
-=======
-  // FAB yang dikerjakan
-  fab                 Fab @relation(fields: [id_fab], references: [id_fab])
-
-  // Teknisi yang mengerjakan instalasi
-  user                User @relation(fields: [id_user], references: [id_user])
-
-  // Perangkat jaringan
-  olt                 Olt @relation(fields: [id_olt], references: [id_olt])
-
-  odp                 Odp @relation(fields: [id_odp], references: [id_odp])
-
-  ont                 Ont @relation(fields: [id_ont], references: [id_ont])
-
   // =====================================================
   // DETAIL MATERIAL
   // Satu BAA dapat menggunakan banyak material
   // =====================================================
 
-  baaDetails          BaaDetail[]
->>>>>>> origin/feature/jaringan
+  baaDetails BaaDetail[]
 }
 
 // ======================================================
@@ -641,6 +551,11 @@ model BaaDetail {
   material Material @relation(fields: [id_material], references: [id_material])
 }
 
+// ======================================================
+// ENUM & MODEL ACTIVITY LOG
+// Mencatat riwayat aktivitas penting di seluruh sistem
+// ======================================================
+
 enum ActivityType {
   // User
   USER_CREATED
@@ -649,7 +564,7 @@ enum ActivityType {
   USER_DEACTIVATED
   LOGIN
 
-  // Transaksi (kamu pegang)
+  // Transaksi (Fahry pegang)
   FAB_CREATED
   FAB_UPDATED
   BAA_CREATED
@@ -685,11 +600,16 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
+// ======================================================
+// MODEL SETTINGS
+// Pengaturan umum aplikasi (nama app, logo login, dll)
+// ======================================================
+
 model Settings {
-  id_setting  Int      @id @default(autoincrement())
-  key         String   @unique   // contoh: "app_name", "login_logo", "login_title", "login_subtitle"
-  value       String   @db.Text
-  updatedAt   DateTime @updatedAt
+  id_setting Int      @id @default(autoincrement())
+  key        String   @unique // contoh: "app_name", "login_logo", "login_title", "login_subtitle"
+  value      String   @db.Text
+  updatedAt  DateTime @updatedAt
 
   @@map("settings")
 }

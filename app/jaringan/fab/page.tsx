@@ -1,8 +1,8 @@
 import { ClipboardList } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
-import { FabDialog } from "@/components/dialogs/FabDialog";
-import { FabTable } from "@/components/tables/FabTable";
+import { FabDialog } from "@/app/jaringan/fab/components/FabDialog";
+import { FabTable } from "@/app/jaringan/fab/components/FabTable";
 
 export default async function FabPage() {
   // Ambil semua data yang dibutuhkan sekaligus (paralel, lebih cepat).

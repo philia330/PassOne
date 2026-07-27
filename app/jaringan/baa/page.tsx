@@ -1,8 +1,8 @@
 import { FileCheck2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
-import { BaaDialog } from "@/components/dialogs/BaaDialog";
-import { BaaTable } from "@/components/tables/BaaTable";
+import { BaaDialog } from "@/app/jaringan/baa/components/BaaDialog";
+import { BaaTable } from "@/app/jaringan/baa/components/BaaTable";
 
 export default async function BaaPage() {
   const [rawBaa, fabList, teknisiList, oltList, odpList, ontList, materialList] =

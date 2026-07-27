@@ -11,8 +11,35 @@ function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
 }
 
-function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
+// FIX: Base UI TIDAK punya prop `asChild` seperti Radix -- caranya pakai
+// prop `render` (elemen pengganti). Supaya semua kode pemanggil yang sudah
+// terlanjur ditulis dengan pola `<DialogTrigger asChild><Button/></DialogTrigger>`
+// (di FabDialog, PaketDialog, MaterialDialog, BaaDialog, dst) tetap jalan
+// tanpa perlu diubah satu-satu, di sini kita konversi otomatis: `asChild`
+// + children (elemen tunggal, misal <Button/>) -> dipindah jadi `render`.
+// Ini juga yang mencegah nested <button> (trigger bawaan Base UI + Button
+// di dalamnya numpuk jadi 2 <button>), karena `render` menggantikan elemen
+// bawaan Trigger, bukan membungkusnya.
+function DialogTrigger({
+  asChild,
+  children,
+  ...props
+}: DialogPrimitive.Trigger.Props & { asChild?: boolean }) {
+  if (asChild && React.isValidElement(children)) {
+    return (
+      <DialogPrimitive.Trigger
+        data-slot="dialog-trigger"
+        render={children}
+        {...props}
+      />
+    )
+  }
+
+  return (
+    <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props}>
+      {children}
+    </DialogPrimitive.Trigger>
+  )
 }
 
 function DialogPortal({ ...props }: DialogPrimitive.Portal.Props) {

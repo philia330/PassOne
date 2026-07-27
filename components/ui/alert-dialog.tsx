@@ -10,9 +10,29 @@ function AlertDialog({ ...props }: AlertDialogPrimitive.Root.Props) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
 }
 
-function AlertDialogTrigger({ ...props }: AlertDialogPrimitive.Trigger.Props) {
+// FIX: sama seperti DialogTrigger di dialog.tsx -- Base UI tidak punya
+// prop `asChild` seperti Radix, jadi asChild + children (elemen tunggal,
+// misal <Button/>) dikonversi otomatis jadi prop `render`. Ini mencegah
+// nested <button> (trigger bawaan Base UI + Button di dalamnya numpuk).
+function AlertDialogTrigger({
+  asChild,
+  children,
+  ...props
+}: AlertDialogPrimitive.Trigger.Props & { asChild?: boolean }) {
+  if (asChild && React.isValidElement(children)) {
+    return (
+      <AlertDialogPrimitive.Trigger
+        data-slot="alert-dialog-trigger"
+        render={children}
+        {...props}
+      />
+    )
+  }
+
   return (
-    <AlertDialogPrimitive.Trigger data-slot="alert-dialog-trigger" {...props} />
+    <AlertDialogPrimitive.Trigger data-slot="alert-dialog-trigger" {...props}>
+      {children}
+    </AlertDialogPrimitive.Trigger>
   )
 }
 
