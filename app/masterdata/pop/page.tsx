@@ -17,12 +17,15 @@ import { DeletePopDialog } from "./components/DeletePopDialog";
 import { PopSearch } from "./components/PopSearch";
 import { PopPagination } from "./components/PopPagination";
 import { PopMapDialog } from "./components/PopMapDialog";
+import { requirePageAccess } from "@/lib/auth/guards";
 
 export default async function PopPage({
   searchParams,
 }: {
   searchParams: Promise<{ search?: string; page?: string }>;
 }) {
+  const session = await requirePageAccess(["ADMIN"]);
+
   const params = await searchParams;
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);

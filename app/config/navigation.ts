@@ -12,6 +12,7 @@ import {
   ClipboardList,
   Cable,
   Users,
+  UserCog,
   Settings,
 } from "lucide-react";
 
@@ -145,8 +146,18 @@ export const navigation: NavigationGroup[] = [
         ],
       },
       {
+        title: "BAA Teknisi",
+        href: "jaringan/baa",           // sama dengan BAA — user pilih 1 BAA dulu, baru masuk ke tab/folder teknisi
+        icon: UserCog,
+        roles: [
+          Role.ADMIN,
+          Role.LEADER,
+          Role.TEKNISI,
+        ],
+      },
+      {
       title: "Detail Material BAA",
-      href: "/baa-detail",
+      href: "jaringan/baa-detail",
       icon: ClipboardList,
       roles: [Role.ADMIN, Role.LEADER, Role.TEKNISI, Role.LOGISTIK],
     },

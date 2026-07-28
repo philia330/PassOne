@@ -16,6 +16,7 @@ import { OntFormDialog } from "./components/OntFormDialog";
 import { DeleteOntDialog } from "./components/DeleteOntDialog";
 import { OntSearch } from "./components/OntSearch";
 import { OntPagination } from "./components/OntPagination";
+import { requirePageAccess } from "@/lib/auth/guards";
 
 const statusBadge: Record<string, string> = {
   TERSEDIA: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400",
@@ -28,6 +29,8 @@ export default async function OntPage({
 }: {
   searchParams: Promise<{ search?: string; page?: string }>;
 }) {
+  const session = await requirePageAccess(["ADMIN", "LOGISTIK"]);
+
   const params = await searchParams;
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);

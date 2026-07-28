@@ -3,8 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { MaterialDialog } from "@/app/masterdata/material/components/MaterialDialog";
 import { MaterialTable } from "@/app/masterdata/material/components/MaterialTable";
+import { requirePageAccess } from "@/lib/auth/guards";
 
 export default async function MaterialPage() {
+  const session = await requirePageAccess(["ADMIN", "LOGISTIK", "TEKNISI"]);
+
   const rawMaterial = await prisma.material.findMany({ orderBy: { createdAt: "desc" } });
 
   const material = rawMaterial.map((item) => ({

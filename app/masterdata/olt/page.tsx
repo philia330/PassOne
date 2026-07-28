@@ -16,6 +16,7 @@ import { OltSearch } from "./components/OltSearch";
 import { OltPagination } from "./components/OltPagination";
 import { OltMapDialog } from "./components/OltMapDialog";
 import { OltSecretCell } from "./components/OltSecretCell";
+import { requirePageAccess } from "@/lib/auth/guards";
 
 export default async function OltPage({
   searchParams,
@@ -25,6 +26,8 @@ export default async function OltPage({
     page?: string;
   }>;
 }) {
+  const session = await requirePageAccess(["ADMIN"]);
+
   const params = await searchParams;
 
   const search = params.search ?? "";

@@ -3,8 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { PaketDialog } from "@/app/masterdata/paket/components/PaketDialog";
 import { PaketTable } from "@/app/masterdata/paket/components/PaketTable";
+import { requirePageAccess } from "@/lib/auth/guards";
 
 export default async function PaketPage() {
+  const session = await requirePageAccess(["ADMIN", "LOGISTIK"]);
+
   const rawPaket = await prisma.paket.findMany({ orderBy: { createdAt: "desc" } });
 
   const paket = rawPaket.map((item) => ({

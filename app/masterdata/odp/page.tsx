@@ -17,6 +17,7 @@ import { DeleteOdpDialog } from "./components/DeleteOdpDialog";
 import { OdpMapDialog } from "./components/OdpMapDialog";
 import { OdpSearch } from "./components/OdpSearch";
 import { OdpPagination } from "./components/OdpPagination";
+import { requirePageAccess } from "@/lib/auth/guards";
 
 export default async function OdpPage({
   searchParams,
@@ -26,6 +27,8 @@ export default async function OdpPage({
     page?: string;
   }>;
 }) {
+  const session = await requirePageAccess(["ADMIN", "LEADER"]);
+
   const params = await searchParams;
 
   const search = params.search ?? "";

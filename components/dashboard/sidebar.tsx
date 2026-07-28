@@ -88,7 +88,7 @@ export default function Sidebar({
 
                   return (
                     <Link
-                      key={item.href}
+                      key={item.title}
                       href={item.href}
                       className={`flex items-center justify-between gap-3 rounded-xl px-4 py-3 transition-all duration-200 ${
                         active
