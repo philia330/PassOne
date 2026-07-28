@@ -14,10 +14,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const teknisi = await prisma.baaTeknisi.findMany({
+    // ✅ Perbaiki: baaTeknisi → baateknisi
+    const teknisi = await prisma.baateknisi.findMany({
       where: { id_baa: Number(baaId) },
       include: {
-        user: {
+        users: {
+          // ✅ users (bukan user)
           select: {
             id_user: true,
             nama: true,
@@ -51,8 +53,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Cek apakah sudah ada
-    const existing = await prisma.baaTeknisi.findUnique({
+    // ✅ Perbaiki: baaTeknisi → baateknisi
+    const existing = await prisma.baateknisi.findUnique({
       where: {
         id_baa_id_user: {
           id_baa: Number(id_baa),
@@ -68,13 +70,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await prisma.baaTeknisi.create({
+    // ✅ Perbaiki: baaTeknisi → baateknisi
+    const result = await prisma.baateknisi.create({
       data: {
         id_baa: Number(id_baa),
         id_user: Number(id_user),
       },
       include: {
-        user: {
+        users: {
+          // ✅ users (bukan user)
           select: {
             id_user: true,
             nama: true,
@@ -107,7 +111,8 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    await prisma.baaTeknisi.delete({
+    // ✅ Perbaiki: baaTeknisi → baateknisi
+    await prisma.baateknisi.delete({
       where: { id_baa_teknisi: Number(id) },
     });
 

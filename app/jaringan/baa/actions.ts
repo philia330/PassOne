@@ -161,8 +161,8 @@ export async function createTeknisi(formData: FormData) {
 // 2. TAMBAH TEKNISI TAMBAHAN KE BAA
 // ================================================================
 export async function addTeknisiTambahan(baaId: number, userId: number) {
-  // Cek apakah sudah ada
-  const existing = await prisma.baaTeknisi.findUnique({
+  // Cek apakah sudah ada - pakai baateknisi (huruf kecil semua)
+  const existing = await prisma.baateknisi.findUnique({
     where: {
       id_baa_id_user: {
         id_baa: baaId,
@@ -185,13 +185,14 @@ export async function addTeknisiTambahan(baaId: number, userId: number) {
     throw new Error("Teknisi ini adalah teknisi utama");
   }
 
-  const result = await prisma.baaTeknisi.create({
+  const result = await prisma.baateknisi.create({
     data: {
       id_baa: baaId,
       id_user: userId,
     },
     include: {
-      user: {
+      users: {
+        // relasi ke User pakai users
         select: {
           id_user: true,
           nama: true,
@@ -210,12 +211,12 @@ export async function addTeknisiTambahan(baaId: number, userId: number) {
 // 3. HAPUS TEKNISI TAMBAHAN DARI BAA
 // ================================================================
 export async function removeTeknisiTambahan(id_baa_teknisi: number) {
-  const baaTeknisi = await prisma.baaTeknisi.findUnique({
+  const baaTeknisi = await prisma.baateknisi.findUnique({
     where: { id_baa_teknisi },
     select: { id_baa: true },
   });
 
-  await prisma.baaTeknisi.delete({
+  await prisma.baateknisi.delete({
     where: { id_baa_teknisi },
   });
 
@@ -267,7 +268,8 @@ export async function createBaa(formData: FormData) {
       ping_ms: toOptionalNumber(formData.get("ping_ms")),
       catatan: toOptionalString(formData.get("catatan")),
       foto_instalasi,
-      baaDetails: {
+      baadetail: {
+        // pakai baadetail (huruf kecil semua)
         create: details.map((d) => ({
           id_material: d.id_material,
           jumlah: d.jumlah,
@@ -278,7 +280,7 @@ export async function createBaa(formData: FormData) {
   });
 
   if (teknisiTambahanIds.length > 0) {
-    await prisma.baaTeknisi.createMany({
+    await prisma.baateknisi.createMany({
       data: teknisiTambahanIds.map((id_user) => ({
         id_baa: newBaa.id_baa,
         id_user,
@@ -313,12 +315,13 @@ export async function updateBaa(id: number, formData: FormData) {
   const existingFoto = (formData.get("foto_instalasi_existing") as string | null) || null;
   const foto_instalasi = await saveFotoInstalasi(formData, existingFoto);
 
-  await prisma.baaTeknisi.deleteMany({
+  // Hapus teknisi tambahan lama
+  await prisma.baateknisi.deleteMany({
     where: { id_baa: id },
   });
 
   await prisma.$transaction([
-    prisma.baaDetail.deleteMany({ where: { id_baa: id } }),
+    prisma.baadetail.deleteMany({ where: { id_baa: id } }),
     prisma.baa.update({
       where: { id_baa: id },
       data: {
@@ -338,7 +341,7 @@ export async function updateBaa(id: number, formData: FormData) {
         ping_ms: toOptionalNumber(formData.get("ping_ms")),
         catatan: toOptionalString(formData.get("catatan")),
         foto_instalasi,
-        baaDetails: {
+        baadetail: {
           create: details.map((d) => ({
             id_material: d.id_material,
             jumlah: d.jumlah,
@@ -350,7 +353,7 @@ export async function updateBaa(id: number, formData: FormData) {
   ]);
 
   if (teknisiTambahanIds.length > 0) {
-    await prisma.baaTeknisi.createMany({
+    await prisma.baateknisi.createMany({
       data: teknisiTambahanIds.map((id_user) => ({
         id_baa: id,
         id_user,
@@ -365,14 +368,17 @@ export async function updateBaa(id: number, formData: FormData) {
 // 6. DELETE BAA
 // ================================================================
 export async function deleteBaa(id: number) {
-  await prisma.baaTeknisi.deleteMany({
+  // Hapus teknisi tambahan
+  await prisma.baateknisi.deleteMany({
     where: { id_baa: id },
   });
 
-  await prisma.baaDetail.deleteMany({
+  // Hapus detail material
+  await prisma.baadetail.deleteMany({
     where: { id_baa: id },
   });
 
+  // Hapus BAA
   await prisma.baa.delete({
     where: { id_baa: id },
   });
@@ -385,10 +391,11 @@ export async function deleteBaa(id: number) {
 // 7. GET TEKNISI TAMBAHAN
 // ================================================================
 export async function getTeknisiTambahan(baaId: number) {
-  return await prisma.baaTeknisi.findMany({
+  return await prisma.baateknisi.findMany({
     where: { id_baa: baaId },
     include: {
-      user: {
+      users: {
+        // relasi ke User pakai users
         select: {
           id_user: true,
           nama: true,

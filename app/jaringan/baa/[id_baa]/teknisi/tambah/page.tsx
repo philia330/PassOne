@@ -17,6 +17,15 @@ interface BaaTeknisiTambahPageProps {
   };
 }
 
+// Definisikan tipe untuk teknisi
+interface TeknisiData {
+  id_user: number;
+  nama: string;
+  username: string;
+  email: string | null;
+  foto: string | null;
+}
+
 export default async function BaaTeknisiTambahPage({
   params,
   searchParams,
@@ -36,7 +45,8 @@ export default async function BaaTeknisiTambahPage({
           kode_fab: true,
         },
       },
-      user: {
+      users: {
+        // ✅ user → users
         select: {
           id_user: true,
           nama: true,
@@ -55,10 +65,10 @@ export default async function BaaTeknisiTambahPage({
   }
 
   const existingIds = baa.teknisiTambahan.map((t) => t.id_user);
-  existingIds.push(baa.id_user);
+  existingIds.push(baa.users.id_user);
 
   const searchQuery = searchParams.q || "";
-  const teknisiTersedia = await prisma.user.findMany({
+  const teknisiTersedia: TeknisiData[] = await prisma.user.findMany({
     where: {
       role: "TEKNISI",
       status: true,
@@ -125,7 +135,7 @@ export default async function BaaTeknisiTambahPage({
             </div>
             <Badge className="rounded-full flex items-center gap-1">
               <UserCog className="h-3 w-3" />
-              Teknisi Utama: {baa.user?.nama}
+              Teknisi Utama: {baa.users?.nama}
             </Badge>
           </div>
         </Card>

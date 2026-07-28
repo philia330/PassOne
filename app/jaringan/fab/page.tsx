@@ -8,7 +8,11 @@ export default async function FabPage() {
   const [rawFab, areaList, paketList, salesList] = await Promise.all([
     prisma.fab.findMany({
       orderBy: { createdAt: "desc" },
-      include: { area: true, paket: true, user: true },
+      include: {
+        area: true,
+        paket: true,
+        users: true, // ✅ user → users
+      },
     }),
     prisma.area.findMany({
       orderBy: { nama_area: "asc" },
@@ -40,6 +44,7 @@ export default async function FabPage() {
       <div className="pointer-events-none absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-fuchsia-200/30 blur-3xl" />
 
       <div className="relative p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
+        {/* Header */}
         <Card className="flex-row relative overflow-hidden rounded-3xl shadow-xl border bg-white p-4 sm:p-6 flex items-center justify-between gap-4 flex-wrap">
           <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500" />
 

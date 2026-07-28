@@ -12,7 +12,8 @@ export interface BaaTeknisiData {
   id_baa: number;
   id_user: number;
   createdAt: Date;
-  user?: {
+  users?: {
+    // ← user → users
     id_user: number;
     nama: string;
     username?: string;
@@ -71,7 +72,8 @@ export interface BaaData {
     nama_pelanggan: string;
   };
   
-  user?: {
+  users?: {
+    // ← user → users
     id_user: number;
     nama: string;
     username?: string;
@@ -93,12 +95,14 @@ export interface BaaData {
   };
   
   // ================================================================
-  // BARU: TEKNISI TAMBAHAN (bisa lebih dari 1)
+  // TEKNISI TAMBAHAN
   // ================================================================
   teknisiTambahan?: BaaTeknisiData[];
   
-  // Material
-  baaDetails: BaaDetailData[];
+  // ================================================================
+  // MATERIAL - PERUBAHAN: baaDetails → baadetail
+  // ================================================================
+  baadetail: BaaDetailData[]; // ← baaDetails → baadetail
 }
 
 // ================================================================
@@ -148,7 +152,7 @@ export interface MaterialRow {
 }
 
 // ================================================================
-// BARU: TEKNISI TAMBAHAN (Client State)
+// TEKNISI TAMBAHAN (Client State)
 // ================================================================
 export interface TeknisiTambahanRow {
   rowId: string;           // key lokal untuk React
