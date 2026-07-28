@@ -12,8 +12,9 @@ interface PaketFormProps {
 
 export const PaketForm = ({ defaultValues, kodeOtomatis }: PaketFormProps) => {
   return (
-    <div className="grid grid-cols-2 gap-5">
-      <div className="col-span-2 space-y-2">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      {/* Kode Paket - full width */}
+      <div className="col-span-1 space-y-2 sm:col-span-2">
         <Label
           htmlFor="kode_paket_display"
           className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
@@ -29,8 +30,6 @@ export const PaketForm = ({ defaultValues, kodeOtomatis }: PaketFormProps) => {
           />
           <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
         </div>
-        {/* Nilai sebenarnya yang dikirim ke server action — input display di atas
-            sengaja tanpa `name` supaya user tidak bisa mengetik/override manual */}
         <input
           type="hidden"
           name="kode_paket"
@@ -39,7 +38,8 @@ export const PaketForm = ({ defaultValues, kodeOtomatis }: PaketFormProps) => {
         <p className="text-xs text-slate-400">Dibuat otomatis, tidak bisa diubah manual</p>
       </div>
 
-      <div className="col-span-2 space-y-2">
+      {/* Nama Paket - full width */}
+      <div className="col-span-1 space-y-2 sm:col-span-2">
         <Label
           htmlFor="nama_paket"
           className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
@@ -56,7 +56,8 @@ export const PaketForm = ({ defaultValues, kodeOtomatis }: PaketFormProps) => {
         />
       </div>
 
-      <div className="space-y-2">
+      {/* Kecepatan */}
+      <div className="col-span-1 space-y-2">
         <Label
           htmlFor="kecepatan"
           className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
@@ -73,7 +74,8 @@ export const PaketForm = ({ defaultValues, kodeOtomatis }: PaketFormProps) => {
         />
       </div>
 
-      <div className="space-y-2">
+      {/* Harga */}
+      <div className="col-span-1 space-y-2">
         <Label
           htmlFor="harga"
           className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
@@ -96,7 +98,8 @@ export const PaketForm = ({ defaultValues, kodeOtomatis }: PaketFormProps) => {
         </div>
       </div>
 
-      <div className="col-span-2 space-y-2">
+      {/* Keterangan - full width */}
+      <div className="col-span-1 space-y-2 sm:col-span-2">
         <Label
           htmlFor="keterangan"
           className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"

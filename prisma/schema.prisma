@@ -13,6 +13,7 @@ model User {
   nama      String
   username  String   @unique
   password  String
+  jkl       JenisKelamin
   foto      String?
   role      Role
   no_hp     String?
@@ -22,6 +23,7 @@ model User {
   updatedAt DateTime @updatedAt
   baa       baa[]
   fab       fab[]
+  baaTeknisi baateknisi[]
 
   @@map("users")
 }
@@ -64,6 +66,7 @@ model baa {
   ont               ont         @relation(fields: [id_ont], references: [id_ont], map: "Baa_id_ont_fkey")
   users             User        @relation(fields: [id_user], references: [id_user], map: "Baa_id_user_fkey")
   baadetail         baadetail[]
+  teknisiTambahan   baateknisi[]
 
   @@index([id_fab], map: "Baa_id_fab_fkey")
   @@index([id_odp], map: "Baa_id_odp_fkey")
@@ -85,6 +88,27 @@ model baadetail {
 
   @@index([id_baa], map: "BaaDetail_id_baa_fkey")
   @@index([id_material], map: "BaaDetail_id_material_fkey")
+}
+
+// ======================================================
+// MODEL BAA TEKNISI (BARU)
+// Menyimpan daftar teknisi TAMBAHAN yang ikut mengerjakan
+// satu BAA -- di luar teknisi utama (baa.id_user).
+// Pola tabel ini sama persis seperti baadetail (satu BAA
+// bisa punya banyak baris teknisi tambahan).
+// ======================================================
+model baateknisi {
+  id_baa_teknisi Int      @id @default(autoincrement())
+  id_baa         Int
+  id_user        Int
+  createdAt      DateTime @default(now())
+  baa            baa      @relation(fields: [id_baa], references: [id_baa], map: "BaaTeknisi_id_baa_fkey")
+  users          User     @relation(fields: [id_user], references: [id_user], map: "BaaTeknisi_id_user_fkey")
+
+  // Satu teknisi tidak boleh dobel-input di BAA yang sama
+  @@unique([id_baa, id_user], map: "BaaTeknisi_id_baa_id_user_key")
+  @@index([id_user], map: "BaaTeknisi_id_user_fkey")
+  @@map("baa_teknisi")
 }
 
 model fab {
@@ -128,21 +152,21 @@ model material {
 }
 
 model odp {
-  id_odp    Int       @id @default(autoincrement())
-  kode_odp  String    @unique(map: "Odp_kode_odp_key")
-  nama_odp  String
-  alamat    String
-  latitude  Decimal
-  longitude Decimal
-  jumlah_port    Int?
-  stok_port      Int?      @default(0)
-  id_olt    Int
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  baa       baa[]
-  olt       olt       @relation(fields: [id_olt], references: [id_olt], map: "Odp_id_olt_fkey")
-  ont       ont[]
-  portpon   portPon[]
+  id_odp      Int       @id @default(autoincrement())
+  kode_odp    String    @unique(map: "Odp_kode_odp_key")
+  nama_odp    String
+  alamat      String
+  latitude    Decimal
+  longitude   Decimal
+  jumlah_port Int?
+  stok_port   Int?      @default(0)
+  id_olt      Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  baa         baa[]
+  olt         olt       @relation(fields: [id_olt], references: [id_olt], map: "Odp_id_olt_fkey")
+  ont         ont[]
+  portpon     portPon[]
 
   @@index([id_olt], map: "Odp_id_olt_fkey")
 }
@@ -240,6 +264,11 @@ enum Role {
   LOGISTIK
 }
 
+enum JenisKelamin {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
 enum baa_status {
   PENDING
   PROSES
@@ -323,7 +352,6 @@ model ActivityLog {
 // MODEL SETTINGS
 // Pengaturan umum aplikasi (nama app, logo login, dll)
 // ======================================================
-
 model Settings {
   id_setting Int      @id @default(autoincrement())
   key        String   @unique // contoh: "app_name", "login_logo", "login_title", "login_subtitle"
