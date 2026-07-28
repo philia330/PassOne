@@ -34,7 +34,7 @@ model area {
   nama_area  String
   keterangan String?
   createdAt  DateTime @default(now())
-  updatedAt  DateTime
+  updatedAt  DateTime @updatedAt
   fab        fab[]
   pop        pop[]
 }
@@ -51,7 +51,7 @@ model baa {
   id_olt            Int
   id_ont            Int
   createdAt         DateTime    @default(now())
-  updatedAt         DateTime
+  updatedAt         DateTime @updatedAt
   id_odp            Int
   ping_ms           Decimal?
   port_odp          Int?
@@ -82,7 +82,7 @@ model baadetail {
   jumlah        Int
   keterangan    String?
   createdAt     DateTime @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime @updatedAt
   baa           baa      @relation(fields: [id_baa], references: [id_baa], map: "BaaDetail_id_baa_fkey")
   material      material @relation(fields: [id_material], references: [id_material], map: "BaaDetail_id_material_fkey")
 
@@ -125,7 +125,7 @@ model fab {
   id_paket       Int
   id_user        Int
   createdAt      DateTime   @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime @updatedAt
   baa            baa[]
   area           area       @relation(fields: [id_area], references: [id_area], map: "Fab_id_area_fkey")
   paket          paket      @relation(fields: [id_paket], references: [id_paket], map: "Fab_id_paket_fkey")
@@ -147,7 +147,7 @@ model material {
   kondisi       material_kondisi @default(BAIK)
   keterangan    String?
   createdAt     DateTime         @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime @updatedAt
   baadetail     baadetail[]
 }
 
@@ -201,7 +201,7 @@ model ont {
   id_pop        Int
   id_odp        Int
   createdAt     DateTime   @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime @updatedAt
   baa           baa[]
   odp           odp        @relation(fields: [id_odp], references: [id_odp], map: "Ont_id_odp_fkey")
   pop           pop        @relation(fields: [id_pop], references: [id_pop], map: "Ont_id_pop_fkey")
@@ -218,7 +218,7 @@ model paket {
   harga      Decimal  @db.Decimal(12, 2)
   keterangan String?
   createdAt  DateTime @default(now())
-  updatedAt  DateTime
+  updatedAt  DateTime @updatedAt
   fab        fab[]
 }
 
@@ -231,7 +231,7 @@ model pop {
   longitude Decimal
   id_area   Int
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
   olt       olt[]
   ont       ont[]
   area      area     @relation(fields: [id_area], references: [id_area], map: "Pop_id_area_fkey")
@@ -247,7 +247,7 @@ model portPon {
   id_olt     Int
   id_odp     Int?
   createdAt  DateTime       @default(now())
-  updatedAt  DateTime
+  updatedAt  DateTime @updatedAt
   odp        odp?           @relation(fields: [id_odp], references: [id_odp], map: "PortPon_id_odp_fkey")
   olt        olt            @relation(fields: [id_olt], references: [id_olt], map: "PortPon_id_olt_fkey")
 
