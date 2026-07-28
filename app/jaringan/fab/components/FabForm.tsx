@@ -190,10 +190,11 @@ export const FabForm = ({
   const displayLng = hasValidCoords ? lon : DEFAULT_MAP_LNG;
 
   return (
-    // FIX: p-1.5 -m-1.5 -> ngasih ruang buat ring fokus ungu di 4 sisi
-    // supaya tidak kepotong batas scroll container, tanpa mengubah
-    // posisi/lebar visual form (margin negatif menetralkan paddingnya).
-    <div className="grid grid-cols-2 gap-5 max-h-[65vh] overflow-y-auto p-1.5 -m-1.5">
+    // FIX: scroll HANYA di DialogContent (components/ui/dialog.tsx), tidak
+    // lagi di sini -- sebelumnya dua-duanya punya overflow-y-auto sendiri,
+    // jadi numpuk 2 scrollbar + horizontal scroll aneh. p-1.5 -m-1.5 tetap
+    // dipakai supaya ring fokus ungu tidak kepotong.
+    <div className="grid grid-cols-2 gap-5 p-1.5 -m-1.5">
       <div className="col-span-2 space-y-2">
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <Tag size={13} className="text-purple-500" /> Kode FAB
@@ -401,7 +402,11 @@ export const FabForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <Building2 size={13} className="text-purple-500" /> Area
         </Label>
-        <Select value={idArea} onValueChange={(v) => setIdArea(v ?? "")}>
+        <Select
+          value={idArea}
+          onValueChange={(v) => setIdArea(v ?? "")}
+          items={areaOptions.map((a) => ({ value: String(a.id_area), label: a.nama_area }))}
+        >
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
             <SelectValue placeholder="Pilih area" />
           </SelectTrigger>
@@ -420,7 +425,11 @@ export const FabForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <Package size={13} className="text-purple-500" /> Paket Internet
         </Label>
-        <Select value={idPaket} onValueChange={(v) => setIdPaket(v ?? "")}>
+        <Select
+          value={idPaket}
+          onValueChange={(v) => setIdPaket(v ?? "")}
+          items={paketOptions.map((p) => ({ value: String(p.id_paket), label: p.nama_paket }))}
+        >
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
             <SelectValue placeholder="Pilih paket" />
           </SelectTrigger>
@@ -439,7 +448,11 @@ export const FabForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <UserCog size={13} className="text-purple-500" /> Sales
         </Label>
-        <Select value={idUser} onValueChange={(v) => setIdUser(v ?? "")}>
+        <Select
+          value={idUser}
+          onValueChange={(v) => setIdUser(v ?? "")}
+          items={salesOptions.map((u) => ({ value: String(u.id_user), label: u.nama }))}
+        >
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
             <SelectValue placeholder="Pilih sales" />
           </SelectTrigger>
@@ -458,7 +471,14 @@ export const FabForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <Activity size={13} className="text-purple-500" /> Status
         </Label>
-        <Select value={status} onValueChange={(v) => setStatus(v as StatusFab)}>
+        <Select
+          value={status}
+          onValueChange={(v) => setStatus((v ?? "PENDING") as StatusFab)}
+          items={(Object.keys(STATUS_LABEL) as StatusFab[]).map((s) => ({
+            value: s,
+            label: STATUS_LABEL[s],
+          }))}
+        >
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
             <SelectValue />
           </SelectTrigger>

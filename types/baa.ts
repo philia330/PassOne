@@ -1,13 +1,43 @@
+// ================================================================
+// TIPE DATA BAA
+// ================================================================
+
 export type StatusBaa = "PENDING" | "PROSES" | "SELESAI";
 
+// ================================================================
+// BAA TEKNISI (BARU - untuk teknisi tambahan)
+// ================================================================
+export interface BaaTeknisiData {
+  id_baa_teknisi: number;
+  id_baa: number;
+  id_user: number;
+  createdAt: Date;
+  user?: {
+    id_user: number;
+    nama: string;
+    username?: string;
+    email?: string;
+  };
+}
+
+// ================================================================
+// BAA DETAIL (Material)
+// ================================================================
 export interface BaaDetailData {
   id_baa_detail: number;
   id_material: number;
   jumlah: number;
   keterangan: string | null;
-  material?: { id_material: number; nama_material: string; satuan: string };
+  material?: {
+    id_material: number;
+    nama_material: string;
+    satuan: string;
+  };
 }
 
+// ================================================================
+// BAA DATA (Lengkap dengan semua relasi)
+// ================================================================
 export interface BaaData {
   id_baa: number;
   kode_baa: string;
@@ -20,24 +50,60 @@ export interface BaaData {
   status: StatusBaa;
   catatan: string | null;
   foto_instalasi: string | null;
+  
+  // Foreign Keys
   id_fab: number;
-  id_user: number;
+  id_user: number;           // Teknisi Utama
   id_olt: number;
   id_odp: number;
   id_ont: number;
+  
   port_olt: number | null;
   port_odp: number | null;
+  
   createdAt: Date;
   updatedAt: Date;
-  fab?: { id_fab: number; kode_fab: string; nama_pelanggan: string };
-  user?: { id_user: number; nama: string };
-  olt?: { id_olt: number; nama_olt: string };
-  odp?: { id_odp: number; nama_odp: string };
-  ont?: { id_ont: number; serial_number: string };
+  
+  // Relasi
+  fab?: {
+    id_fab: number;
+    kode_fab: string;
+    nama_pelanggan: string;
+  };
+  
+  user?: {
+    id_user: number;
+    nama: string;
+    username?: string;
+  };
+  
+  olt?: {
+    id_olt: number;
+    nama_olt: string;
+  };
+  
+  odp?: {
+    id_odp: number;
+    nama_odp: string;
+  };
+  
+  ont?: {
+    id_ont: number;
+    serial_number: string;
+  };
+  
+  // ================================================================
+  // BARU: TEKNISI TAMBAHAN (bisa lebih dari 1)
+  // ================================================================
+  teknisiTambahan?: BaaTeknisiData[];
+  
+  // Material
   baaDetails: BaaDetailData[];
 }
 
-// Opsi dropdown — semua hasil query READ-ONLY, tidak membuat/mengubah data master.
+// ================================================================
+// OPSI DROPDOWN
+// ================================================================
 export interface FabOption {
   id_fab: number;
   kode_fab: string;
@@ -47,6 +113,7 @@ export interface FabOption {
 export interface TeknisiOption {
   id_user: number;
   nama: string;
+  username?: string;
 }
 
 export interface OltOption {
@@ -70,10 +137,31 @@ export interface MaterialOption {
   satuan: string;
 }
 
-// Baris material dinamis di form (state client, sebelum dikirim sebagai JSON)
+// ================================================================
+// BARIS MATERIAL DINAMIS (Client State)
+// ================================================================
 export interface MaterialRow {
-  rowId: string; // key lokal untuk React, bukan id_baa_detail
+  rowId: string;           // key lokal untuk React
   id_material: string;
   jumlah: string;
   keterangan: string;
+}
+
+// ================================================================
+// BARU: TEKNISI TAMBAHAN (Client State)
+// ================================================================
+export interface TeknisiTambahanRow {
+  rowId: string;           // key lokal untuk React
+  id_user: string;
+  nama: string;
+}
+
+// ================================================================
+// RESPONSE API
+// ================================================================
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
 }

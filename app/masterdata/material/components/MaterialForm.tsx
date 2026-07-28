@@ -19,18 +19,12 @@ interface MaterialFormProps {
 }
 
 export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps) => {
-  // Select dari Radix butuh state terkontrol + hidden input supaya
-  // nilainya pasti ikut terkirim lewat FormData (sama seperti fix kode_paket).
   const [kondisi, setKondisi] = useState<"BAIK" | "RUSAK">(defaultValues?.kondisi ?? "BAIK");
 
   return (
-    // FIX: max-h-[65vh] overflow-y-auto -> form ini punya scroll sendiri,
-    // konsisten dengan FabForm/BaaForm, jadi tombol Simpan tetap bisa
-    // digapai walau isi form panjang, tidak cuma mengandalkan scroll dari
-    // DialogContent. p-1.5 -m-1.5 tetap dipakai supaya ring fokus ungu
-    // tidak kepotong di tepi area scroll.
-    <div className="grid grid-cols-2 gap-5 max-h-[65vh] overflow-y-auto p-1.5 -m-1.5">
-      <div className="col-span-2 space-y-2">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      {/* Kode Material - full width */}
+      <div className="col-span-1 space-y-2 sm:col-span-2">
         <Label
           htmlFor="kode_material_display"
           className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
@@ -49,7 +43,8 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
         <p className="text-xs text-slate-400">Dibuat otomatis, tidak bisa diubah manual</p>
       </div>
 
-      <div className="col-span-2 space-y-2">
+      {/* Nama Material - full width */}
+      <div className="col-span-1 space-y-2 sm:col-span-2">
         <Label
           htmlFor="nama_material"
           className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
@@ -66,7 +61,8 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
         />
       </div>
 
-      <div className="space-y-2">
+      {/* Stok */}
+      <div className="col-span-1 space-y-2">
         <Label
           htmlFor="stok"
           className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
@@ -85,7 +81,8 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
         />
       </div>
 
-      <div className="space-y-2">
+      {/* Minimal Stok */}
+      <div className="col-span-1 space-y-2">
         <Label
           htmlFor="minimal_stok"
           className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
@@ -104,7 +101,8 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
         />
       </div>
 
-      <div className="space-y-2">
+      {/* Satuan */}
+      <div className="col-span-1 space-y-2">
         <Label
           htmlFor="satuan"
           className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
@@ -121,7 +119,8 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
         />
       </div>
 
-      <div className="space-y-2">
+      {/* Harga */}
+      <div className="col-span-1 space-y-2">
         <Label
           htmlFor="harga"
           className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
@@ -144,9 +143,10 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
         </div>
       </div>
 
-      <div className="col-span-2 space-y-2">
-        <Label className="text-xs font-bold uppercase tracking-wide text-slate-500">
-          Kondisi
+      {/* Kondisi - full width di mobile, 1 kolom di desktop */}
+      <div className="col-span-1 space-y-2 sm:col-span-2">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+          <AlertTriangle size={13} className="text-purple-500" /> Kondisi
         </Label>
         <Select value={kondisi} onValueChange={(v) => setKondisi((v ?? "BAIK") as "BAIK" | "RUSAK")}>
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
@@ -160,7 +160,8 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
         <input type="hidden" name="kondisi" value={kondisi} />
       </div>
 
-      <div className="col-span-2 space-y-2">
+      {/* Keterangan - full width */}
+      <div className="col-span-1 space-y-2 sm:col-span-2">
         <Label
           htmlFor="keterangan"
           className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"

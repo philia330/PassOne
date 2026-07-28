@@ -82,6 +82,13 @@ model User {
 
   baas Baa[]
 
+  // ================================================================
+  // BARIS BARU (wajib ada, syarat Prisma untuk relasi 2 arah) --
+  // dampaknya CUMA menambah kemampuan "lihat daftar BaaTeknisi milik
+  // user ini", tidak mengubah/menghapus field User yang sudah ada.
+  // ================================================================
+  baaTeknisi BaaTeknisi[]
+
   @@map("users")
 }
 
@@ -452,7 +459,10 @@ model Baa {
   // FAB yang dikerjakan
   id_fab Int
 
-  // Teknisi
+  // Teknisi (TIDAK DIUBAH -- tetap dipertahankan sebagai
+  // "teknisi utama/penanggung jawab", nggak ada field/behavior lama
+  // yang hilang. Teknisi TAMBAHAN sekarang lewat relasi baru
+  // `teknisiTambahan` di bawah.)
   id_user Int
 
   // OLT
@@ -487,7 +497,7 @@ model Baa {
   // FAB yang dikerjakan
   fab Fab @relation(fields: [id_fab], references: [id_fab])
 
-  // Teknisi yang mengerjakan instalasi
+  // Teknisi utama (TIDAK DIUBAH, relasi lama tetap ada)
   user User @relation(fields: [id_user], references: [id_user])
 
   // Perangkat jaringan
@@ -503,6 +513,14 @@ model Baa {
   // =====================================================
 
   baaDetails BaaDetail[]
+
+  // =====================================================
+  // BARIS BARU: TEKNISI TAMBAHAN (multi-teknisi)
+  // Satu BAA bisa punya banyak teknisi tambahan di luar
+  // teknisi utama (id_user) di atas.
+  // =====================================================
+
+  teknisiTambahan BaaTeknisi[]
 }
 
 // ======================================================
@@ -549,6 +567,45 @@ model BaaDetail {
   baa Baa @relation(fields: [id_baa], references: [id_baa])
 
   material Material @relation(fields: [id_material], references: [id_material])
+}
+
+// ======================================================
+// MODEL BAA TEKNISI (BARU)
+// Menyimpan daftar teknisi TAMBAHAN yang ikut mengerjakan
+// satu BAA -- di luar teknisi utama (Baa.id_user).
+// Pola tabel ini sama persis seperti BaaDetail (satu BAA
+// bisa punya banyak baris teknisi tambahan).
+// ======================================================
+
+model BaaTeknisi {
+  // Primary Key
+  id_baa_teknisi Int @id @default(autoincrement())
+
+  // ==========================
+  // FOREIGN KEY
+  // ==========================
+
+  // BAA
+  id_baa Int
+
+  // Teknisi tambahan
+  id_user Int
+
+  // ==========================
+  // WAKTU
+  // ==========================
+
+  createdAt DateTime @default(now())
+
+  // ==========================
+  // RELASI
+  // ==========================
+
+  baa  Baa  @relation(fields: [id_baa], references: [id_baa])
+  user User @relation(fields: [id_user], references: [id_user])
+
+  // Satu teknisi tidak boleh dobel-input di BAA yang sama
+  @@unique([id_baa, id_user])
 }
 
 // ======================================================

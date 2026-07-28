@@ -4,17 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import bcrypt from "bcryptjs";
 
 /**
  * ======================================
  * HELPER: Simpan foto instalasi
  * ======================================
- * File dari <input type="file" name="foto_instalasi"> ditulis ke
- * public/uploads/baa/, lalu path publiknya (/uploads/baa/xxx.jpg)
- * yang disimpan ke kolom foto_instalasi (String) di database.
- *
- * Kalau user tidak pilih file baru (misal pas edit), foto lama
- * (dikirim lewat hidden input foto_instalasi_existing) tetap dipakai.
  */
 async function saveFotoInstalasi(
   formData: FormData,
@@ -29,7 +24,6 @@ async function saveFotoInstalasi(
     const uploadDir = path.join(process.cwd(), "public", "uploads", "baa");
     await mkdir(uploadDir, { recursive: true });
 
-    // Nama file dibuat unik pakai timestamp, ekstensi diambil dari file asli
     const ext = file.name.split(".").pop() || "jpg";
     const filename = `baa-${Date.now()}.${ext}`;
     await writeFile(path.join(uploadDir, filename), buffer);
@@ -37,7 +31,6 @@ async function saveFotoInstalasi(
     return `/uploads/baa/${filename}`;
   }
 
-  // Tidak ada file baru diupload -> pertahankan foto lama (bisa null kalau belum pernah ada)
   return existingPath;
 }
 
@@ -62,20 +55,17 @@ async function renumberKodeBaa() {
   );
 }
 
-// Ambil angka opsional dari FormData -> number | null (kalau kosong)
 function toOptionalNumber(value: FormDataEntryValue | null): number | null {
   if (value === null || value === "") return null;
   const num = Number(value);
   return Number.isNaN(num) ? null : num;
 }
 
-// Ambil string opsional dari FormData -> string | null (kalau kosong)
 function toOptionalString(value: FormDataEntryValue | null): string | null {
   if (value === null || value === "") return null;
   return value as string;
 }
 
-// Parse daftar material (baa_details) yang dikirim sebagai JSON dari client
 interface ParsedDetail {
   id_material: number;
   jumlah: number;
@@ -92,7 +82,7 @@ function parseBaaDetails(raw: string | null): ParsedDetail[] {
     }[];
 
     return arr
-      .filter((d) => d.id_material && d.jumlah) // buang baris kosong
+      .filter((d) => d.id_material && d.jumlah)
       .map((d) => ({
         id_material: Number(d.id_material),
         jumlah: Number(d.jumlah),
@@ -103,13 +93,141 @@ function parseBaaDetails(raw: string | null): ParsedDetail[] {
   }
 }
 
-/**
- * ======================================
- * CREATE BAA
- * ======================================
- * Material (BaaDetail) dibuat sekaligus (nested create) dalam satu operasi
- * atomik bareng BAA-nya — Prisma otomatis membungkusnya dalam transaksi.
- */
+// ================================================================
+// 1. CREATE TEKNISI BARU (dari form BAA)
+// ================================================================
+export async function createTeknisi(formData: FormData) {
+  const nama = formData.get("nama_teknisi") as string;
+  const username = formData.get("username_teknisi") as string;
+  const email = formData.get("email_teknisi") as string;
+
+  if (!nama || !username) {
+    throw new Error("Nama dan Username wajib diisi");
+  }
+
+  const existing = await prisma.user.findUnique({
+    where: { username },
+  });
+
+  if (existing) {
+    throw new Error(`Username "${username}" sudah terdaftar`);
+  }
+
+  const lastUser = await prisma.user.findFirst({
+    orderBy: { id_user: "desc" },
+    select: { kode_user: true },
+  });
+
+  let nextNumber = 1;
+  if (lastUser?.kode_user) {
+    const match = lastUser.kode_user.match(/\d+$/);
+    if (match) {
+      nextNumber = parseInt(match[0]) + 1;
+    }
+  }
+  const kodeUser = `USR${String(nextNumber).padStart(3, "0")}`;
+
+  const hashedPassword = await bcrypt.hash(`${username}123`, 10);
+
+  const newUser = await prisma.user.create({
+    data: {
+      kode_user: kodeUser,
+      nama,
+      username,
+      email: email || `${username}@passnet.id`,
+      password: hashedPassword,
+      jkl: "LAKI_LAKI",
+      role: "TEKNISI",
+      status: true,
+    },
+  });
+
+  revalidatePath("/jaringan/baa");
+
+  return {
+    success: true,
+    data: {
+      id_user: newUser.id_user,
+      kode_user: newUser.kode_user,
+      nama: newUser.nama,
+      username: newUser.username,
+      email: newUser.email,
+      defaultPassword: `${username}123`,
+    },
+  };
+}
+
+// ================================================================
+// 2. TAMBAH TEKNISI TAMBAHAN KE BAA
+// ================================================================
+export async function addTeknisiTambahan(baaId: number, userId: number) {
+  // Cek apakah sudah ada
+  const existing = await prisma.baaTeknisi.findUnique({
+    where: {
+      id_baa_id_user: {
+        id_baa: baaId,
+        id_user: userId,
+      },
+    },
+  });
+
+  if (existing) {
+    throw new Error("Teknisi ini sudah ditambahkan ke BAA ini");
+  }
+
+  // Cek apakah teknisi adalah teknisi utama
+  const baa = await prisma.baa.findUnique({
+    where: { id_baa: baaId },
+    select: { id_user: true },
+  });
+
+  if (baa?.id_user === userId) {
+    throw new Error("Teknisi ini adalah teknisi utama");
+  }
+
+  const result = await prisma.baaTeknisi.create({
+    data: {
+      id_baa: baaId,
+      id_user: userId,
+    },
+    include: {
+      user: {
+        select: {
+          id_user: true,
+          nama: true,
+          username: true,
+        },
+      },
+    },
+  });
+
+  revalidatePath(`/jaringan/baa/${baaId}/teknisi`);
+  revalidatePath("/jaringan/baa");
+  return result;
+}
+
+// ================================================================
+// 3. HAPUS TEKNISI TAMBAHAN DARI BAA
+// ================================================================
+export async function removeTeknisiTambahan(id_baa_teknisi: number) {
+  const baaTeknisi = await prisma.baaTeknisi.findUnique({
+    where: { id_baa_teknisi },
+    select: { id_baa: true },
+  });
+
+  await prisma.baaTeknisi.delete({
+    where: { id_baa_teknisi },
+  });
+
+  if (baaTeknisi) {
+    revalidatePath(`/jaringan/baa/${baaTeknisi.id_baa}/teknisi`);
+  }
+  revalidatePath("/jaringan/baa");
+}
+
+// ================================================================
+// 4. CREATE BAA
+// ================================================================
 export async function createBaa(formData: FormData) {
   const tanggal_instalasi = formData.get("tanggal_instalasi") as string;
   const status = formData.get("status") as "PENDING" | "PROSES" | "SELESAI";
@@ -119,15 +237,18 @@ export async function createBaa(formData: FormData) {
   const id_odp = Number(formData.get("id_odp"));
   const id_ont = Number(formData.get("id_ont"));
 
+  const teknisiTambahanRaw = formData.get("teknisi_tambahan") as string | null;
+  const teknisiTambahanIds: number[] = teknisiTambahanRaw ? JSON.parse(teknisiTambahanRaw) : [];
+
   if (!tanggal_instalasi || !id_fab || !id_user || !id_olt || !id_odp || !id_ont) {
-    throw new Error("Tanggal instalasi, FAB, Teknisi, OLT, ODP, dan ONT wajib diisi.");
+    throw new Error("Tanggal instalasi, FAB, Teknisi Utama, OLT, ODP, dan ONT wajib diisi.");
   }
 
   const details = parseBaaDetails(formData.get("baa_details") as string | null);
   const foto_instalasi = await saveFotoInstalasi(formData, null);
   const kodeSementara = `TMP-${Date.now()}`;
 
-  await prisma.baa.create({
+  const newBaa = await prisma.baa.create({
     data: {
       kode_baa: kodeSementara,
       tanggal_instalasi: new Date(tanggal_instalasi),
@@ -146,7 +267,6 @@ export async function createBaa(formData: FormData) {
       ping_ms: toOptionalNumber(formData.get("ping_ms")),
       catatan: toOptionalString(formData.get("catatan")),
       foto_instalasi,
-      // Nested create — baris BaaDetail langsung dibuat bareng BAA induknya
       baaDetails: {
         create: details.map((d) => ({
           id_material: d.id_material,
@@ -157,19 +277,22 @@ export async function createBaa(formData: FormData) {
     },
   });
 
-  await renumberKodeBaa();
+  if (teknisiTambahanIds.length > 0) {
+    await prisma.baaTeknisi.createMany({
+      data: teknisiTambahanIds.map((id_user) => ({
+        id_baa: newBaa.id_baa,
+        id_user,
+      })),
+    });
+  }
 
+  await renumberKodeBaa();
   revalidatePath("/jaringan/baa");
 }
 
-/**
- * ======================================
- * UPDATE BAA
- * ======================================
- * Strategi material: hapus semua BaaDetail lama punya BAA ini, lalu buat
- * ulang dari daftar yang dikirim form — lebih simpel & aman daripada
- * membandingkan baris mana yang berubah/dihapus/ditambah satu-satu.
- */
+// ================================================================
+// 5. UPDATE BAA
+// ================================================================
 export async function updateBaa(id: number, formData: FormData) {
   const tanggal_instalasi = formData.get("tanggal_instalasi") as string;
   const status = formData.get("status") as "PENDING" | "PROSES" | "SELESAI";
@@ -179,13 +302,20 @@ export async function updateBaa(id: number, formData: FormData) {
   const id_odp = Number(formData.get("id_odp"));
   const id_ont = Number(formData.get("id_ont"));
 
+  const teknisiTambahanRaw = formData.get("teknisi_tambahan") as string | null;
+  const teknisiTambahanIds: number[] = teknisiTambahanRaw ? JSON.parse(teknisiTambahanRaw) : [];
+
   if (!tanggal_instalasi || !id_fab || !id_user || !id_olt || !id_odp || !id_ont) {
-    throw new Error("Tanggal instalasi, FAB, Teknisi, OLT, ODP, dan ONT wajib diisi.");
+    throw new Error("Tanggal instalasi, FAB, Teknisi Utama, OLT, ODP, dan ONT wajib diisi.");
   }
 
   const details = parseBaaDetails(formData.get("baa_details") as string | null);
   const existingFoto = (formData.get("foto_instalasi_existing") as string | null) || null;
   const foto_instalasi = await saveFotoInstalasi(formData, existingFoto);
+
+  await prisma.baaTeknisi.deleteMany({
+    where: { id_baa: id },
+  });
 
   await prisma.$transaction([
     prisma.baaDetail.deleteMany({ where: { id_baa: id } }),
@@ -219,23 +349,56 @@ export async function updateBaa(id: number, formData: FormData) {
     }),
   ]);
 
+  if (teknisiTambahanIds.length > 0) {
+    await prisma.baaTeknisi.createMany({
+      data: teknisiTambahanIds.map((id_user) => ({
+        id_baa: id,
+        id_user,
+      })),
+    });
+  }
+
   revalidatePath("/jaringan/baa");
 }
 
-/**
- * ======================================
- * DELETE BAA
- * ======================================
- * BaaDetail (anak) harus dihapus dulu sebelum BAA (induk) dihapus,
- * karena ada foreign key constraint.
- */
+// ================================================================
+// 6. DELETE BAA
+// ================================================================
 export async function deleteBaa(id: number) {
-  await prisma.$transaction([
-    prisma.baaDetail.deleteMany({ where: { id_baa: id } }),
-    prisma.baa.delete({ where: { id_baa: id } }),
-  ]);
+  await prisma.baaTeknisi.deleteMany({
+    where: { id_baa: id },
+  });
+
+  await prisma.baaDetail.deleteMany({
+    where: { id_baa: id },
+  });
+
+  await prisma.baa.delete({
+    where: { id_baa: id },
+  });
 
   await renumberKodeBaa();
-
   revalidatePath("/jaringan/baa");
+}
+
+// ================================================================
+// 7. GET TEKNISI TAMBAHAN
+// ================================================================
+export async function getTeknisiTambahan(baaId: number) {
+  return await prisma.baaTeknisi.findMany({
+    where: { id_baa: baaId },
+    include: {
+      user: {
+        select: {
+          id_user: true,
+          nama: true,
+          username: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
 }

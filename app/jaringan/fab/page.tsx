@@ -5,9 +5,6 @@ import { FabDialog } from "@/app/jaringan/fab/components/FabDialog";
 import { FabTable } from "@/app/jaringan/fab/components/FabTable";
 
 export default async function FabPage() {
-  // Ambil semua data yang dibutuhkan sekaligus (paralel, lebih cepat).
-  // areaList, paketList, salesList cuma di-READ untuk isi dropdown —
-  // TIDAK membuat/mengubah data User (itu tugas Project Lead).
   const [rawFab, areaList, paketList, salesList] = await Promise.all([
     prisma.fab.findMany({
       orderBy: { createdAt: "desc" },
@@ -34,8 +31,6 @@ export default async function FabPage() {
     longitude: Number(item.longitude),
   }));
 
-  // Preview doang di form Tambah — kode asli ditentukan renumberKodeFab()
-  // di actions.ts setelah data benar-benar disimpan.
   const kodeOtomatis = `FAB${String(fab.length + 1).padStart(3, "0")}`;
 
   return (
@@ -44,19 +39,17 @@ export default async function FabPage() {
       <div className="pointer-events-none absolute top-40 -right-24 h-80 w-80 rounded-full bg-sky-200/40 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-fuchsia-200/30 blur-3xl" />
 
-      <div className="relative p-6 space-y-6 max-w-7xl mx-auto">
-
-        {/* Header */}
-        <Card className="flex-row relative overflow-hidden rounded-3xl shadow-xl border bg-white p-6 flex items-center justify-between">
+      <div className="relative p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
+        <Card className="flex-row relative overflow-hidden rounded-3xl shadow-xl border bg-white p-4 sm:p-6 flex items-center justify-between gap-4 flex-wrap">
           <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500" />
 
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-200">
-              <ClipboardList className="text-white" size={22} />
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-200">
+              <ClipboardList className="text-white" size={18} />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight">Data FAB</h1>
-              <p className="text-sm text-slate-500 font-medium">
+              <h1 className="text-base sm:text-xl font-bold text-slate-900 tracking-tight">Data FAB</h1>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">
                 Form Aktivasi Berlangganan — pengajuan pemasangan pelanggan
               </p>
             </div>

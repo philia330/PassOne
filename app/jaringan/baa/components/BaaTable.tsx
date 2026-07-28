@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Inbox, Layers, Boxes, ImageOff } from "lucide-react";
+import { Search, Inbox, Layers, Boxes, ImageOff, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -98,8 +98,8 @@ export const BaaTable = ({
   return (
     <div className="space-y-6">
       {/* Search bar + Total BAA */}
-      <Card className="flex-row rounded-3xl shadow-xl border bg-white p-4 flex items-center justify-between">
-        <div className="relative max-w-sm w-full">
+      <Card className="flex-row rounded-3xl shadow-xl border bg-white p-4 flex items-center justify-between gap-4 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <Input
             type="text"
@@ -121,155 +121,260 @@ export const BaaTable = ({
         </div>
       </Card>
 
-      {/* Table */}
-      <Card className="rounded-3xl shadow-xl border bg-white overflow-hidden hover:shadow-2xl transition-all">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
-                <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">No</TableHead>
-                <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kode</TableHead>
-                <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Foto</TableHead>
-                <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tanggal Instalasi</TableHead>
-                <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">FAB / Pelanggan</TableHead>
-                <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Teknisi</TableHead>
-                <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">OLT</TableHead>
-                <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">ODP</TableHead>
-                <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">ONT</TableHead>
-                <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Port OLT</TableHead>
-                <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Port ODP</TableHead>
-                <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">RX Power</TableHead>
-                <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">TX Power</TableHead>
-                <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Speed ↓</TableHead>
-                <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Speed ↑</TableHead>
-                <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Ping</TableHead>
-                <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Catatan</TableHead>
-                <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Material</TableHead>
-                <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Status</TableHead>
-                <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {paginated.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={20} className="text-center py-16 text-slate-400">
-                    <Inbox className="mx-auto mb-3" size={40} />
-                    <p className="font-semibold text-slate-700">Belum ada data BAA</p>
-                    <p className="text-sm">
-                      {search
-                        ? "Tidak ada data yang cocok dengan pencarian."
-                        : "Silakan tambahkan data BAA baru terlebih dahulu."}
-                    </p>
-                  </TableCell>
+      {/* DESKTOP: Table - hidden on mobile */}
+      <div className="hidden md:block">
+        <Card className="rounded-3xl shadow-xl border bg-white overflow-hidden hover:shadow-2xl transition-all">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+                  <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">No</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kode</TableHead>
+                  <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Foto</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tanggal Instalasi</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">FAB / Pelanggan</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Teknisi</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">OLT</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">ODP</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">ONT</TableHead>
+                  <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Port OLT</TableHead>
+                  <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Port ODP</TableHead>
+                  <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">RX Power</TableHead>
+                  <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">TX Power</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Speed ↓</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Speed ↑</TableHead>
+                  <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Ping</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Catatan</TableHead>
+                  <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Material</TableHead>
+                  <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Status</TableHead>
+                  <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Aksi</TableHead>
                 </TableRow>
-              ) : (
-                paginated.map((item, index) => (
-                  <TableRow key={item.id_baa} className="hover:bg-purple-50/40 transition-colors">
-                    <TableCell className="text-center text-slate-400 font-medium">
-                      {(page - 1) * PAGE_SIZE + index + 1}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className="font-mono rounded-lg border-purple-200 bg-purple-50 text-purple-700 font-semibold"
-                      >
-                        {item.kode_baa}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {item.foto_instalasi ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={item.foto_instalasi}
-                          alt={`Foto instalasi ${item.kode_baa}`}
-                          className="h-10 w-10 rounded-lg object-cover border border-slate-200 mx-auto"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto">
-                          <ImageOff size={14} className="text-slate-300" />
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-slate-600 whitespace-nowrap">
-                      {formatTanggal(item.tanggal_instalasi)}
-                    </TableCell>
-                    <TableCell className="font-semibold text-slate-900 whitespace-nowrap">
-                      {item.fab?.nama_pelanggan ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-slate-600 whitespace-nowrap">
-                      {item.user?.nama ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-slate-600 whitespace-nowrap">
-                      {item.olt?.nama_olt ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-slate-600 whitespace-nowrap">
-                      {item.odp?.nama_odp ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-slate-600 whitespace-nowrap font-mono text-xs">
-                      {item.ont?.serial_number ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-center text-slate-600">{item.port_olt ?? "—"}</TableCell>
-                    <TableCell className="text-center text-slate-600">{item.port_odp ?? "—"}</TableCell>
-                    <TableCell className="text-center text-slate-600 whitespace-nowrap">
-                      {item.rx_power_dbm !== null ? `${item.rx_power_dbm} dBm` : "—"}
-                    </TableCell>
-                    <TableCell className="text-center text-slate-600 whitespace-nowrap">
-                      {item.tx_power_dbm !== null ? `${item.tx_power_dbm} dBm` : "—"}
-                    </TableCell>
-                    <TableCell className="text-slate-600 whitespace-nowrap">
-                      {item.speed_download ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-slate-600 whitespace-nowrap">
-                      {item.speed_upload ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-center text-slate-600 whitespace-nowrap">
-                      {item.ping_ms !== null ? `${item.ping_ms} ms` : "—"}
-                    </TableCell>
-                    <TableCell className="text-slate-500 text-sm max-w-[180px]">
-                      <span className="block truncate" title={item.catatan ?? undefined}>
-                        {item.catatan || "—"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge
-                        variant="outline"
-                        className="rounded-lg border-slate-200 bg-slate-50 text-slate-600 font-semibold gap-1"
-                      >
-                        <Boxes size={11} />
-                        {item.baaDetails?.length ?? 0}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge className={`rounded-lg font-semibold ${STATUS_STYLE[item.status]}`}>
-                        {STATUS_LABEL[item.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-center gap-2">
-                        {/* Tombol View: dialog detail read-only, taruh paling depan */}
-                        <BaaViewDialog baa={item} />
+              </TableHeader>
 
-                        <BaaDialog
-                          mode="edit"
-                          baa={item}
-                          fabOptions={fabOptions}
-                          teknisiOptions={teknisiOptions}
-                          oltOptions={oltOptions}
-                          odpOptions={odpOptions}
-                          ontOptions={ontOptions}
-                          materialOptions={materialOptions}
-                        />
-                        <BaaDeleteDialog id={item.id_baa} kodeBaa={item.kode_baa} />
-                      </div>
+              <TableBody>
+                {paginated.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={20} className="text-center py-16 text-slate-400">
+                      <Inbox className="mx-auto mb-3" size={40} />
+                      <p className="font-semibold text-slate-700">Belum ada data BAA</p>
+                      <p className="text-sm">
+                        {search
+                          ? "Tidak ada data yang cocok dengan pencarian."
+                          : "Silakan tambahkan data BAA baru terlebih dahulu."}
+                      </p>
                     </TableCell>
                   </TableRow>
-                ))
+                ) : (
+                  paginated.map((item, index) => (
+                    <TableRow key={item.id_baa} className="hover:bg-purple-50/40 transition-colors">
+                      <TableCell className="text-center text-slate-400 font-medium">
+                        {(page - 1) * PAGE_SIZE + index + 1}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className="font-mono rounded-lg border-purple-200 bg-purple-50 text-purple-700 font-semibold"
+                        >
+                          {item.kode_baa}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {item.foto_instalasi ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.foto_instalasi}
+                            alt={`Foto instalasi ${item.kode_baa}`}
+                            className="h-10 w-10 rounded-lg object-cover border border-slate-200 mx-auto"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto">
+                            <ImageOff size={14} className="text-slate-300" />
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-slate-600 whitespace-nowrap">
+                        {formatTanggal(item.tanggal_instalasi)}
+                      </TableCell>
+                      <TableCell className="font-semibold text-slate-900 whitespace-nowrap">
+                        {item.fab?.nama_pelanggan ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-slate-600 whitespace-nowrap">
+                        {item.user?.nama ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-slate-600 whitespace-nowrap">
+                        {item.olt?.nama_olt ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-slate-600 whitespace-nowrap">
+                        {item.odp?.nama_odp ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-slate-600 whitespace-nowrap font-mono text-xs">
+                        {item.ont?.serial_number ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-center text-slate-600">{item.port_olt ?? "—"}</TableCell>
+                      <TableCell className="text-center text-slate-600">{item.port_odp ?? "—"}</TableCell>
+                      <TableCell className="text-center text-slate-600 whitespace-nowrap">
+                        {item.rx_power_dbm !== null ? `${item.rx_power_dbm} dBm` : "—"}
+                      </TableCell>
+                      <TableCell className="text-center text-slate-600 whitespace-nowrap">
+                        {item.tx_power_dbm !== null ? `${item.tx_power_dbm} dBm` : "—"}
+                      </TableCell>
+                      <TableCell className="text-slate-600 whitespace-nowrap">
+                        {item.speed_download ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-slate-600 whitespace-nowrap">
+                        {item.speed_upload ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-center text-slate-600 whitespace-nowrap">
+                        {item.ping_ms !== null ? `${item.ping_ms} ms` : "—"}
+                      </TableCell>
+                      <TableCell className="text-slate-500 text-sm max-w-[180px]">
+                        <span className="block truncate" title={item.catatan ?? undefined}>
+                          {item.catatan || "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          variant="outline"
+                          className="rounded-lg border-slate-200 bg-slate-50 text-slate-600 font-semibold gap-1"
+                        >
+                          <Boxes size={11} />
+                          {item.baaDetails?.length ?? 0}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge className={`rounded-lg font-semibold ${STATUS_STYLE[item.status]}`}>
+                          {STATUS_LABEL[item.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-center gap-2">
+                          <BaaViewDialog baa={item} />
+                          <BaaDialog
+                            mode="edit"
+                            baa={item}
+                            fabOptions={fabOptions}
+                            teknisiOptions={teknisiOptions}
+                            oltOptions={oltOptions}
+                            odpOptions={odpOptions}
+                            ontOptions={ontOptions}
+                            materialOptions={materialOptions}
+                          />
+                          <BaaDeleteDialog id={item.id_baa} kodeBaa={item.kode_baa} />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      </div>
+
+      {/* MOBILE: Card list - visible below md */}
+      <div className="space-y-3 md:hidden">
+        {paginated.length === 0 ? (
+          <Card className="rounded-3xl shadow-xl border bg-white p-12 text-center text-slate-400">
+            <Inbox className="mx-auto mb-3" size={40} />
+            <p className="font-semibold text-slate-700">Belum ada data BAA</p>
+            <p className="text-sm">
+              {search
+                ? "Tidak ada data yang cocok dengan pencarian."
+                : "Silakan tambahkan data BAA baru terlebih dahulu."}
+            </p>
+          </Card>
+        ) : (
+          paginated.map((item, index) => (
+            <Card key={item.id_baa} className="rounded-3xl shadow-xl border bg-white p-4 hover:shadow-2xl transition-all">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  {/* Header: Kode BAA + Status */}
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <Badge
+                      variant="outline"
+                      className="font-mono rounded-lg border-purple-200 bg-purple-50 text-purple-700 font-semibold text-xs"
+                    >
+                      {item.kode_baa}
+                    </Badge>
+                    <Badge className={`rounded-lg font-semibold text-xs ${STATUS_STYLE[item.status]}`}>
+                      {STATUS_LABEL[item.status]}
+                    </Badge>
+                  </div>
+
+                  {/* Main info */}
+                  <div className="space-y-1">
+                    <p className="font-semibold text-slate-900 text-sm truncate">
+                      {item.fab?.nama_pelanggan ?? "—"}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {formatTanggal(item.tanggal_instalasi)}
+                    </p>
+                  </div>
+
+                  {/* Detail grid */}
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 mt-2 text-xs">
+                    <div>
+                      <span className="text-slate-400">Teknisi:</span>
+                      <span className="ml-1 text-slate-700">{item.user?.nama ?? "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">OLT:</span>
+                      <span className="ml-1 text-slate-700">{item.olt?.nama_olt ?? "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">ODP:</span>
+                      <span className="ml-1 text-slate-700">{item.odp?.nama_odp ?? "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">ONT:</span>
+                      <span className="ml-1 text-slate-700 font-mono">{item.ont?.serial_number ?? "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Material:</span>
+                      <span className="ml-1 text-slate-700 font-semibold">{item.baaDetails?.length ?? 0}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Foto:</span>
+                      <span className="ml-1 text-slate-700">
+                        {item.foto_instalasi ? (
+                          <span className="text-purple-600">✓ Ada</span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex flex-col gap-1.5 flex-shrink-0">
+                  <BaaViewDialog baa={item} />
+                  <BaaDialog
+                    mode="edit"
+                    baa={item}
+                    fabOptions={fabOptions}
+                    teknisiOptions={teknisiOptions}
+                    oltOptions={oltOptions}
+                    odpOptions={odpOptions}
+                    ontOptions={ontOptions}
+                    materialOptions={materialOptions}
+                  />
+                  <BaaDeleteDialog id={item.id_baa} kodeBaa={item.kode_baa} />
+                </div>
+              </div>
+
+              {/* Catatan - if exists */}
+              {item.catatan && (
+                <div className="mt-2 pt-2 border-t border-slate-100">
+                  <p className="text-xs text-slate-500 truncate">
+                    <span className="text-slate-400">Catatan:</span> {item.catatan}
+                  </p>
+                </div>
               )}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
+            </Card>
+          ))
+        )}
+      </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
