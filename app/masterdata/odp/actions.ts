@@ -151,6 +151,12 @@ export const createOdp = async (formData: FormData) => {
     10
   );
 
+  const jumlahPortRaw = formData.get("jumlah_port") as string;
+  const stokPortRaw = formData.get("stok_port") as string;
+
+  const jumlah_port = jumlahPortRaw ? parseInt(jumlahPortRaw, 10) : null;
+  const stok_port = stokPortRaw ? parseInt(stokPortRaw, 10) : 0;
+
   const odp = await prisma.odp.create({
     data: {
       kode_odp,
@@ -159,6 +165,8 @@ export const createOdp = async (formData: FormData) => {
       latitude,
       longitude,
       id_olt,
+      jumlah_port,
+      stok_port,
     },
   });
 
@@ -193,6 +201,12 @@ export const updateOdp = async (
     10
   );
 
+  const jumlahPortRaw = formData.get("jumlah_port") as string;
+  const stokPortRaw = formData.get("stok_port") as string;
+
+  const jumlah_port = jumlahPortRaw ? parseInt(jumlahPortRaw, 10) : null;
+  const stok_port = stokPortRaw ? parseInt(stokPortRaw, 10) : 0;
+
   const odp = await prisma.odp.update({
     where: {
       id_odp: id,
@@ -203,6 +217,8 @@ export const updateOdp = async (
       latitude,
       longitude,
       id_olt,
+      jumlah_port,
+      stok_port,
     },
   });
 

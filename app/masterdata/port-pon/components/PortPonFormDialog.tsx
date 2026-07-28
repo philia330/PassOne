@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -59,13 +59,26 @@ export const PortPonFormDialog = ({
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [oltValue, setOltValue] = useState(
-    data?.id_olt ? String(data.id_olt) : ""
-  );
-  const [statusValue, setStatusValue] = useState(data?.status ?? "TERSEDIA");
-  const [odpValue, setOdpValue] = useState(
-    data?.id_odp ? String(data.id_odp) : ""
-  );
+  const [oltValue, setOltValue] = useState("");
+  const [statusValue, setStatusValue] = useState<"TERSEDIA" | "TERPASANG" | "RUSAK">("TERSEDIA");
+  const [odpValue, setOdpValue] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      if (mode === "edit" && data) {
+        setOltValue(data.id_olt ? String(data.id_olt) : "");
+        setStatusValue(data.status ?? "TERSEDIA");
+        setOdpValue(data.id_odp ? String(data.id_odp) : "");
+      } else {
+        setOltValue("");
+        setStatusValue("TERSEDIA");
+        setOdpValue("");
+      }
+    }
+  }, [open, mode, data]);
+
+  const selectedOltName = olts.find((olt) => String(olt.id_olt) === oltValue)?.nama_olt;
+  const selectedOdpName = odps.find((odp) => String(odp.id_odp) === odpValue)?.nama_odp;
 
   const handleSubmit = async (formData: FormData) => {
     setIsSubmitting(true);

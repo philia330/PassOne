@@ -76,8 +76,6 @@ export default async function PopPage({
                   <TableHead>Nama POP</TableHead>
                   <TableHead>Alamat</TableHead>
                   <TableHead>Area</TableHead>
-                  <TableHead>Latitude</TableHead>
-                  <TableHead>Longitude</TableHead>
                   <TableHead>Dibuat</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
@@ -95,8 +93,6 @@ export default async function PopPage({
                     <TableCell className="dark:text-slate-300">{pop.nama_pop}</TableCell>
                     <TableCell className="dark:text-slate-300">{pop.alamat}</TableCell>
                     <TableCell className="dark:text-slate-300">{pop.area?.nama_area}</TableCell>
-                    <TableCell className="dark:text-slate-300">{pop.latitude.toString()}</TableCell>
-                    <TableCell className="dark:text-slate-300">{pop.longitude.toString()}</TableCell>
                     <TableCell className="text-slate-500 dark:text-slate-400">
                       {new Date(pop.createdAt).toLocaleDateString("id-ID", {
                         day: "2-digit",
@@ -137,7 +133,7 @@ export default async function PopPage({
                 {pops.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                      colSpan={6}
                       className="py-10 text-center text-slate-400 dark:text-slate-500"
                     >
                       {search
@@ -204,10 +200,6 @@ export default async function PopPage({
 
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   Area: {pop.area?.nama_area}
-                </p>
-
-                <p className="text-xs text-slate-400 dark:text-slate-500">
-                  {pop.latitude.toString()}, {pop.longitude.toString()}
                 </p>
 
                 <p className="text-xs text-slate-400 dark:text-slate-500">
