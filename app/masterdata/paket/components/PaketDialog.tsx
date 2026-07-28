@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { PaketForm } from "@/app/masterdata/paket/components/PaketForm";
 import { createPaket, updatePaket } from "@/app/masterdata/paket/actions";
+import { useRouter } from "next/navigation";
 import type { PaketData } from "@/types/paket";
 
 interface PaketDialogProps {
@@ -25,6 +26,7 @@ export const PaketDialog = ({ mode, paket, kodeOtomatis }: PaketDialogProps) => 
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleSubmit = (formData: FormData) => {
     setErrorMsg(null);
@@ -36,6 +38,8 @@ export const PaketDialog = ({ mode, paket, kodeOtomatis }: PaketDialogProps) => 
           await updatePaket(paket.id_paket, formData);
         }
         setOpen(false);
+        router.refresh();
+        router.push("/masterdata/paket");
       } catch (err: unknown) {
         const error = err as Error;
         setErrorMsg(error.message ?? "Terjadi kesalahan, coba lagi.");

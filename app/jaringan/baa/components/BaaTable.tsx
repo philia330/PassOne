@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Inbox, Layers, Boxes, ImageOff, ChevronRight } from "lucide-react";
+import { Search, Inbox, Layers, Boxes, ImageOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,7 @@ interface BaaTableProps {
   odpOptions: OdpOption[];
   ontOptions: OntOption[];
   materialOptions: MaterialOption[];
+  onTeknisiAdded?: () => void;
 }
 
 const PAGE_SIZE = 5;
@@ -75,6 +76,7 @@ export const BaaTable = ({
   odpOptions,
   ontOptions,
   materialOptions,
+  onTeknisiAdded,
 }: BaaTableProps) => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -93,6 +95,13 @@ export const BaaTable = ({
   const handleSearchChange = (value: string) => {
     setSearch(value);
     setPage(1);
+  };
+
+  const refreshTeknisi = () => {
+    if (onTeknisiAdded) {
+      onTeknisiAdded();
+    }
+    window.location.reload();
   };
 
   return (
@@ -198,8 +207,9 @@ export const BaaTable = ({
                       <TableCell className="font-semibold text-slate-900 whitespace-nowrap">
                         {item.fab?.nama_pelanggan ?? "—"}
                       </TableCell>
+                      {/* ✅ Perbaikan: user → users */}
                       <TableCell className="text-slate-600 whitespace-nowrap">
-                        {item.user?.nama ?? "—"}
+                        {item.users?.nama ?? "—"}
                       </TableCell>
                       <TableCell className="text-slate-600 whitespace-nowrap">
                         {item.olt?.nama_olt ?? "—"}
@@ -232,13 +242,14 @@ export const BaaTable = ({
                           {item.catatan || "—"}
                         </span>
                       </TableCell>
+                      {/* ✅ Perbaikan: baaDetails → baadetail */}
                       <TableCell className="text-center">
                         <Badge
                           variant="outline"
                           className="rounded-lg border-slate-200 bg-slate-50 text-slate-600 font-semibold gap-1"
                         >
                           <Boxes size={11} />
-                          {item.baaDetails?.length ?? 0}
+                          {item.baadetail?.length ?? 0}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
@@ -258,6 +269,7 @@ export const BaaTable = ({
                             odpOptions={odpOptions}
                             ontOptions={ontOptions}
                             materialOptions={materialOptions}
+                            onTeknisiAdded={refreshTeknisi}
                           />
                           <BaaDeleteDialog id={item.id_baa} kodeBaa={item.kode_baa} />
                         </div>
@@ -315,7 +327,7 @@ export const BaaTable = ({
                   <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 mt-2 text-xs">
                     <div>
                       <span className="text-slate-400">Teknisi:</span>
-                      <span className="ml-1 text-slate-700">{item.user?.nama ?? "—"}</span>
+                      <span className="ml-1 text-slate-700">{item.users?.nama ?? "—"}</span>
                     </div>
                     <div>
                       <span className="text-slate-400">OLT:</span>
@@ -331,7 +343,7 @@ export const BaaTable = ({
                     </div>
                     <div>
                       <span className="text-slate-400">Material:</span>
-                      <span className="ml-1 text-slate-700 font-semibold">{item.baaDetails?.length ?? 0}</span>
+                      <span className="ml-1 text-slate-700 font-semibold">{item.baadetail?.length ?? 0}</span>
                     </div>
                     <div>
                       <span className="text-slate-400">Foto:</span>
@@ -358,6 +370,7 @@ export const BaaTable = ({
                     odpOptions={odpOptions}
                     ontOptions={ontOptions}
                     materialOptions={materialOptions}
+                    onTeknisiAdded={refreshTeknisi}
                   />
                   <BaaDeleteDialog id={item.id_baa} kodeBaa={item.kode_baa} />
                 </div>

@@ -1,7 +1,6 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 async function renumberKodePaket() {
@@ -44,7 +43,6 @@ export async function createPaket(formData: FormData) {
 
   await renumberKodePaket();
   revalidatePath("/masterdata/paket");
-  redirect("/masterdata/paket");
 }
 
 export async function updatePaket(id: number, formData: FormData) {
@@ -68,7 +66,6 @@ export async function updatePaket(id: number, formData: FormData) {
   });
 
   revalidatePath("/masterdata/paket");
-  redirect("/masterdata/paket");
 }
 
 export async function deletePaket(id: number) {

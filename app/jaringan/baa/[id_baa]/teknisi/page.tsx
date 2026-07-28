@@ -63,7 +63,8 @@ export default async function BaaTeknisiPage({ params }: BaaTeknisiPageProps) {
           kode_fab: true,
         },
       },
-      user: {
+      users: {
+        // ✅ user → users
         select: {
           id_user: true,
           nama: true,
@@ -74,7 +75,8 @@ export default async function BaaTeknisiPage({ params }: BaaTeknisiPageProps) {
       },
       teknisiTambahan: {
         include: {
-          user: {
+          users: {
+            // ✅ user → users
             select: {
               id_user: true,
               nama: true,
@@ -99,7 +101,7 @@ export default async function BaaTeknisiPage({ params }: BaaTeknisiPageProps) {
 
   // Cek teknisi tersedia untuk ditambahkan
   const existingIds = baa.teknisiTambahan.map((t) => t.id_user);
-  existingIds.push(baa.id_user);
+  existingIds.push(baa.users.id_user);
 
   const teknisiTersedia = await prisma.user.count({
     where: {
@@ -212,15 +214,15 @@ export default async function BaaTeknisiPage({ params }: BaaTeknisiPageProps) {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="h-8 w-8 rounded-full bg-gradient-to-r from-purple-600 to-purple-400 flex items-center justify-center text-white text-xs font-bold">
-                        {baa.user?.nama?.charAt(0) || "U"}
+                        {baa.users?.nama?.charAt(0) || "U"}
                       </div>
-                      <span className="font-semibold text-slate-900">{baa.user?.nama}</span>
+                      <span className="font-semibold text-slate-900">{baa.users?.nama}</span>
                     </div>
                   </TableCell>
                   <TableCell className="font-mono text-sm text-slate-600">
-                    {baa.user?.username}
+                    {baa.users?.username}
                   </TableCell>
-                  <TableCell className="text-slate-600">{baa.user?.email || "-"}</TableCell>
+                  <TableCell className="text-slate-600">{baa.users?.email || "-"}</TableCell>
                   <TableCell className="text-center">
                     <Badge className="bg-purple-100 text-purple-700 rounded-lg font-semibold">
                       <UserCog className="h-3 w-3 mr-1" />
@@ -241,15 +243,15 @@ export default async function BaaTeknisiPage({ params }: BaaTeknisiPageProps) {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-xs font-bold">
-                          {t.user?.nama?.charAt(0) || "T"}
+                          {t.users?.nama?.charAt(0) || "T"}
                         </div>
-                        <span className="font-medium text-slate-800">{t.user?.nama}</span>
+                        <span className="font-medium text-slate-800">{t.users?.nama}</span>
                       </div>
                     </TableCell>
                     <TableCell className="font-mono text-sm text-slate-600">
-                      {t.user?.username}
+                      {t.users?.username}
                     </TableCell>
-                    <TableCell className="text-slate-600">{t.user?.email || "-"}</TableCell>
+                    <TableCell className="text-slate-600">{t.users?.email || "-"}</TableCell>
                     <TableCell className="text-center">
                       <Badge variant="outline" className="rounded-lg font-semibold">
                         <UserPlus className="h-3 w-3 mr-1" />
@@ -258,7 +260,7 @@ export default async function BaaTeknisiPage({ params }: BaaTeknisiPageProps) {
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <Link href={`/jaringan/baa/${id}/teknisi/${t.id_user}`}>
+                        <Link href={`/jaringan/baa/${id}/teknisi/${t.users.id_user}`}>
                           <Button variant="outline" size="sm" className="rounded-xl h-8 w-8 p-0">
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
@@ -271,7 +273,7 @@ export default async function BaaTeknisiPage({ params }: BaaTeknisiPageProps) {
                             size="sm"
                             className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 h-8 w-8 p-0"
                             onClick={(e) => {
-                              if (!confirm(`Hapus ${t.user?.nama} dari daftar teknisi?`)) {
+                              if (!confirm(`Hapus ${t.users?.nama} dari daftar teknisi?`)) {
                                 e.preventDefault();
                               }
                             }}

@@ -11,17 +11,18 @@ export default async function BaaPage() {
         orderBy: { createdAt: "desc" },
         include: {
           fab: true,
-          user: true,
+          users: true, // ← users (sesuai schema: @@map("users"))
           olt: true,
           odp: true,
           ont: true,
-          baaDetails: { include: { material: true } },
-          // ============================================================
-          // TAMBAHKAN INI UNTUK TEKNISI TAMBAHAN
-          // ============================================================
+          baadetail: {
+            include: {
+              material: true,
+            },
+          },
           teknisiTambahan: {
             include: {
-              user: {
+              users: { // ← users (sesuai schema)
                 select: {
                   id_user: true,
                   nama: true,
@@ -36,6 +37,10 @@ export default async function BaaPage() {
         orderBy: { nama_pelanggan: "asc" },
         select: { id_fab: true, kode_fab: true, nama_pelanggan: true },
       }),
+      // ============================================================
+      // PERBAIKAN: Gunakan prisma.user BUKAN prisma.users
+      // Karena model di schema bernama "User" (huruf kapital)
+      // ============================================================
       prisma.user.findMany({
         where: { role: "TEKNISI" },
         orderBy: { nama: "asc" },

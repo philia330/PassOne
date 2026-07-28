@@ -1,15 +1,9 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
-/**
- * ======================================
- * HELPER: Rapikan ulang kode_fab
- * ======================================
- * Pola sama seperti Paket & Material — supaya kode_fab selalu rapat
- * (FAB001, FAB002, ...) tanpa gap walau ada data yang dihapus.
- */
 async function renumberKodeFab() {
   const semuaFab = await prisma.fab.findMany({
     orderBy: { createdAt: "asc" },
@@ -26,11 +20,6 @@ async function renumberKodeFab() {
   );
 }
 
-/**
- * ======================================
- * CREATE FAB
- * ======================================
- */
 export async function createFab(formData: FormData) {
   const nama_pelanggan = formData.get("nama_pelanggan") as string;
   const nik = formData.get("nik") as string;
@@ -47,7 +36,6 @@ export async function createFab(formData: FormData) {
     throw new Error("Semua field wajib diisi.");
   }
 
-  // Kode sementara dijamin unik, kode asli (FAB001, dst) diberikan lewat renumbering
   const kodeSementara = `TMP-${Date.now()}`;
 
   try {
@@ -74,15 +62,10 @@ export async function createFab(formData: FormData) {
   }
 
   await renumberKodeFab();
-
   revalidatePath("/jaringan/fab");
+  redirect("/jaringan/fab"); // ✅ Tambahkan redirect
 }
 
-/**
- * ======================================
- * UPDATE FAB
- * ======================================
- */
 export async function updateFab(id: number, formData: FormData) {
   const nama_pelanggan = formData.get("nama_pelanggan") as string;
   const nik = formData.get("nik") as string;
@@ -123,17 +106,13 @@ export async function updateFab(id: number, formData: FormData) {
   }
 
   revalidatePath("/jaringan/fab");
+  redirect("/jaringan/fab"); // ✅ Tambahkan redirect
 }
 
-/**
- * ======================================
- * DELETE FAB
- * ======================================
- */
 export async function deleteFab(id: number) {
   await prisma.fab.delete({ where: { id_fab: id } });
 
-  await renumberKodeFab();
-
+  await renumberKodeFab();  
   revalidatePath("/jaringan/fab");
+  redirect("/jaringan/fab"); // ✅ Tambahkan redirect
 }

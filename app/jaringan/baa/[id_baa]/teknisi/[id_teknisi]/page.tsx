@@ -52,8 +52,8 @@ export default async function BaaTeknisiDetailPage({
           kode_fab: true,
         },
       },
-      user: {
-        // Teknisi Utama
+      users: {
+        // ✅ user → users
         select: {
           id_user: true,
           nama: true,
@@ -64,7 +64,8 @@ export default async function BaaTeknisiDetailPage({
       },
       teknisiTambahan: {
         include: {
-          user: {
+          users: {
+            // ✅ user → users
             select: {
               id_user: true,
               nama: true,
@@ -87,13 +88,14 @@ export default async function BaaTeknisiDetailPage({
   let isUtama = false;
   let relasi = null;
 
-  if (baa.user?.id_user === idTeknisi) {
-    teknisi = baa.user;
+  // ✅ users (bukan user)
+  if (baa.users?.id_user === idTeknisi) {
+    teknisi = baa.users;
     isUtama = true;
   } else {
-    const tambahan = baa.teknisiTambahan.find((t) => t.id_user === idTeknisi);
+    const tambahan = baa.teknisiTambahan.find((t) => t.users?.id_user === idTeknisi);
     if (tambahan) {
-      teknisi = tambahan.user;
+      teknisi = tambahan.users;
       relasi = tambahan;
       isUtama = false;
     }

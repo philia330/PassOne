@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,13 +24,12 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
-import Link from "next/link";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
 interface BaaDetailPageProps {
   params: {
-    id: string;
+    id_baa: string;
   };
 }
 
@@ -63,8 +63,23 @@ function formatRupiah(value: number) {
   }).format(value);
 }
 
+// ================================================================
+// HELPER: Konversi Decimal ke number atau string
+// ================================================================
+function toNumber(value: any): number | null {
+  if (value === null || value === undefined) return null;
+  const num = Number(value);
+  return isNaN(num) ? null : num;
+}
+
+function formatDecimal(value: any): string {
+  if (value === null || value === undefined) return "-";
+  const num = Number(value);
+  return isNaN(num) ? "-" : num.toString();
+}
+
 export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
-  const id = parseInt(params.id);
+  const id = parseInt(params.id_baa);
 
   if (isNaN(id)) {
     notFound();
@@ -77,21 +92,21 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
         include: {
           area: true,
           paket: true,
-          user: true,
+          users: true,
         },
       },
-      user: true, // Teknisi Utama
+      users: true,
       olt: true,
       odp: true,
       ont: true,
-      baaDetails: {
+      baadetail: {
         include: {
           material: true,
         },
       },
       teknisiTambahan: {
         include: {
-          user: true,
+          users: true,
         },
       },
     },
@@ -101,8 +116,13 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
     notFound();
   }
 
-  const totalMaterial = baa.baaDetails.reduce((sum, d) => sum + d.jumlah, 0);
-  const totalHarga = baa.baaDetails.reduce(
+  // Konversi Decimal ke number
+  const rxPower = toNumber(baa.rx_power_dbm);
+  const txPower = toNumber(baa.tx_power_dbm);
+  const ping = toNumber(baa.ping_ms);
+
+  const totalMaterial = baa.baadetail.reduce((sum, d) => sum + d.jumlah, 0);
+  const totalHarga = baa.baadetail.reduce(
     (sum, d) => sum + (d.material?.harga ? Number(d.material.harga) * d.jumlah : 0),
     0
   );
@@ -155,9 +175,7 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
 
         {/* Grid Info */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-          {/* ================================================
-              INFORMASI PELANGGAN
-              ================================================ */}
+          {/* INFORMASI PELANGGAN */}
           <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
             <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
               <Users className="h-4 w-4 text-purple-500" />
@@ -183,14 +201,12 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Sales</span>
-                <span className="font-semibold text-slate-900">{baa.fab?.user?.nama}</span>
+                <span className="font-semibold text-slate-900">{baa.fab?.users?.nama}</span>
               </div>
             </div>
           </Card>
 
-          {/* ================================================
-              TEKNISI
-              ================================================ */}
+          {/* TEKNISI */}
           <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
             <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
               <UserCog className="h-4 w-4 text-purple-500" />
@@ -201,7 +217,7 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
               {/* Teknisi Utama */}
               <div className="rounded-xl bg-purple-50 border border-purple-100 p-3">
                 <p className="text-xs text-purple-600 font-medium">Teknisi Utama</p>
-                <p className="font-semibold text-slate-900">{baa.user?.nama}</p>
+                <p className="font-semibold text-slate-900">{baa.users?.nama}</p>
               </div>
 
               {/* Teknisi Tambahan */}
@@ -213,7 +229,7 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
                       key={t.id_baa_teknisi}
                       className="rounded-xl bg-slate-50 border border-slate-200 p-2.5 flex items-center justify-between"
                     >
-                      <span className="font-medium text-slate-700">{t.user?.nama}</span>
+                      <span className="font-medium text-slate-700">{t.users?.nama}</span>
                       <Badge variant="outline" className="text-xs">
                         Tambahan
                       </Badge>
@@ -229,9 +245,7 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
           </Card>
         </div>
 
-        {/* ================================================
-            PERANGKAT JARINGAN
-            ================================================ */}
+        {/* PERANGKAT JARINGAN */}
         <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
           <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
             <Router className="h-4 w-4 text-purple-500" />
@@ -262,9 +276,7 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
           </div>
         </Card>
 
-        {/* ================================================
-            HASIL PENGUKURAN
-            ================================================ */}
+        {/* HASIL PENGUKURAN */}
         <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
           <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
             <Gauge className="h-4 w-4 text-purple-500" />
@@ -274,15 +286,15 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="text-center">
               <p className="text-xs text-slate-400">RX Power</p>
-              <p className="font-bold text-slate-800">{baa.rx_power_dbm ?? "-"} dBm</p>
+              <p className="font-bold text-slate-800">{rxPower !== null ? `${rxPower} dBm` : "-"}</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-slate-400">TX Power</p>
-              <p className="font-bold text-slate-800">{baa.tx_power_dbm ?? "-"} dBm</p>
+              <p className="font-bold text-slate-800">{txPower !== null ? `${txPower} dBm` : "-"}</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-slate-400">Ping</p>
-              <p className="font-bold text-slate-800">{baa.ping_ms ?? "-"} ms</p>
+              <p className="font-bold text-slate-800">{ping !== null ? `${ping} ms` : "-"}</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-slate-400">Status</p>
@@ -308,9 +320,7 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
           </div>
         </Card>
 
-        {/* ================================================
-            DAFTAR MATERIAL
-            ================================================ */}
+        {/* DAFTAR MATERIAL */}
         <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 flex items-center gap-2">
@@ -318,11 +328,11 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
               Material yang Dipakai
             </h3>
             <Badge variant="outline" className="rounded-xl">
-              {baa.baaDetails.length} item
+              {baa.baadetail.length} item
             </Badge>
           </div>
 
-          {baa.baaDetails.length === 0 ? (
+          {baa.baadetail.length === 0 ? (
             <p className="text-center text-sm text-slate-400 py-6">
               Tidak ada material yang dicatat pada instalasi ini.
             </p>
@@ -350,7 +360,7 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {baa.baaDetails.map((detail) => (
+                    {baa.baadetail.map((detail) => (
                       <tr key={detail.id_baa_detail} className="border-b border-slate-50 hover:bg-slate-50/50">
                         <td className="py-2.5 font-medium text-slate-800">
                           {detail.material?.nama_material}
@@ -393,9 +403,7 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
           )}
         </Card>
 
-        {/* ================================================
-            CATATAN & FOTO
-            ================================================ */}
+        {/* CATATAN & FOTO */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* Catatan */}
           <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">

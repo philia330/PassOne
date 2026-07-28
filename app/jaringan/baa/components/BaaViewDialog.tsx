@@ -152,7 +152,7 @@ export const BaaViewDialog = ({ baa }: BaaViewDialogProps) => {
               <div className="rounded-xl bg-purple-50 border border-purple-100 px-3 py-2 mb-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-purple-600">Utama</p>
                 <p className="text-sm font-semibold text-slate-800">
-                  {baa.user ? baa.user.nama : `ID Teknisi #${baa.id_user}`}
+                  {baa.users ? baa.users.nama : `ID Teknisi #${baa.id_user}`}
                 </p>
               </div>
 
@@ -168,7 +168,7 @@ export const BaaViewDialog = ({ baa }: BaaViewDialogProps) => {
                       className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-1.5 flex items-center justify-between"
                     >
                       <span className="text-sm font-medium text-slate-700">
-                        {t.user?.nama || `ID #${t.id_user}`}
+                        {t.users?.nama || `ID #${t.id_user}`}
                       </span>
                       <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0">
                         Tambahan
@@ -238,13 +238,13 @@ export const BaaViewDialog = ({ baa }: BaaViewDialogProps) => {
                 <Boxes size={13} className="text-purple-500" /> Material yang Dipakai
               </p>
 
-              {baa.baaDetails.length === 0 ? (
+              {baa.baadetail?.length === 0 ? (
                 <p className="text-xs text-slate-400 italic bg-slate-50 rounded-xl px-3 py-3 text-center">
                   Tidak ada material yang dicatat pada instalasi ini.
                 </p>
               ) : (
                 <div className="space-y-1.5">
-                  {baa.baaDetails.map((d) => (
+                  {baa.baadetail?.map((d) => (
                     <div
                       key={d.id_baa_detail}
                       className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5"
