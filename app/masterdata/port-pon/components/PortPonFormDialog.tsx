@@ -77,9 +77,6 @@ export const PortPonFormDialog = ({
     }
   }, [open, mode, data]);
 
-  const selectedOltName = olts.find((olt) => String(olt.id_olt) === oltValue)?.nama_olt;
-  const selectedOdpName = odps.find((odp) => String(odp.id_odp) === odpValue)?.nama_odp;
-
   const handleSubmit = async (formData: FormData) => {
     setIsSubmitting(true);
 
@@ -137,71 +134,72 @@ export const PortPonFormDialog = ({
         </DialogHeader>
 
         <form action={handleSubmit} className="space-y-4">
-          {/* 1. OLT */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              OLT
-            </label>
+          {/* 1 & 2. OLT & ODP berdampingan */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                OLT
+              </label>
 
-            <Select value={oltValue} onValueChange={setOltValue}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
-                <SelectValue placeholder="Pilih OLT">
-                  {(value: string) =>
-                    olts.find((olt) => String(olt.id_olt) === value)?.nama_olt ??
-                    "Pilih OLT"
-                  }
-                </SelectValue>
-              </SelectTrigger>
+              <Select value={oltValue} onValueChange={setOltValue}>
+                <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
+                  <SelectValue placeholder="Pilih OLT">
+                    {(value: string) =>
+                      olts.find((olt) => String(olt.id_olt) === value)?.nama_olt ??
+                      "Pilih OLT"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
 
-              <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                {olts.map((olt) => (
-                  <SelectItem
-                    key={olt.id_olt}
-                    value={String(olt.id_olt)}
-                    className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
-                  >
-                    {olt.nama_olt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                  {olts.map((olt) => (
+                    <SelectItem
+                      key={olt.id_olt}
+                      value={String(olt.id_olt)}
+                      className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
+                    >
+                      {olt.nama_olt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <input type="hidden" name="id_olt" value={oltValue} required />
-          </div>
+              <input type="hidden" name="id_olt" value={oltValue} required />
+            </div>
 
-          {/* 2. ODP Terhubung (Opsional) */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              ODP Terhubung{" "}
-              <span className="font-normal text-slate-400 dark:text-slate-500">
-                (opsional)
-              </span>
-            </label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                ODP Terhubung{" "}
+                <span className="font-normal text-slate-400 dark:text-slate-500">
+                  (opsional)
+                </span>
+              </label>
 
-            <Select value={odpValue} onValueChange={setOdpValue}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
-                <SelectValue placeholder="Pilih ODP (opsional)">
-                  {(value: string) =>
-                    odps.find((odp) => String(odp.id_odp) === value)?.nama_odp ??
-                    "Pilih ODP (opsional)"
-                  }
-                </SelectValue>
-              </SelectTrigger>
+              <Select value={odpValue} onValueChange={setOdpValue}>
+                <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
+                  <SelectValue placeholder="Pilih ODP (opsional)">
+                    {(value: string) =>
+                      odps.find((odp) => String(odp.id_odp) === value)?.nama_odp ??
+                      "Pilih ODP (opsional)"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
 
-              <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                {odps.map((odp) => (
-                  <SelectItem
-                    key={odp.id_odp}
-                    value={String(odp.id_odp)}
-                    className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
-                  >
-                    {odp.nama_odp}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                  {odps.map((odp) => (
+                    <SelectItem
+                      key={odp.id_odp}
+                      value={String(odp.id_odp)}
+                      className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
+                    >
+                      {odp.nama_odp}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <input type="hidden" name="id_odp" value={odpValue} />
+              <input type="hidden" name="id_odp" value={odpValue} />
+            </div>
           </div>
 
           {/* 3. Status */}
