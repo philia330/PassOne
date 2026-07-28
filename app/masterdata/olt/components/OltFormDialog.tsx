@@ -53,6 +53,7 @@ type OltData = {
   ip_olt?: string | null;
   username_olt?: string | null;
   password_olt?: string | null;
+  foto_olt?: string | null;
 };
 
 export const OltFormDialog = ({
@@ -194,6 +195,74 @@ export const OltFormDialog = ({
             </p>
           </div>
 
+          {/* IP Address */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              IP Address{" "}
+              <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
+            </label>
+            <Input
+              name="ip_olt"
+              defaultValue={data?.ip_olt ?? ""}
+              placeholder="Contoh: 192.168.1.1"
+              className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+            />
+          </div>
+
+          {/* Username & Password */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Username{" "}
+                <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
+              </label>
+              <Input
+                name="username_olt"
+                defaultValue={data?.username_olt ?? ""}
+                placeholder="admin"
+                className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Password{" "}
+                <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
+              </label>
+              <PasswordInput
+                name="password_olt"
+                defaultValue={data?.password_olt ?? ""}
+                placeholder="••••••••"
+                className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+              />
+            </div>
+          </div>
+
+          {/* Foto OLT */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Foto OLT{" "}
+              <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
+            </label>
+            {data?.foto_olt && (
+              <img
+                src={data.foto_olt}
+                alt="Foto OLT saat ini"
+                className="mb-2 h-32 w-full rounded-2xl border border-slate-200 object-cover dark:border-slate-700"
+              />
+            )}
+            <Input
+              name="foto_olt"
+              type="file"
+              accept="image/*"
+              className="h-12 rounded-2xl border-slate-200 bg-white file:mr-3 file:h-full file:rounded-xl file:border-0 file:bg-slate-100 file:px-3 file:text-sm file:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:file:bg-slate-700 dark:file:text-slate-200"
+            />
+            {data?.foto_olt && (
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                Kosongkan kalau tidak ingin mengganti foto.
+              </p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Lokasi di Peta</label>
             <OltMapPicker lat={lat} lng={lng} onPick={handlePick} />
@@ -223,46 +292,6 @@ export const OltFormDialog = ({
                 onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
                 placeholder="106.631889"
                 required
-                className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              IP Address{" "}
-              <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
-            </label>
-            <Input
-              name="ip_olt"
-              defaultValue={data?.ip_olt ?? ""}
-              placeholder="Contoh: 192.168.1.1"
-              className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Username{" "}
-                <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
-              </label>
-              <Input
-                name="username_olt"
-                defaultValue={data?.username_olt ?? ""}
-                placeholder="admin"
-                className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Password{" "}
-                <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
-              </label>
-              <PasswordInput
-                name="password_olt"
-                defaultValue={data?.password_olt ?? ""}
-                placeholder="••••••••"
                 className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </div>

@@ -2,10 +2,42 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { writeFile, mkdir, unlink } from "fs/promises";
+import path from "path";
 // import { requireRole, requireAuth } from "@/lib/auth/guards"; // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge dari Project Lead
 // import { logActivity } from "@/lib/activity-log"; // TODO: aktifkan lagi setelah lib/activity-log.ts & auth.ts di-merge dari Project Lead
 
 const PAGE_SIZE = 10;
+const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "olt");
+
+// ======================================================
+// Simpan file foto OLT ke public/uploads/olt, return path relatif
+// ======================================================
+const saveFotoOlt = async (file: File): Promise<string> => {
+  await mkdir(UPLOAD_DIR, { recursive: true });
+
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+
+  const ext = path.extname(file.name) || ".jpg";
+  const filename = `olt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
+  const filePath = path.join(UPLOAD_DIR, filename);
+
+  await writeFile(filePath, buffer);
+
+  return `/uploads/olt/${filename}`;
+};
+
+// Hapus file foto lama dari disk (dipanggil saat foto diganti/data dihapus)
+const deleteFotoOlt = async (fotoPath: string | null) => {
+  if (!fotoPath) return;
+  try {
+    const fullPath = path.join(process.cwd(), "public", fotoPath);
+    await unlink(fullPath);
+  } catch {
+    // Kalau file sudah tidak ada, abaikan saja
+  }
+};
 
 // ======================================================
 // Generate kode_olt otomatis, mengisi celah/gap nomor
@@ -93,6 +125,10 @@ export const createOlt = async (formData: FormData) => {
   const username_olt = (formData.get("username_olt") as string) || null;
   const password_olt = (formData.get("password_olt") as string) || null;
 
+  const fotoFile = formData.get("foto_olt") as File | null;
+  const foto_olt =
+    fotoFile && fotoFile.size > 0 ? await saveFotoOlt(fotoFile) : null;
+
   const olt = await prisma.olt.create({
     data: {
       kode_olt,
@@ -104,6 +140,7 @@ export const createOlt = async (formData: FormData) => {
       ip_olt,
       username_olt,
       password_olt,
+      foto_olt,
     },
   });
 
@@ -125,6 +162,19 @@ export const updateOlt = async (id: number, formData: FormData) => {
   const username_olt = (formData.get("username_olt") as string) || null;
   const password_olt = (formData.get("password_olt") as string) || null;
 
+  const existing = await prisma.olt.findUnique({
+    where: { id_olt: id },
+    select: { foto_olt: true },
+  });
+
+  const fotoFile = formData.get("foto_olt") as File | null;
+  let foto_olt = existing?.foto_olt ?? null;
+
+  if (fotoFile && fotoFile.size > 0) {
+    await deleteFotoOlt(existing?.foto_olt ?? null);
+    foto_olt = await saveFotoOlt(fotoFile);
+  }
+
   const olt = await prisma.olt.update({
     where: { id_olt: id },
     data: {
@@ -136,6 +186,7 @@ export const updateOlt = async (id: number, formData: FormData) => {
       ip_olt,
       username_olt,
       password_olt,
+      foto_olt,
     },
   });
 
@@ -149,6 +200,8 @@ export const deleteOlt = async (id: number) => {
   // await requireRole(["ADMIN"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
 
   const olt = await prisma.olt.delete({ where: { id_olt: id } });
+
+  await deleteFotoOlt(olt.foto_olt);
 
   // await logActivity("OLT_DELETED", `OLT ${olt.nama_olt} dihapus.`);
 

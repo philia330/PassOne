@@ -67,6 +67,9 @@ export const OntFormDialog = ({
     data?.id_odp ? String(data.id_odp) : ""
   );
 
+  const [serialNumber, setSerialNumber] = useState(data?.serial_number ?? "");
+  const [pelanggan, setPelanggan] = useState(data?.pelanggan ?? "");
+
   const handleSubmit = async (formData: FormData) => {
     setIsSubmitting(true);
 
@@ -236,7 +239,8 @@ export const OntFormDialog = ({
             </label>
             <Input
               name="serial_number"
-              defaultValue={data?.serial_number}
+              value={serialNumber}
+              onChange={(e) => setSerialNumber(e.target.value)}
               placeholder="Contoh: SN-HW-00123456"
               required
               className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
@@ -250,7 +254,8 @@ export const OntFormDialog = ({
             </label>
             <Input
               name="pelanggan"
-              defaultValue={data?.pelanggan}
+              value={pelanggan}
+              onChange={(e) => setPelanggan(e.target.value)}
               placeholder="Contoh: Budi Santoso"
               required
               className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"

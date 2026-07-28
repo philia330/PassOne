@@ -190,32 +190,34 @@ export const PopFormDialog = ({
             <PopMapPicker lat={lat} lng={lng} onPick={handlePick} />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Latitude</label>
-            <Input
-              name="latitude"
-              type="number"
-              step="any"
-              value={lat === 0 ? "" : lat}
-              onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
-              placeholder="-6.178306"
-              required
-              className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
-            />
-          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Latitude</label>
+              <Input
+                name="latitude"
+                type="number"
+                step="any"
+                value={lat === 0 ? "" : lat}
+                onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
+                placeholder="-6.178306"
+                required
+                className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
+              />
+            </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Longitude</label>
-            <Input
-              name="longitude"
-              type="number"
-              step="any"
-              value={lng === 0 ? "" : lng}
-              onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
-              placeholder="106.631889"
-              required
-              className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
-            />
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Longitude</label>
+              <Input
+                name="longitude"
+                type="number"
+                step="any"
+                value={lng === 0 ? "" : lng}
+                onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
+                placeholder="106.631889"
+                required
+                className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
+              />
+            </div>
           </div>
 
           <DialogFooter>

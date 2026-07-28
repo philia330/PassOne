@@ -16,6 +16,7 @@ import { OltSearch } from "./components/OltSearch";
 import { OltPagination } from "./components/OltPagination";
 import { OltMapDialog } from "./components/OltMapDialog";
 import { OltSecretCell } from "./components/OltSecretCell";
+import { OltImageDialog } from "./components/OltImageDialog";
 
 export default async function OltPage({
   searchParams,
@@ -64,16 +65,16 @@ export default async function OltPage({
             <OltFormDialog mode="create" pops={pops} />
           </div>
 
+          {/* Table View (Desktop) */}
           <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 md:block">
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-800/60 dark:hover:bg-slate-800/60">
                   <TableHead className="dark:text-slate-300">Kode OLT</TableHead>
+                  <TableHead className="dark:text-slate-300">Foto</TableHead>
                   <TableHead className="dark:text-slate-300">Nama OLT</TableHead>
                   <TableHead className="dark:text-slate-300">Lokasi</TableHead>
                   <TableHead className="dark:text-slate-300">POP</TableHead>
-                  <TableHead className="dark:text-slate-300">Latitude</TableHead>
-                  <TableHead className="dark:text-slate-300">Longitude</TableHead>
                   <TableHead className="dark:text-slate-300">IP Address</TableHead>
                   <TableHead className="dark:text-slate-300">Username</TableHead>
                   <TableHead className="dark:text-slate-300">Password</TableHead>
@@ -87,8 +88,12 @@ export default async function OltPage({
                     key={olt.id_olt}
                     className="border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40"
                   >
+                    {/* 🚀 Menggunakan OltImageDialog di Tabel */}
                     <TableCell className="font-medium text-slate-900 dark:text-slate-100">
                       {olt.kode_olt}
+                    </TableCell>
+                    <TableCell>
+                      <OltImageDialog fotoUrl={olt.foto_olt} namaOlt={olt.nama_olt} />
                     </TableCell>
                     <TableCell className="text-slate-700 dark:text-slate-300">
                       {olt.nama_olt}
@@ -98,12 +103,6 @@ export default async function OltPage({
                     </TableCell>
                     <TableCell className="text-slate-700 dark:text-slate-300">
                       {olt.pop?.nama_pop}
-                    </TableCell>
-                    <TableCell className="text-slate-700 dark:text-slate-300">
-                      {olt.latitude.toString()}
-                    </TableCell>
-                    <TableCell className="text-slate-700 dark:text-slate-300">
-                      {olt.longitude.toString()}
                     </TableCell>
                     <TableCell>{olt.ip_olt ?? "-"}</TableCell>
                     <TableCell>{olt.username_olt ?? "-"}</TableCell>
@@ -137,6 +136,7 @@ export default async function OltPage({
                             ip_olt: olt.ip_olt,
                             username_olt: olt.username_olt,
                             password_olt: olt.password_olt,
+                            foto_olt: olt.foto_olt,
                           }}
                         />
                         <DeleteOltDialog id={olt.id_olt} name={olt.nama_olt} />
@@ -148,7 +148,7 @@ export default async function OltPage({
                 {olts.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={11}
+                      colSpan={10}
                       className="py-10 text-center text-slate-400 dark:text-slate-500"
                     >
                       {search
@@ -161,6 +161,7 @@ export default async function OltPage({
             </Table>
           </div>
 
+          {/* Tampilan Mobile Card */}
           <div className="grid gap-3 md:hidden">
             {olts.map((olt) => (
               <div
@@ -168,13 +169,17 @@ export default async function OltPage({
                 className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/50"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-semibold text-slate-900 dark:text-slate-100">
-                      {olt.nama_olt}
-                    </p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      {olt.kode_olt}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    {/* 🚀 Menggunakan OltImageDialog di Card Mobile */}
+                    <OltImageDialog fotoUrl={olt.foto_olt} namaOlt={olt.nama_olt} />
+                    <div>
+                      <p className="font-semibold text-slate-900 dark:text-slate-100">
+                        {olt.nama_olt}
+                      </p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        {olt.kode_olt}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <OltMapDialog
@@ -195,6 +200,7 @@ export default async function OltPage({
                         ip_olt: olt.ip_olt,
                         username_olt: olt.username_olt,
                         password_olt: olt.password_olt,
+                        foto_olt: olt.foto_olt,
                       }}
                     />
                     <DeleteOltDialog id={olt.id_olt} name={olt.nama_olt} />
@@ -206,9 +212,6 @@ export default async function OltPage({
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   POP: {olt.pop?.nama_pop ?? "-"}
-                </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">
-                  {olt.latitude.toString()}, {olt.longitude.toString()}
                 </p>
                 <div className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
                   <span>IP:</span>
