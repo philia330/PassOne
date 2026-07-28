@@ -127,68 +127,69 @@ export const OntFormDialog = ({
         </DialogHeader>
 
         <form action={handleSubmit} className="space-y-4">
-          {/* 1. POP */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              POP
-            </label>
+          {/* 1 & 2. POP & ODP berdampingan */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                POP
+              </label>
 
-            <Select value={popValue} onValueChange={setPopValue}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
-                <SelectValue placeholder="Pilih POP">
-                  {(value: string) =>
-                    pops.find((pop) => String(pop.id_pop) === value)?.nama_pop ??
-                    "Pilih POP"
-                  }
-                </SelectValue>
-              </SelectTrigger>
+              <Select value={popValue} onValueChange={setPopValue}>
+                <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
+                  <SelectValue placeholder="Pilih POP">
+                    {(value: string) =>
+                      pops.find((pop) => String(pop.id_pop) === value)?.nama_pop ??
+                      "Pilih POP"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
 
-              <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                {pops.map((pop) => (
-                  <SelectItem
-                    key={pop.id_pop}
-                    value={String(pop.id_pop)}
-                    className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
-                  >
-                    {pop.nama_pop}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                  {pops.map((pop) => (
+                    <SelectItem
+                      key={pop.id_pop}
+                      value={String(pop.id_pop)}
+                      className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
+                    >
+                      {pop.nama_pop}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <input type="hidden" name="id_pop" value={popValue} required />
-          </div>
+              <input type="hidden" name="id_pop" value={popValue} required />
+            </div>
 
-          {/* 2. ODP */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              ODP
-            </label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                ODP
+              </label>
 
-            <Select value={odpValue} onValueChange={setOdpValue}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
-                <SelectValue placeholder="Pilih ODP">
-                  {(value: string) =>
-                    odps.find((odp) => String(odp.id_odp) === value)?.nama_odp ??
-                    "Pilih ODP"
-                  }
-                </SelectValue>
-              </SelectTrigger>
+              <Select value={odpValue} onValueChange={setOdpValue}>
+                <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
+                  <SelectValue placeholder="Pilih ODP">
+                    {(value: string) =>
+                      odps.find((odp) => String(odp.id_odp) === value)?.nama_odp ??
+                      "Pilih ODP"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
 
-              <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                {odps.map((odp) => (
-                  <SelectItem
-                    key={odp.id_odp}
-                    value={String(odp.id_odp)}
-                    className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
-                  >
-                    {odp.nama_odp}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                  {odps.map((odp) => (
+                    <SelectItem
+                      key={odp.id_odp}
+                      value={String(odp.id_odp)}
+                      className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
+                    >
+                      {odp.nama_odp}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <input type="hidden" name="id_odp" value={odpValue} required />
+              <input type="hidden" name="id_odp" value={odpValue} required />
+            </div>
           </div>
 
           {/* 3. Status */}
