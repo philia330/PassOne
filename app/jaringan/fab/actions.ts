@@ -1,8 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 
 async function renumberKodeFab() {
   const semuaFab = await prisma.fab.findMany({
@@ -54,16 +54,21 @@ export async function createFab(formData: FormData) {
         id_user,
       },
     });
-  } catch (error: any) {
-    if (error.code === "P2002") {
+  } catch (error) {
+    // ✅ Perbaikan: menggunakan Prisma.PrismaClientKnownRequestError
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       throw new Error("NIK ini sudah terdaftar pada data FAB lain.");
     }
     throw error;
   }
 
   await renumberKodeFab();
+
+  // ❌ redirect("/jaringan/fab") dihapus — menyebabkan sinyal redirect
+  // tertangkap oleh try/catch di client (FabDialog), sehingga modal
+  // tidak pernah tertutup dan navigasi gagal. revalidatePath sudah
+  // cukup untuk me-refresh data di halaman yang sama.
   revalidatePath("/jaringan/fab");
-  redirect("/jaringan/fab"); // ✅ Tambahkan redirect
 }
 
 export async function updateFab(id: number, formData: FormData) {
@@ -98,21 +103,30 @@ export async function updateFab(id: number, formData: FormData) {
         id_user,
       },
     });
-  } catch (error: any) {
-    if (error.code === "P2002") {
+  } catch (error) {
+    // ✅ Perbaikan: menggunakan Prisma.PrismaClientKnownRequestError
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       throw new Error("NIK ini sudah terdaftar pada data FAB lain.");
     }
     throw error;
   }
 
   revalidatePath("/jaringan/fab");
-  redirect("/jaringan/fab"); // ✅ Tambahkan redirect
 }
 
 export async function deleteFab(id: number) {
+  const jumlahBaaTerkait = await prisma.baa.count({
+    where: { id_fab: id },
+  });
+
+  if (jumlahBaaTerkait > 0) {
+    throw new Error(
+      `FAB ini tidak bisa dihapus karena masih memiliki ${jumlahBaaTerkait} data BAA (berita acara instalasi) yang terhubung. Hapus atau pindahkan data BAA tersebut terlebih dahulu.`
+    );
+  }
+
   await prisma.fab.delete({ where: { id_fab: id } });
 
-  await renumberKodeFab();  
+  await renumberKodeFab();
   revalidatePath("/jaringan/fab");
-  redirect("/jaringan/fab"); // ✅ Tambahkan redirect
 }

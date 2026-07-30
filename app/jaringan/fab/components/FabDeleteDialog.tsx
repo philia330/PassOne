@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Trash2, Loader2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,24 +22,41 @@ interface FabDeleteDialogProps {
 }
 
 export const FabDeleteDialog = ({ id, namaPelanggan }: FabDeleteDialogProps) => {
+  const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleConfirm = () => {
+    setErrorMsg(null);
     startTransition(async () => {
-      await deleteFab(id);
+      try {
+        await deleteFab(id);
+        setOpen(false);
+      } catch (err: unknown) {
+        const error = err as Error;
+        setErrorMsg(error.message ?? "Gagal menghapus data, coba lagi.");
+      }
     });
   };
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors w-full sm:w-auto"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+    <AlertDialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (!isOpen) setErrorMsg(null);
+      }}
+    >
+      <AlertDialogTrigger
+        render={
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors w-full sm:w-auto"
+          />
+        }
+      >
+        <Trash2 className="h-4 w-4" />
       </AlertDialogTrigger>
 
       <AlertDialogContent
@@ -69,6 +86,12 @@ export const FabDeleteDialog = ({ id, namaPelanggan }: FabDeleteDialogProps) => 
             sudah dihapus tidak bisa dikembalikan.
           </AlertDialogDescription>
         </AlertDialogHeader>
+
+        {errorMsg && (
+          <p className="mx-4 sm:mx-6 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+            {errorMsg}
+          </p>
+        )}
 
         <div className="flex-1" />
 

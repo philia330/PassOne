@@ -103,9 +103,13 @@ export const FabForm = ({
   const [mapSearching, setMapSearching] = useState(false);
   const [mapSearchError, setMapSearchError] = useState<string | null>(null);
 
+  // ✅ Perbaikan 1: Gunakan conditional rendering, bukan setState di effect
+  const shouldShowMapError = mapSearchQuery.trim().length > 0 && mapSearchQuery.trim().length < 3;
+
   useEffect(() => {
+    // ✅ Hanya jalankan search jika query >= 3 karakter
     if (mapSearchQuery.trim().length < 3) {
-      setMapSearchError(null);
+      // Tidak ada setState di sini
       return;
     }
 
@@ -123,6 +127,7 @@ export const FabForm = ({
         if (Array.isArray(data) && data.length > 0) {
           setLatitude(Number(data[0].lat).toFixed(6));
           setLongitude(Number(data[0].lon).toFixed(6));
+          setMapSearchError(null);
         } else {
           setMapSearchError("Daerah/alamat tidak ditemukan.");
         }
@@ -146,8 +151,9 @@ export const FabForm = ({
       return;
     }
 
+    // ✅ Perbaikan 2: Hanya proses jika alamat cukup panjang
     if (alamat.trim().length < 8) {
-      setGeocodeError(null);
+      // Tidak ada setState di sini
       return;
     }
 
@@ -167,6 +173,7 @@ export const FabForm = ({
         if (Array.isArray(data) && data.length > 0) {
           setLatitude(Number(data[0].lat).toFixed(6));
           setLongitude(Number(data[0].lon).toFixed(6));
+          setGeocodeError(null);
         } else {
           setGeocodeError("Lokasi tidak ditemukan, isi Latitude/Longitude manual.");
         }
@@ -188,6 +195,22 @@ export const FabForm = ({
   // kalau belum, pakai default (Bandung) supaya peta tetap muncul dari awal.
   const displayLat = hasValidCoords ? lat : DEFAULT_MAP_LAT;
   const displayLng = hasValidCoords ? lon : DEFAULT_MAP_LNG;
+
+  // ✅ Fungsi untuk mendapatkan nama dari ID
+  const getAreaName = (id: string) => {
+    const area = areaOptions.find(a => String(a.id_area) === id);
+    return area?.nama_area || "Pilih area";
+  };
+
+  const getPaketName = (id: string) => {
+    const paket = paketOptions.find(p => String(p.id_paket) === id);
+    return paket?.nama_paket || "Pilih paket";
+  };
+
+  const getSalesName = (id: string) => {
+    const sales = salesOptions.find(s => String(s.id_user) === id);
+    return sales?.nama || "Pilih sales";
+  };
 
   return (
     // FIX: scroll HANYA di DialogContent (components/ui/dialog.tsx), tidak
@@ -284,13 +307,117 @@ export const FabForm = ({
             <Loader2 size={12} className="animate-spin" /> Mencari lokasi dari alamat...
           </p>
         )}
-        {!geocoding && geocodeError && (
+        {/* ✅ Perbaikan: Tampilkan error hanya jika ada dan alamat cukup panjang */}
+        {!geocoding && geocodeError && alamat.trim().length >= 8 && (
           <p className="text-xs text-amber-600">{geocodeError}</p>
         )}
       </div>
 
       {/* ================================================ */}
-      {/* LOKASI MAP -- label section, di atas Latitude/Longitude */}
+      {/* AREA / PAKET / SALES / STATUS -- dipindah ke sini, */}
+      {/* persis sesudah Alamat Lengkap, sebelum Lokasi Map  */}
+      {/* ================================================ */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+          <Building2 size={13} className="text-purple-500" /> Area
+        </Label>
+        <Select
+          value={idArea}
+          onValueChange={(v) => setIdArea(v ?? "")}
+        >
+          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
+            {/* ✅ Perbaikan: Tampilkan nama area, bukan ID */}
+            <SelectValue placeholder="Pilih area">
+              {idArea ? getAreaName(idArea) : "Pilih area"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {areaOptions.map((a) => (
+              <SelectItem key={a.id_area} value={String(a.id_area)}>
+                {a.nama_area}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <input type="hidden" name="id_area" value={idArea} required />
+      </div>
+
+      <div className="space-y-2">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+          <Package size={13} className="text-purple-500" /> Paket Internet
+        </Label>
+        <Select
+          value={idPaket}
+          onValueChange={(v) => setIdPaket(v ?? "")}
+        >
+          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
+            {/* ✅ Perbaikan: Tampilkan nama paket, bukan ID */}
+            <SelectValue placeholder="Pilih paket">
+              {idPaket ? getPaketName(idPaket) : "Pilih paket"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {paketOptions.map((p) => (
+              <SelectItem key={p.id_paket} value={String(p.id_paket)}>
+                {p.nama_paket}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <input type="hidden" name="id_paket" value={idPaket} required />
+      </div>
+
+      <div className="space-y-2">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+          <UserCog size={13} className="text-purple-500" /> Sales
+        </Label>
+        <Select
+          value={idUser}
+          onValueChange={(v) => setIdUser(v ?? "")}
+        >
+          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
+            {/* ✅ Perbaikan: Tampilkan nama sales, bukan ID */}
+            <SelectValue placeholder="Pilih sales">
+              {idUser ? getSalesName(idUser) : "Pilih sales"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {salesOptions.map((u) => (
+              <SelectItem key={u.id_user} value={String(u.id_user)}>
+                {u.nama}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <input type="hidden" name="id_user" value={idUser} required />
+      </div>
+
+      <div className="space-y-2">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+          <Activity size={13} className="text-purple-500" /> Status
+        </Label>
+        <Select
+          value={status}
+          onValueChange={(v) => setStatus((v ?? "PENDING") as StatusFab)}
+        >
+          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
+            <SelectValue>
+              {STATUS_LABEL[status]}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(STATUS_LABEL) as StatusFab[]).map((s) => (
+              <SelectItem key={s} value={s}>
+                {STATUS_LABEL[s]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <input type="hidden" name="status" value={status} />
+      </div>
+
+      {/* ================================================ */}
+      {/* LOKASI MAP -- label section, di atas peta */}
       {/* ================================================ */}
       <div className="col-span-2">
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -316,9 +443,59 @@ export const FabForm = ({
             />
           )}
         </div>
-        {mapSearchError && <p className="text-xs text-amber-600 mt-1">{mapSearchError}</p>}
+        {/* ✅ Perbaikan: Conditional rendering untuk error map search */}
+        {shouldShowMapError ? (
+          <p className="text-xs text-yellow-600 mt-1">
+            Minimal 3 karakter untuk mencari lokasi
+          </p>
+        ) : mapSearchError && mapSearchQuery.trim().length >= 3 ? (
+          <p className="text-xs text-amber-600 mt-1">{mapSearchError}</p>
+        ) : null}
       </div>
 
+      {/* Peta -- SELALU muncul (default Bandung) supaya tidak perlu isi
+          alamat dulu buat lihat petanya. Latitude/Longitude dipindah ke
+          BAWAH peta ini (bukan di atas lagi). */}
+      <div className="col-span-2 space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-slate-400">
+            {hasValidCoords
+              ? "Klik atau geser pin untuk ubah titik lokasi"
+              : "Klik atau geser pin di peta untuk pilih lokasi pelanggan"}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setMapExpanded((v) => !v)}
+            className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+          >
+            {mapExpanded ? (
+              <>
+                <Minimize2 className="mr-1 h-3.5 w-3.5" /> Perkecil
+              </>
+            ) : (
+              <>
+                <Maximize2 className="mr-1 h-3.5 w-3.5" /> Perbesar
+              </>
+            )}
+          </Button>
+        </div>
+
+        <LocationPickerMap
+          lat={displayLat}
+          lng={displayLng}
+          height={mapExpanded ? "420px" : "220px"}
+          onChange={(newLat, newLng) => {
+            setLatitude(newLat.toFixed(6));
+            setLongitude(newLng.toFixed(6));
+          }}
+        />
+      </div>
+
+      {/* ================================================ */}
+      {/* LATITUDE / LONGITUDE -- dipindah ke BAWAH peta */}
+      {/* ================================================ */}
       <div className="space-y-2">
         <Label
           htmlFor="latitude"
@@ -357,140 +534,6 @@ export const FabForm = ({
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
           required
         />
-      </div>
-
-      {/* Peta di bawah kolom Latitude/Longitude -- SELALU muncul (default
-          Bandung) supaya tidak perlu isi alamat dulu buat lihat petanya. */}
-      <div className="col-span-2 space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-slate-400">
-            {hasValidCoords
-              ? "Klik atau geser pin untuk ubah titik lokasi"
-              : "Klik atau geser pin di peta untuk pilih lokasi pelanggan"}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setMapExpanded((v) => !v)}
-            className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
-          >
-            {mapExpanded ? (
-              <>
-                <Minimize2 className="mr-1 h-3.5 w-3.5" /> Perkecil
-              </>
-            ) : (
-              <>
-                <Maximize2 className="mr-1 h-3.5 w-3.5" /> Perbesar
-              </>
-            )}
-          </Button>
-        </div>
-
-        <LocationPickerMap
-          lat={displayLat}
-          lng={displayLng}
-          height={mapExpanded ? "420px" : "220px"}
-          onChange={(newLat, newLng) => {
-            setLatitude(newLat.toFixed(6));
-            setLongitude(newLng.toFixed(6));
-          }}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-          <Building2 size={13} className="text-purple-500" /> Area
-        </Label>
-        <Select
-          value={idArea}
-          onValueChange={(v) => setIdArea(v ?? "")}
-          items={areaOptions.map((a) => ({ value: String(a.id_area), label: a.nama_area }))}
-        >
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
-            <SelectValue placeholder="Pilih area" />
-          </SelectTrigger>
-          <SelectContent>
-            {areaOptions.map((a) => (
-              <SelectItem key={a.id_area} value={String(a.id_area)}>
-                {a.nama_area}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <input type="hidden" name="id_area" value={idArea} required />
-      </div>
-
-      <div className="space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-          <Package size={13} className="text-purple-500" /> Paket Internet
-        </Label>
-        <Select
-          value={idPaket}
-          onValueChange={(v) => setIdPaket(v ?? "")}
-          items={paketOptions.map((p) => ({ value: String(p.id_paket), label: p.nama_paket }))}
-        >
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
-            <SelectValue placeholder="Pilih paket" />
-          </SelectTrigger>
-          <SelectContent>
-            {paketOptions.map((p) => (
-              <SelectItem key={p.id_paket} value={String(p.id_paket)}>
-                {p.nama_paket}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <input type="hidden" name="id_paket" value={idPaket} required />
-      </div>
-
-      <div className="space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-          <UserCog size={13} className="text-purple-500" /> Sales
-        </Label>
-        <Select
-          value={idUser}
-          onValueChange={(v) => setIdUser(v ?? "")}
-          items={salesOptions.map((u) => ({ value: String(u.id_user), label: u.nama }))}
-        >
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
-            <SelectValue placeholder="Pilih sales" />
-          </SelectTrigger>
-          <SelectContent>
-            {salesOptions.map((u) => (
-              <SelectItem key={u.id_user} value={String(u.id_user)}>
-                {u.nama}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <input type="hidden" name="id_user" value={idUser} required />
-      </div>
-
-      <div className="space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-          <Activity size={13} className="text-purple-500" /> Status
-        </Label>
-        <Select
-          value={status}
-          onValueChange={(v) => setStatus((v ?? "PENDING") as StatusFab)}
-          items={(Object.keys(STATUS_LABEL) as StatusFab[]).map((s) => ({
-            value: s,
-            label: STATUS_LABEL[s],
-          }))}
-        >
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.keys(STATUS_LABEL) as StatusFab[]).map((s) => (
-              <SelectItem key={s} value={s}>
-                {STATUS_LABEL[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <input type="hidden" name="status" value={status} />
       </div>
     </div>
   );

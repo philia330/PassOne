@@ -202,7 +202,7 @@ export async function addTeknisiTambahan(baaId: number, userId: number) {
     },
   });
 
-  revalidatePath(`/jaringan/baa/${baaId}/teknisi`);
+  revalidatePath(`/jaringan/baateknisi/${baaId}`);
   revalidatePath("/jaringan/baa");
   return result;
 }
@@ -221,7 +221,7 @@ export async function removeTeknisiTambahan(id_baa_teknisi: number) {
   });
 
   if (baaTeknisi) {
-    revalidatePath(`/jaringan/baa/${baaTeknisi.id_baa}/teknisi`);
+    revalidatePath(`/jaringan/baateknisi/${baaTeknisi.id_baa}`);
   }
   revalidatePath("/jaringan/baa");
 }
@@ -406,6 +406,96 @@ export async function getTeknisiTambahan(baaId: number) {
     },
     orderBy: {
       createdAt: "asc",
+    },
+  });
+}
+// ================================================================
+// 8. GET DATA UNTUK TABEL (TAMBAHAN BARU)
+// ================================================================
+
+export async function getBaaData() {
+  return await prisma.baa.findMany({
+    include: {
+      fab: true,
+      users: true,
+      olt: true,
+      odp: true,
+      ont: true,
+      baadetail: true,
+      teknisiTambahan: {
+        include: {
+          users: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+}
+
+export async function getFabOptions() {
+  return await prisma.fab.findMany({
+    orderBy: { kode_fab: "asc" },
+  });
+}
+
+export async function getTeknisiOptions() {
+  return await prisma.user.findMany({
+    where: { role: "TEKNISI" },
+    orderBy: { nama: "asc" },
+  });
+}
+
+export async function getOltOptions() {
+  return await prisma.olt.findMany({
+    orderBy: { nama_olt: "asc" },
+  });
+}
+
+export async function getOdpOptions() {
+  return await prisma.odp.findMany({
+    orderBy: { nama_odp: "asc" },
+  });
+}
+
+export async function getOntOptions() {
+  return await prisma.ont.findMany({
+    orderBy: { serial_number: "asc" },
+  });
+}
+
+export async function getMaterialOptions() {
+  return await prisma.material.findMany({
+    orderBy: { nama_material: "asc" },
+  });
+}
+
+export async function getBaaById(id: number) {
+  return await prisma.baa.findUnique({
+    where: { id_baa: id },
+    include: {
+      fab: {
+        include: {
+          area: true,
+          paket: true,
+          users: true,
+        },
+      },
+      users: true,
+      olt: true,
+      odp: true,
+      ont: true,
+      baadetail: {
+        include: {
+          material: true,
+        },
+      },
+      teknisiTambahan: {
+        include: {
+          users: true,
+        },
+      },
     },
   });
 }

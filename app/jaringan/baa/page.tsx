@@ -11,7 +11,7 @@ export default async function BaaPage() {
         orderBy: { createdAt: "desc" },
         include: {
           fab: true,
-          users: true, // ← users (sesuai schema: @@map("users"))
+          users: true, 
           olt: true,
           odp: true,
           ont: true,
@@ -22,7 +22,7 @@ export default async function BaaPage() {
           },
           teknisiTambahan: {
             include: {
-              users: { // ← users (sesuai schema)
+              users: { 
                 select: {
                   id_user: true,
                   nama: true,
@@ -37,10 +37,6 @@ export default async function BaaPage() {
         orderBy: { nama_pelanggan: "asc" },
         select: { id_fab: true, kode_fab: true, nama_pelanggan: true },
       }),
-      // ============================================================
-      // PERBAIKAN: Gunakan prisma.user BUKAN prisma.users
-      // Karena model di schema bernama "User" (huruf kapital)
-      // ============================================================
       prisma.user.findMany({
         where: { role: "TEKNISI" },
         orderBy: { nama: "asc" },
@@ -64,14 +60,47 @@ export default async function BaaPage() {
       }),
     ]);
 
-  const baa = rawBaa.map((item) => ({
-    ...item,
-    rx_power_dbm: item.rx_power_dbm ? Number(item.rx_power_dbm) : null,
-    tx_power_dbm: item.tx_power_dbm ? Number(item.tx_power_dbm) : null,
-    ping_ms: item.ping_ms ? Number(item.ping_ms) : null,
-  }));
+  // 1. Konversi data BAA (Kode Anda sendiri)
+const baa = rawBaa.map((item) => ({
+  ...item,
+  rx_power_dbm: item.rx_power_dbm ? Number(item.rx_power_dbm) : null,
+  tx_power_dbm: item.tx_power_dbm ? Number(item.tx_power_dbm) : null,
+  ping_ms: item.ping_ms ? Number(item.ping_ms) : null,
+  fab: {
+    ...item.fab,
+    latitude: Number(item.fab.latitude),
+    longitude: Number(item.fab.longitude),
+  },
+  olt: {
+    ...item.olt,
+    latitude: Number(item.olt.latitude),
+    longitude: Number(item.olt.longitude),
+  },
+  odp: {
+    ...item.odp,
+    latitude: Number(item.odp.latitude),
+    longitude: Number(item.odp.longitude),
+  },
+  baadetail: item.baadetail.map((d) => ({
+    ...d,
+    material: {
+      ...d.material,
+      harga: Number(d.material.harga),
+    },
+  })),
+}));
 
   const kodeOtomatis = `BAA${String(baa.length + 1).padStart(3, "0")}`;
+
+  // ============================================================
+  // ✅ SOLUSI 1 BARIS (BAGIAN PALING PENTING INI SAJA!)
+  // ============================================================
+  // Ubah semua data yang mengandung Decimal jadi Plain Object dalam 1 baris.
+  const [sanitizedFab, sanitizedOlt, sanitizedOdp, sanitizedMaterial] = [
+    fabList, oltList, odpList, materialList
+  ].map(list => JSON.parse(JSON.stringify(list)));
+
+  // ============================================================
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans antialiased relative overflow-hidden">
@@ -80,7 +109,6 @@ export default async function BaaPage() {
       <div className="pointer-events-none absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-fuchsia-200/30 blur-3xl" />
 
       <div className="relative p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
-        {/* Header */}
         <Card className="flex-row relative overflow-hidden rounded-3xl shadow-xl border bg-white p-4 sm:p-6 flex items-center justify-between gap-4 flex-wrap">
           <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500" />
 
@@ -99,23 +127,23 @@ export default async function BaaPage() {
           <BaaDialog
             mode="create"
             kodeOtomatis={kodeOtomatis}
-            fabOptions={fabList}
+            fabOptions={sanitizedFab}
             teknisiOptions={teknisiList}
-            oltOptions={oltList}
-            odpOptions={odpList}
+            oltOptions={sanitizedOlt}
+            odpOptions={sanitizedOdp}
             ontOptions={ontList}
-            materialOptions={materialList}
+            materialOptions={sanitizedMaterial}
           />
         </Card>
 
         <BaaTable
           data={baa}
-          fabOptions={fabList}
+          fabOptions={sanitizedFab}
           teknisiOptions={teknisiList}
-          oltOptions={oltList}
-          odpOptions={odpList}
+          oltOptions={sanitizedOlt}
+          odpOptions={sanitizedOdp}
           ontOptions={ontList}
-          materialOptions={materialList}
+          materialOptions={sanitizedMaterial}
         />
 
         <p className="text-center text-xs text-slate-400 pt-2">

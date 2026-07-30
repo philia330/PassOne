@@ -9,10 +9,10 @@ import {
   Package,
   PackageOpen,
   FileText,
-  ClipboardList,
+
   Cable,
   Users,
-  UserCog,
+
   Settings,
 } from "lucide-react";
 
@@ -72,18 +72,13 @@ export const navigation: NavigationGroup[] = [
         title: "ODP",
         href: "/masterdata/odp",
         icon: Boxes,
-        roles: [Role.ADMIN,
-                Role.LEADER
-        ],
+        roles: [Role.ADMIN, Role.LEADER],
       },
       {
         title: "ONT",
         href: "/masterdata/ont",
         icon: Boxes,
-        roles: [
-          Role.ADMIN,
-          Role.LOGISTIK,
-        ],
+        roles: [Role.ADMIN, Role.LOGISTIK],
       },
       {
         title: "Port PON",
@@ -95,23 +90,14 @@ export const navigation: NavigationGroup[] = [
         title: "Material",
         href: "/masterdata/material",
         icon: Package,
-        roles: [
-          Role.ADMIN,
-          Role.LOGISTIK,
-          Role.TEKNISI,
-
-        ],
+        roles: [Role.ADMIN, Role.LOGISTIK, Role.TEKNISI],
       },
       {
-      title: "Paket",
-      href: "/masterdata/paket",
-      icon: PackageOpen,
-      roles: [Role.ADMIN,
-              Role.LOGISTIK,
-      ],
-    },
-
-      // ====== BAGIAN KITA ======
+        title: "Paket",
+        href: "/masterdata/paket",
+        icon: PackageOpen,
+        roles: [Role.ADMIN, Role.LOGISTIK],
+      },
       {
         title: "User",
         href: "/masterdata/user",
@@ -126,53 +112,28 @@ export const navigation: NavigationGroup[] = [
     items: [
       {
         title: "FAB",
-        href: "jaringan/fab",
+        href: "/jaringan/fab", // ✅ tambah leading slash
         icon: FileText,
-        roles: [
-          Role.ADMIN,
-          Role.LEADER,
-          Role.SALES,
-        ],
+        roles: [Role.ADMIN, Role.LEADER, Role.SALES],
       },
       {
         title: "BAA",
-        href: "jaringan/baa",
+        href: "/jaringan/baa", // ✅ tambah leading slash
         icon: FileText,
-        roles: [
-          Role.ADMIN,
-          Role.LEADER,
-          Role.TEKNISI,
-          Role.SALES,
-        ],
+        roles: [Role.ADMIN, Role.LEADER, Role.TEKNISI, Role.SALES],
       },
-      {
-        title: "BAA Teknisi",
-        href: "jaringan/baa",           // sama dengan BAA — user pilih 1 BAA dulu, baru masuk ke tab/folder teknisi
-        icon: UserCog,
-        roles: [
-          Role.ADMIN,
-          Role.LEADER,
-          Role.TEKNISI,
-        ],
-      },
-      {
-      title: "Detail Material BAA",
-      href: "jaringan/baa-detail",
-      icon: ClipboardList,
-      roles: [Role.ADMIN, Role.LEADER, Role.TEKNISI, Role.LOGISTIK],
-    },
     ],
   },
 
-{
-  title: "Pengaturan",
-  items: [
-    {
-      title: "Settings",
-      href: "/settings",
-      icon: Settings,
-      roles: [Role.ADMIN], // sebelumnya semua role
-    },
-  ],
-},
+  {
+    title: "Pengaturan",
+    items: [
+      {
+        title: "Settings",
+        href: "/settings",
+        icon: Settings,
+        roles: [Role.ADMIN],
+      },
+    ],
+  },
 ];

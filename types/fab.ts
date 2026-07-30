@@ -17,7 +17,9 @@ export interface FabData {
   updatedAt: Date;
   area?: { id_area: number; nama_area: string };
   paket?: { id_paket: number; nama_paket: string };
-  user?: { id_user: number; nama: string };
+  // ✅ "users", bukan "user" — sesuai nama field relasi di model fab
+  // pada schema.prisma (fields: [id_user], map: "Fab_id_user_fkey")
+  users?: { id_user: number; nama: string };
 }
 
 // Opsi untuk dropdown — hasil query READ-ONLY dari tabel Area/Paket/User.

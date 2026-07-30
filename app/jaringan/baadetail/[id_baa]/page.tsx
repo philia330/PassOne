@@ -1,21 +1,20 @@
-import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { BaaImageDialog } from "@/app/jaringan/baa/components/BaaImageDialog";
+import { auth } from "@/lib/auth";
+import { Role } from "@/lib/auth/roles";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import {
   ArrowLeft,
   Calendar,
   UserCog,
   Router,
-  GitBranch,
-  Wifi,
-  Hash,
   Gauge,
   Download,
   Upload,
-  Timer,
   StickyNote,
   Image as ImageIcon,
   Boxes,
@@ -26,14 +25,16 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import { getBaaById } from "@/app/jaringan/baa/actions"; // Import dari actions
 
+// ✅ FIX: params sekarang berupa Promise di Next.js 15/16 (async params)
 interface BaaDetailPageProps {
-  params: {
+  params: Promise<{
     id_baa: string;
-  };
+  }>;
 }
 
-const STATUS_LABEL: Record<string, string> = {
+const STATUS_LABEL: Record<string, string> = {  
   PENDING: "Pending",
   PROSES: "Proses",
   SELESAI: "Selesai",
@@ -64,53 +65,45 @@ function formatRupiah(value: number) {
 }
 
 // ================================================================
-// HELPER: Konversi Decimal ke number atau string
+// HELPER: Konversi Decimal ke number
 // ================================================================
-function toNumber(value: any): number | null {
+function isDecimalObject(value: unknown): value is { toNumber: () => number } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'toNumber' in value &&
+    typeof (value as { toNumber: unknown }).toNumber === 'function'
+  );
+}
+
+function toNumber(value: unknown): number | null {
   if (value === null || value === undefined) return null;
+  if (isDecimalObject(value)) {
+    return value.toNumber();
+  }
   const num = Number(value);
   return isNaN(num) ? null : num;
 }
 
-function formatDecimal(value: any): string {
-  if (value === null || value === undefined) return "-";
-  const num = Number(value);
-  return isNaN(num) ? "-" : num.toString();
-}
-
 export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
-  const id = parseInt(params.id_baa);
+  // ✅ Proteksi role
+  const session = await auth();
+  const allowedRoles = [Role.ADMIN, Role.LEADER, Role.TEKNISI];
+
+  if (!session || !allowedRoles.includes(session.user?.role as Role)) {
+    redirect("/dashboard");
+  }
+
+  // ✅ FIX: await params dulu sebelum akses propertinya
+  const { id_baa } = await params;
+  const id = parseInt(id_baa);
 
   if (isNaN(id)) {
     notFound();
   }
 
-  const baa = await prisma.baa.findUnique({
-    where: { id_baa: id },
-    include: {
-      fab: {
-        include: {
-          area: true,
-          paket: true,
-          users: true,
-        },
-      },
-      users: true,
-      olt: true,
-      odp: true,
-      ont: true,
-      baadetail: {
-        include: {
-          material: true,
-        },
-      },
-      teknisiTambahan: {
-        include: {
-          users: true,
-        },
-      },
-    },
-  });
+  // Gunakan getBaaId dari actions.ts
+  const baa = await getBaaById(id);
 
   if (!baa) {
     notFound();
@@ -129,13 +122,11 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans antialiased relative overflow-hidden">
-      {/* Dekorasi blur */}
       <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-purple-200/40 blur-3xl" />
       <div className="pointer-events-none absolute top-40 -right-24 h-80 w-80 rounded-full bg-sky-200/40 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-fuchsia-200/30 blur-3xl" />
 
       <div className="relative p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
-        {/* Tombol Kembali */}
         <Link href="/jaringan/baa">
           <Button variant="ghost" className="rounded-xl gap-2 text-slate-600 hover:text-purple-600">
             <ArrowLeft className="h-4 w-4" />
@@ -164,24 +155,18 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
             </div>
 
             <div className="flex gap-2">
-              <Link href={`/jaringan/baa/${id}/edit`}>
-                <Button variant="outline" className="rounded-xl">
-                  Edit
-                </Button>
-              </Link>
+              
             </div>
           </div>
         </Card>
 
         {/* Grid Info */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-          {/* INFORMASI PELANGGAN */}
           <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
             <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
               <Users className="h-4 w-4 text-purple-500" />
               Informasi Pelanggan
             </h3>
-
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-slate-500">Nama</span>
@@ -206,38 +191,27 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
             </div>
           </Card>
 
-          {/* TEKNISI */}
           <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
             <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
               <UserCog className="h-4 w-4 text-purple-500" />
               Teknisi
             </h3>
-
             <div className="space-y-3">
-              {/* Teknisi Utama */}
               <div className="rounded-xl bg-purple-50 border border-purple-100 p-3">
                 <p className="text-xs text-purple-600 font-medium">Teknisi Utama</p>
                 <p className="font-semibold text-slate-900">{baa.users?.nama}</p>
               </div>
-
-              {/* Teknisi Tambahan */}
               {baa.teknisiTambahan.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-xs text-slate-400 font-medium">Teknisi Tambahan</p>
                   {baa.teknisiTambahan.map((t) => (
-                    <div
-                      key={t.id_baa_teknisi}
-                      className="rounded-xl bg-slate-50 border border-slate-200 p-2.5 flex items-center justify-between"
-                    >
+                    <div key={t.id_baa_teknisi} className="rounded-xl bg-slate-50 border border-slate-200 p-2.5 flex items-center justify-between">
                       <span className="font-medium text-slate-700">{t.users?.nama}</span>
-                      <Badge variant="outline" className="text-xs">
-                        Tambahan
-                      </Badge>
+                     
                     </div>
                   ))}
                 </div>
               )}
-
               {baa.teknisiTambahan.length === 0 && (
                 <p className="text-xs text-slate-400 italic">Tidak ada teknisi tambahan</p>
               )}
@@ -245,13 +219,11 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
           </Card>
         </div>
 
-        {/* PERANGKAT JARINGAN */}
         <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
           <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
             <Router className="h-4 w-4 text-purple-500" />
             Perangkat Jaringan
           </h3>
-
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="rounded-xl bg-slate-50 p-3 text-center">
               <p className="text-xs text-slate-400">OLT</p>
@@ -265,9 +237,7 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
             </div>
             <div className="rounded-xl bg-slate-50 p-3 text-center">
               <p className="text-xs text-slate-400">ONT</p>
-              <p className="font-semibold text-sm text-slate-800 truncate font-mono">
-                {baa.ont?.serial_number}
-              </p>
+              <p className="font-semibold text-sm text-slate-800 truncate font-mono">{baa.ont?.serial_number}</p>
             </div>
             <div className="rounded-xl bg-slate-50 p-3 text-center">
               <p className="text-xs text-slate-400">Tanggal Instalasi</p>
@@ -276,13 +246,11 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
           </div>
         </Card>
 
-        {/* HASIL PENGUKURAN */}
         <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
           <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
             <Gauge className="h-4 w-4 text-purple-500" />
             Hasil Pengukuran
           </h3>
-
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="text-center">
               <p className="text-xs text-slate-400">RX Power</p>
@@ -303,7 +271,6 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
               </Badge>
             </div>
           </div>
-
           <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
             <div className="text-center">
               <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
@@ -320,92 +287,59 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
           </div>
         </Card>
 
-        {/* DAFTAR MATERIAL */}
         <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 flex items-center gap-2">
               <Boxes className="h-4 w-4 text-purple-500" />
               Material yang Dipakai
             </h3>
-            <Badge variant="outline" className="rounded-xl">
-              {baa.baadetail.length} item
-            </Badge>
+            <Badge variant="outline" className="rounded-xl">{baa.baadetail.length} item</Badge>
           </div>
-
           {baa.baadetail.length === 0 ? (
-            <p className="text-center text-sm text-slate-400 py-6">
-              Tidak ada material yang dicatat pada instalasi ini.
-            </p>
+            <p className="text-center text-sm text-slate-400 py-6">Tidak ada material yang dicatat pada instalasi ini.</p>
           ) : (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100">
-                      <th className="text-left py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
-                        Nama Material
-                      </th>
-                      <th className="text-center py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
-                        Jumlah
-                      </th>
-                      <th className="text-right py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
-                        Harga
-                      </th>
-                      <th className="text-right py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
-                        Total
-                      </th>
-                      <th className="text-left py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
-                        Keterangan
-                      </th>
+                      <th className="text-left py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Nama Material</th>
+                      <th className="text-center py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Jumlah</th>
+                      <th className="text-right py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Harga</th>
+                      <th className="text-right py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Total</th>
+                      <th className="text-left py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Keterangan</th>
                     </tr>
                   </thead>
                   <tbody>
                     {baa.baadetail.map((detail) => (
                       <tr key={detail.id_baa_detail} className="border-b border-slate-50 hover:bg-slate-50/50">
-                        <td className="py-2.5 font-medium text-slate-800">
-                          {detail.material?.nama_material}
-                        </td>
-                        <td className="text-center py-2.5">
-                          {detail.jumlah} {detail.material?.satuan}
-                        </td>
+                        <td className="py-2.5 font-medium text-slate-800">{detail.material?.nama_material}</td>
+                        <td className="text-center py-2.5">{detail.jumlah} {detail.material?.satuan}</td>
                         <td className="text-right py-2.5 text-slate-600">
                           {detail.material?.harga ? formatRupiah(Number(detail.material.harga)) : "-"}
                         </td>
                         <td className="text-right py-2.5 font-semibold text-purple-700">
-                          {detail.material?.harga
-                            ? formatRupiah(Number(detail.material.harga) * detail.jumlah)
-                            : "-"}
+                          {detail.material?.harga ? formatRupiah(Number(detail.material.harga) * detail.jumlah) : "-"}
                         </td>
-                        <td className="py-2.5 text-slate-500 text-sm">
-                          {detail.keterangan || "-"}
-                        </td>
+                        <td className="py-2.5 text-slate-500 text-sm">{detail.keterangan || "-"}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-slate-200">
-                      <td colSpan={3} className="py-3 text-right font-bold text-slate-900">
-                        Total
-                      </td>
-                      <td className="py-3 text-right font-bold text-purple-700">
-                        {formatRupiah(totalHarga)}
-                      </td>
+                      <td colSpan={3} className="py-3 text-right font-bold text-slate-900">Total</td>
+                      <td className="py-3 text-right font-bold text-purple-700">{formatRupiah(totalHarga)}</td>
                       <td></td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
-
-              <div className="mt-3 text-xs text-slate-400">
-                Total item: {totalMaterial} unit
-              </div>
+              <div className="mt-3 text-xs text-slate-400">Total item: {totalMaterial} unit</div>
             </>
           )}
         </Card>
 
-        {/* CATATAN & FOTO */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-          {/* Catatan */}
           <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
             <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-3 flex items-center gap-2">
               <StickyNote className="h-4 w-4 text-purple-500" />
@@ -418,38 +352,40 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
             )}
           </Card>
 
-          {/* Foto */}
           <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
             <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-3 flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-purple-500" />
               Foto Instalasi
             </h3>
-            {baa.foto_instalasi ? (
-              <div className="rounded-xl overflow-hidden border border-slate-200">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={baa.foto_instalasi}
-                  alt={`Foto instalasi ${baa.kode_baa}`}
-                  className="w-full max-h-80 object-cover"
-                />
-                <div className="p-2 bg-slate-50 text-center">
-                  <a
-                    href={baa.foto_instalasi}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-purple-600 hover:underline"
-                  >
-                    Lihat foto full size
-                  </a>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-400 italic">Tidak ada foto</p>
-            )}
+          {baa.foto_instalasi ? (
+  <BaaImageDialog
+    fotoUrl={baa.foto_instalasi}
+    kodeBaa={baa.kode_baa}
+    trigger={
+      <div className="rounded-xl overflow-hidden border border-slate-200">
+        <div className="relative w-full h-80">
+          <Image
+            src={baa.foto_instalasi}
+            alt={`Foto instalasi ${baa.kode_baa}`}
+            fill
+            className="object-cover"
+            unoptimized={true}
+          />
+        </div>
+        <div className="p-2 bg-slate-50 text-center">
+          <span className="text-sm text-purple-600 hover:underline">
+            Lihat foto full size
+          </span>
+        </div>
+      </div>
+    }
+  />
+) : (
+  <p className="text-sm text-slate-400 italic">Tidak ada foto</p>
+)}
           </Card>
         </div>
 
-        {/* Footer */}
         <div className="text-center text-xs text-slate-400 pt-2">
           <p>
             Dibuat: {format(new Date(baa.createdAt), "dd MMM yyyy HH:mm")} • 

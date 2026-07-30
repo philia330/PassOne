@@ -13,17 +13,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { FabDialog } from "@/app/jaringan/fab/components/FabDialog";
 import { FabDeleteDialog } from "@/app/jaringan/fab/components/FabDeleteDialog";
 import { FabViewDialog } from "@/app/jaringan/fab/components/FabViewDialog";
+import { FabPagination } from "@/app/jaringan/fab/components/FabPagination";
 import type { FabData, AreaOption, PaketOption, UserOption, StatusFab } from "@/types/fab";
 
 interface FabTableProps {
@@ -53,15 +46,24 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
+  // Sort data by kode_fab from smallest to largest
+  const sortedData = useMemo(() => {
+    return [...data].sort((a, b) => {
+      const numA = parseInt(a.kode_fab.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.kode_fab.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
+  }, [data]);
+
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
-    return data.filter(
+    return sortedData.filter(
       (item) =>
         item.kode_fab.toLowerCase().includes(query) ||
         item.nama_pelanggan.toLowerCase().includes(query) ||
         item.nik.includes(search)
     );
-  }, [data, search]);
+  }, [sortedData, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -104,7 +106,6 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
-                  <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">No</TableHead>
                   <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kode</TableHead>
                   <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Pelanggan</TableHead>
                   <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">NIK</TableHead>
@@ -121,7 +122,7 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
               <TableBody>
                 {paginated.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-16 text-slate-400">
+                    <TableCell colSpan={10} className="text-center py-16 text-slate-400">
                       <Inbox className="mx-auto mb-3" size={40} />
                       <p className="font-semibold text-slate-700">Belum ada data FAB</p>
                       <p className="text-sm">
@@ -132,11 +133,8 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginated.map((item, index) => (
+                  paginated.map((item) => (
                     <TableRow key={item.id_fab} className="hover:bg-purple-50/40 transition-colors">
-                      <TableCell className="text-center text-slate-400 font-medium">
-                        {(page - 1) * PAGE_SIZE + index + 1}
-                      </TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
@@ -155,7 +153,7 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
                       </TableCell>
                       <TableCell className="text-slate-600">{item.area?.nama_area ?? "—"}</TableCell>
                       <TableCell className="text-slate-600">{item.paket?.nama_paket ?? "—"}</TableCell>
-                      <TableCell className="text-slate-600">{item.user?.nama ?? "—"}</TableCell>
+                      <TableCell className="text-slate-600">{item.users?.nama ?? "—"}</TableCell>
                       <TableCell className="text-center">
                         <Badge className={`rounded-lg font-semibold ${STATUS_STYLE[item.status]}`}>
                           {STATUS_LABEL[item.status]}
@@ -196,14 +194,13 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
             </p>
           </Card>
         ) : (
-          paginated.map((item, index) => (
+          paginated.map((item) => (
             <Card
               key={item.id_fab}
               className="rounded-3xl shadow-xl border bg-white p-4 hover:shadow-2xl transition-all"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  {/* Header */}
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <Badge
                       variant="outline"
@@ -236,7 +233,7 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
                     </div>
                     <div>
                       <span className="text-slate-400">Sales:</span>
-                      <span className="ml-1 text-slate-700">{item.user?.nama ?? "—"}</span>
+                      <span className="ml-1 text-slate-700">{item.users?.nama ?? "—"}</span>
                     </div>
                   </div>
 
@@ -263,38 +260,14 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
         )}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-              />
-            </PaginationItem>
-
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <PaginationItem key={p}>
-                <PaginationLink
-                  isActive={p === page}
-                  onClick={() => setPage(p)}
-                  className="cursor-pointer"
-                >
-                  {p}
-                </PaginationLink>
-              </PaginationItem>
-            ))}
-
-            <PaginationItem>
-              <PaginationNext
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
+      {/* ✅ Menggunakan FabPagination yang baru */}
+      <FabPagination
+        page={page}
+        totalPages={totalPages}
+        totalItems={filtered.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+      />
     </div>
   );
 };

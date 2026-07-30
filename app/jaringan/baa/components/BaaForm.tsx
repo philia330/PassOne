@@ -21,8 +21,6 @@ import {
   Plus,
   X,
   Boxes,
-  Loader2,
-  UserPlus,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,14 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import type {
   BaaData,
   StatusBaa,
@@ -63,7 +53,11 @@ interface BaaFormProps {
   odpOptions: OdpOption[];
   ontOptions: OntOption[];
   materialOptions: MaterialOption[];
-  onTeknisiAdded?: () => void;
+}
+
+interface TeknisiRow {
+  rowId: string;
+  id_user: string;
 }
 
 const STATUS_LABEL: Record<StatusBaa, string> = {
@@ -91,37 +85,31 @@ export const BaaForm = ({
   odpOptions,
   ontOptions,
   materialOptions,
-  onTeknisiAdded,
 }: BaaFormProps) => {
   const [status, setStatus] = useState<StatusBaa>(defaultValues?.status ?? "PENDING");
   const [idFab, setIdFab] = useState(defaultValues?.id_fab ? String(defaultValues.id_fab) : "");
-  const [idUser, setIdUser] = useState(defaultValues?.id_user ? String(defaultValues.id_user) : "");
   const [idOlt, setIdOlt] = useState(defaultValues?.id_olt ? String(defaultValues.id_olt) : "");
   const [idOdp, setIdOdp] = useState(defaultValues?.id_odp ? String(defaultValues.id_odp) : "");
   const [idOnt, setIdOnt] = useState(defaultValues?.id_ont ? String(defaultValues.id_ont) : "");
 
   // ================================================================
-  // STATE UNTUK TEKNISI TAMBAHAN
+  // TEKNISI — satu list gabungan, diambil dari data User (role TEKNISI)
+  // yang sudah ada, bukan bikin akun baru dari form ini. Baris pertama
+  // yang terisi tetap dikirim sebagai id_user (penanggung jawab) ke
+  // server, sisanya sebagai teknisi_tambahan — supaya actions.ts di
+  // server tidak perlu diubah.
   // ================================================================
-  const [teknisiTambahan, setTeknisiTambahan] = useState<{ id_user: number; nama: string }[]>(
-    defaultValues?.teknisiTambahan?.map((t) => ({
-      id_user: t.id_user,
-      nama: t.users?.nama || `ID ${t.id_user}`,
-    })) || []
-  );
-  const [selectedTambahan, setSelectedTambahan] = useState<string>("");
-  const [errorTambahan, setErrorTambahan] = useState<string | null>(null);
-
-  // ================================================================
-  // MODAL TAMBAH TEKNISI BARU
-  // ================================================================
-  const [showAddTeknisi, setShowAddTeknisi] = useState(false);
-  const [newTeknisiName, setNewTeknisiName] = useState("");
-  const [newTeknisiUsername, setNewTeknisiUsername] = useState("");
-  const [newTeknisiEmail, setNewTeknisiEmail] = useState("");
-  const [isAddingTeknisi, setIsAddingTeknisi] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [teknisiRows, setTeknisiRows] = useState<TeknisiRow[]>(() => {
+    const utama = defaultValues?.id_user
+      ? [{ rowId: makeRowId(), id_user: String(defaultValues.id_user) }]
+      : [];
+    const tambahan =
+      defaultValues?.teknisiTambahan?.map((t) => ({
+        rowId: makeRowId(),
+        id_user: String(t.id_user),
+      })) || [];
+    return [...utama, ...tambahan];
+  });
 
   // ================================================================
   // MATERIAL
@@ -138,67 +126,42 @@ export const BaaForm = ({
   );
 
   // ================================================================
-  // FUNGSI TEKNISI TAMBAHAN
+  // FUNGSI TEKNISI (baris dinamis)
   // ================================================================
-  const addTeknisiTambahan = () => {
-    if (!selectedTambahan) return;
-    const id = Number(selectedTambahan);
-    const teknisi = teknisiOptions.find((t) => t.id_user === id);
-    if (!teknisi) return;
-
-    if (teknisiTambahan.some((t) => t.id_user === id)) {
-      setErrorTambahan("Teknisi ini sudah ditambahkan");
-      return;
-    }
-
-    if (id === Number(idUser)) {
-      setErrorTambahan("Teknisi ini adalah teknisi utama");
-      return;
-    }
-
-    setTeknisiTambahan([...teknisiTambahan, { id_user: id, nama: teknisi.nama }]);
-    setSelectedTambahan("");
-    setErrorTambahan(null);
+  const addTeknisiRow = () => {
+    setTeknisiRows((rows) => [...rows, { rowId: makeRowId(), id_user: "" }]);
   };
 
-  const removeTeknisiTambahan = (id_user: number) => {
-    setTeknisiTambahan(teknisiTambahan.filter((t) => t.id_user !== id_user));
+  const removeTeknisiRow = (rowId: string) => {
+    setTeknisiRows((rows) => rows.filter((r) => r.rowId !== rowId));
   };
 
-  // ================================================================
-  // FUNGSI TAMBAH TEKNISI BARU (Server Action)
-  // ================================================================
-  const handleAddTeknisi = async (formData: FormData) => {
-    setErrorMsg(null);
-    setSuccessMsg(null);
-    setIsAddingTeknisi(true);
+  const updateTeknisiRow = (rowId: string, value: string) => {
+    setTeknisiRows((rows) =>
+      rows.map((r) => (r.rowId === rowId ? { ...r, id_user: value } : r))
+    );
+  };
 
-    try {
-      const { createTeknisi } = await import("@/app/jaringan/baa/actions");
-      const result = await createTeknisi(formData);
-
-      if (result.success) {
-        setSuccessMsg(`✅ Teknisi "${result.data.nama}" berhasil ditambahkan!`);
-        setNewTeknisiName("");
-        setNewTeknisiUsername("");
-        setNewTeknisiEmail("");
-
-        if (onTeknisiAdded) {
-          onTeknisiAdded();
-        }
-
-        setTimeout(() => {
-          setShowAddTeknisi(false);
-          setSuccessMsg(null);
-        }, 1500);
-      }
-    } catch (err: unknown) {
-      const error = err as Error;
-      setErrorMsg(error.message ?? "Terjadi kesalahan");
-    } finally {
-      setIsAddingTeknisi(false);
+  const handleTeknisiRowChange = (rowId: string, value: string | null) => {
+    if (value !== null) {
+      updateTeknisiRow(rowId, value);
     }
   };
+
+  // Opsi teknisi untuk satu baris: exclude teknisi yang sudah dipilih di baris lain
+  const getAvailableTeknisiOptions = (currentRowId: string) => {
+    const selectedInOtherRows = teknisiRows
+      .filter((r) => r.rowId !== currentRowId && r.id_user)
+      .map((r) => r.id_user);
+
+    return teknisiOptions.filter((t) => !selectedInOtherRows.includes(String(t.id_user)));
+  };
+
+  // Nilai final yang dikirim ke server: baris pertama yang terisi jadi id_user,
+  // sisanya jadi teknisi_tambahan
+  const filledTeknisiIds = teknisiRows.filter((r) => r.id_user).map((r) => r.id_user);
+  const mainTeknisiId = filledTeknisiIds[0] ?? "";
+  const extraTeknisiIds = filledTeknisiIds.slice(1);
 
   // ================================================================
   // FUNGSI MATERIAL
@@ -221,7 +184,7 @@ export const BaaForm = ({
   };
 
   // ================================================================
-  // FUNGSI HANDLER SELECT (Perbaikan tipe - handle null)
+  // FUNGSI HANDLER SELECT
   // ================================================================
   const handleStatusChange = (value: string | null) => {
     if (value) {
@@ -232,12 +195,6 @@ export const BaaForm = ({
   const handleFabChange = (value: string | null) => {
     if (value !== null) {
       setIdFab(value);
-    }
-  };
-
-  const handleUserChange = (value: string | null) => {
-    if (value !== null) {
-      setIdUser(value);
     }
   };
 
@@ -259,15 +216,6 @@ export const BaaForm = ({
     }
   };
 
-  const handleTambahanChange = (value: string | null) => {
-    if (value !== null) {
-      setSelectedTambahan(value);
-    }
-  };
-
-  // ================================================================
-  // FUNGSI HANDLER MATERIAL SELECT (Perbaikan)
-  // ================================================================
   const handleMaterialChange = (rowId: string, value: string | null) => {
     if (value !== null) {
       updateRow(rowId, "id_material", value);
@@ -315,7 +263,14 @@ export const BaaForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <Activity size={13} className="text-purple-500" /> Status
         </Label>
-        <Select value={status} onValueChange={handleStatusChange}>
+        <Select
+          value={status}
+          onValueChange={handleStatusChange}
+          items={(Object.keys(STATUS_LABEL) as StatusBaa[]).map((s) => ({
+            value: s,
+            label: STATUS_LABEL[s],
+          }))}
+        >
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
             <SelectValue />
           </SelectTrigger>
@@ -335,7 +290,14 @@ export const BaaForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <ClipboardList size={13} className="text-purple-500" /> FAB (Pelanggan)
         </Label>
-        <Select value={idFab} onValueChange={handleFabChange}>
+        <Select
+          value={idFab}
+          onValueChange={handleFabChange}
+          items={fabOptions.map((f) => ({
+            value: String(f.id_fab),
+            label: `${f.kode_fab} — ${f.nama_pelanggan}`,
+          }))}
+        >
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
             <SelectValue placeholder="Pilih FAB" />
           </SelectTrigger>
@@ -351,192 +313,64 @@ export const BaaForm = ({
       </div>
 
       {/* ============================================================
-          TEKNISI UTAMA
+          TEKNISI — diambil dari data User (role TEKNISI), tidak ada
+          jalur bikin akun baru dari form ini.
           ============================================================ */}
-      <div className="col-span-1 md:col-span-2 space-y-2">
-        <div className="flex items-center justify-between">
+      <div className="col-span-1 md:col-span-2 space-y-3 pt-2 border-t border-slate-100">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-3 gap-2">
           <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-            <UserCog size={13} className="text-purple-500" /> Teknisi Utama
+            <UserCog size={13} className="text-purple-500" /> Teknisi
           </Label>
 
-          <Dialog open={showAddTeknisi} onOpenChange={(open) => {
-            setShowAddTeknisi(open);
-            if (!open) {
-              setErrorMsg(null);
-              setSuccessMsg(null);
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="rounded-xl text-xs border-purple-200 text-purple-700 hover:bg-purple-50 h-8"
-              >
-                <Plus className="mr-1 h-3.5 w-3.5" /> Tambah Teknisi
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="rounded-3xl sm:max-w-[400px]">
-              <DialogHeader>
-                <DialogTitle className="text-lg font-bold">Tambah Teknisi Baru</DialogTitle>
-              </DialogHeader>
-              <form action={handleAddTeknisi}>
-                <div className="space-y-4 py-4">
-                  {successMsg ? (
-                    <div className="flex items-center gap-3 rounded-xl bg-green-50 p-4 text-green-700">
-                      <span>{successMsg}</span>
-                    </div>
-                  ) : (
-                    <>
-                      <div>
-                        <Label htmlFor="nama_teknisi" className="text-xs font-bold uppercase">
-                          Nama Teknisi <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="nama_teknisi"
-                          name="nama_teknisi"
-                          placeholder="Masukkan nama teknisi"
-                          value={newTeknisiName}
-                          onChange={(e) => setNewTeknisiName(e.target.value)}
-                          className="rounded-2xl h-11 mt-1"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="username_teknisi" className="text-xs font-bold uppercase">
-                          Username <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="username_teknisi"
-                          name="username_teknisi"
-                          placeholder="Masukkan username"
-                          value={newTeknisiUsername}
-                          onChange={(e) => setNewTeknisiUsername(e.target.value.toLowerCase())}
-                          className="rounded-2xl h-11 mt-1"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="email_teknisi" className="text-xs font-bold uppercase">
-                          Email (Opsional)
-                        </Label>
-                        <Input
-                          id="email_teknisi"
-                          name="email_teknisi"
-                          placeholder="email@passnet.id"
-                          value={newTeknisiEmail}
-                          onChange={(e) => setNewTeknisiEmail(e.target.value)}
-                          className="rounded-2xl h-11 mt-1"
-                        />
-                      </div>
-                      {errorMsg && (
-                        <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600">
-                          {errorMsg}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowAddTeknisi(false)}
-                    className="rounded-2xl h-11"
-                    disabled={isAddingTeknisi}
-                  >
-                    {successMsg ? "Tutup" : "Batal"}
-                  </Button>
-                  {!successMsg && (
-                    <Button
-                      type="submit"
-                      disabled={!newTeknisiName || !newTeknisiUsername || isAddingTeknisi}
-                      className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white"
-                    >
-                      {isAddingTeknisi && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {isAddingTeknisi ? "Menyimpan..." : "Simpan Teknisi"}
-                    </Button>
-                  )}
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        <Select value={idUser} onValueChange={handleUserChange}>
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
-            <SelectValue placeholder="Pilih teknisi utama" />
-          </SelectTrigger>
-          <SelectContent>
-            {teknisiOptions.map((t) => (
-              <SelectItem key={t.id_user} value={String(t.id_user)}>
-                {t.nama} {t.username ? `(@${t.username})` : ""}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <input type="hidden" name="id_user" value={idUser} required />
-        <p className="text-xs text-slate-400">
-          Teknisi utama adalah penanggung jawab instalasi ini
-        </p>
-      </div>
-
-      {/* ============================================================
-          TEKNISI TAMBAHAN
-          ============================================================ */}
-      <div className="col-span-1 md:col-span-2 space-y-2 border-t border-slate-100 pt-3">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-          <UserPlus size={13} className="text-purple-500" /> Teknisi Tambahan
-        </Label>
-        <p className="text-xs text-slate-400">
-          Tambahkan teknisi lain yang ikut mengerjakan instalasi ini (opsional)
-        </p>
-
-        <div className="flex gap-2">
-          <Select value={selectedTambahan} onValueChange={handleTambahanChange}>
-            <SelectTrigger className="rounded-2xl h-11 border-slate-200 focus:ring-purple-500 flex-1">
-              <SelectValue placeholder="Pilih teknisi tambahan" />
-            </SelectTrigger>
-            <SelectContent>
-              {teknisiOptions
-                .filter((t) => {
-                  const isUtama = Number(idUser) === t.id_user;
-                  const isAdded = teknisiTambahan.some((tt) => tt.id_user === t.id_user);
-                  return !isUtama && !isAdded;
-                })
-                .map((t) => (
-                  <SelectItem key={t.id_user} value={String(t.id_user)}>
-                    {t.nama} {t.username ? `(@${t.username})` : ""}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
           <Button
             type="button"
-            onClick={addTeknisiTambahan}
-            disabled={!selectedTambahan}
-            className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white px-4"
+            size="sm"
+            variant="outline"
+            onClick={addTeknisiRow}
+            className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 w-full sm:w-auto"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="mr-1 h-3.5 w-3.5" /> Tambah Teknisi
           </Button>
         </div>
 
-        {errorTambahan && (
-          <p className="text-xs text-red-500">{errorTambahan}</p>
-        )}
-
-        {teknisiTambahan.length > 0 && (
-          <div className="space-y-1.5 mt-2">
-            {teknisiTambahan.map((t) => (
+        {teknisiRows.length === 0 ? (
+          <p className="text-xs text-slate-400 italic bg-slate-50 rounded-xl px-3 py-3 text-center">
+            Belum ada teknisi ditambahkan. Klik &quot;Tambah Teknisi&quot; untuk memilih teknisi
+            yang mengerjakan instalasi ini.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {teknisiRows.map((row) => (
               <div
-                key={t.id_user}
-                className="flex items-center justify-between rounded-xl bg-purple-50 border border-purple-100 px-3 py-2"
+                key={row.rowId}
+                className="flex items-center gap-2 rounded-2xl border border-slate-200 p-3 bg-slate-50/50"
               >
-                <span className="text-sm font-medium text-purple-700">{t.nama}</span>
+                <div className="flex-1">
+                  <Select
+                    value={row.id_user}
+                    onValueChange={(v) => handleTeknisiRowChange(row.rowId, v)}
+                    items={getAvailableTeknisiOptions(row.rowId).map((t) => ({
+                      value: String(t.id_user),
+                      label: `${t.nama}${t.username ? ` (@${t.username})` : ""}`,
+                    }))}
+                  >
+                    <SelectTrigger className="rounded-xl h-10 border-slate-200 bg-white text-sm w-full">
+                      <SelectValue placeholder="Pilih teknisi" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAvailableTeknisiOptions(row.rowId).map((t) => (
+                        <SelectItem key={t.id_user} value={String(t.id_user)}>
+                          {t.nama} {t.username ? `(@${t.username})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => removeTeknisiTambahan(t.id_user)}
-                  className="text-red-500 hover:text-red-700 transition-colors"
+                  onClick={() => removeTeknisiRow(row.rowId)}
+                  className="h-10 w-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
                 >
                   <X size={16} />
                 </button>
@@ -545,10 +379,11 @@ export const BaaForm = ({
           </div>
         )}
 
+        <input type="hidden" name="id_user" value={mainTeknisiId} required />
         <input
           type="hidden"
           name="teknisi_tambahan"
-          value={JSON.stringify(teknisiTambahan.map((t) => t.id_user))}
+          value={JSON.stringify(extraTeknisiIds.map(Number))}
         />
       </div>
 
@@ -557,7 +392,11 @@ export const BaaForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <Router size={13} className="text-purple-500" /> OLT
         </Label>
-        <Select value={idOlt} onValueChange={handleOltChange}>
+        <Select
+          value={idOlt}
+          onValueChange={handleOltChange}
+          items={oltOptions.map((o) => ({ value: String(o.id_olt), label: o.nama_olt }))}
+        >
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
             <SelectValue placeholder="Pilih OLT" />
           </SelectTrigger>
@@ -577,7 +416,11 @@ export const BaaForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <GitBranch size={13} className="text-purple-500" /> ODP
         </Label>
-        <Select value={idOdp} onValueChange={handleOdpChange}>
+        <Select
+          value={idOdp}
+          onValueChange={handleOdpChange}
+          items={odpOptions.map((o) => ({ value: String(o.id_odp), label: o.nama_odp }))}
+        >
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
             <SelectValue placeholder="Pilih ODP" />
           </SelectTrigger>
@@ -597,7 +440,11 @@ export const BaaForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <Wifi size={13} className="text-purple-500" /> ONT
         </Label>
-        <Select value={idOnt} onValueChange={handleOntChange}>
+        <Select
+          value={idOnt}
+          onValueChange={handleOntChange}
+          items={ontOptions.map((o) => ({ value: String(o.id_ont), label: o.serial_number }))}
+        >
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
             <SelectValue placeholder="Pilih ONT" />
           </SelectTrigger>
@@ -828,6 +675,10 @@ export const BaaForm = ({
                   <Select
                     value={row.id_material}
                     onValueChange={(v) => handleMaterialChange(row.rowId, v)}
+                    items={materialOptions.map((m) => ({
+                      value: String(m.id_material),
+                      label: `${m.nama_material} (${m.satuan})`,
+                    }))}
                   >
                     <SelectTrigger className="rounded-xl h-10 border-slate-200 bg-white text-sm w-full">
                       <SelectValue placeholder="Pilih material" />

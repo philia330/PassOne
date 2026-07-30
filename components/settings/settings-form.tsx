@@ -88,6 +88,7 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
       try {
         await updateSettings(formData);
         toast.success("Pengaturan berhasil disimpan.");
+        window.location.reload();
       } catch (err) {
         toast.error("Gagal menyimpan pengaturan. Coba lagi.");
       }

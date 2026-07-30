@@ -33,6 +33,12 @@ export default async function FabPage() {
     ...item,
     latitude: Number(item.latitude),
     longitude: Number(item.longitude),
+    // ⬇️ relasi nested "paket" juga bawa field Decimal (harga),
+    // harus dikonversi juga karena ikut dikirim ke Client Component
+    paket: {
+      ...item.paket,
+      harga: Number(item.paket.harga),
+    },
   }));
 
   const kodeOtomatis = `FAB${String(fab.length + 1).padStart(3, "0")}`;
@@ -76,9 +82,6 @@ export default async function FabPage() {
           salesOptions={salesList}
         />
 
-        <p className="text-center text-xs text-slate-400 pt-2">
-          © 2025 PASSNET • Sistem Manajemen FAB
-        </p>
       </div>
     </div>
   );

@@ -34,6 +34,8 @@ import type { BaaData, StatusBaa } from "@/types/baa";
 
 interface BaaViewDialogProps {
   baa: BaaData;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const STATUS_LABEL: Record<StatusBaa, string> = {
@@ -76,17 +78,19 @@ function InfoRow({
   );
 }
 
-export const BaaViewDialog = ({ baa }: BaaViewDialogProps) => {
-  // Hitung total teknisi tambahan
+export const BaaViewDialog = ({ baa, open, onOpenChange }: BaaViewDialogProps) => {
+  const isControlled = open !== undefined;
   const totalTeknisiTambahan = baa.teknisiTambahan?.length || 0;
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {!isControlled && (
+        <DialogTrigger
+          render={<Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto" />}
+        >
           <Eye className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
+        </DialogTrigger>
+      )}
 
       <DialogContent
         className="
@@ -105,7 +109,7 @@ export const BaaViewDialog = ({ baa }: BaaViewDialogProps) => {
               <Badge className={`rounded-full border font-semibold ${STATUS_BADGE_CLASS[baa.status]}`}>
                 {STATUS_LABEL[baa.status]}
               </Badge>
-              <Link href={`/jaringan/baa/${baa.id_baa}`} target="_blank">
+              <Link href={`/jaringan/baadetail/${baa.id_baa}`} target="_blank">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -120,7 +124,6 @@ export const BaaViewDialog = ({ baa }: BaaViewDialogProps) => {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-0">
           <div className="space-y-1 divide-y divide-slate-100">
-            {/* DATA INSTALASI */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 py-1">
               <InfoRow
                 icon={Calendar}
@@ -136,7 +139,6 @@ export const BaaViewDialog = ({ baa }: BaaViewDialogProps) => {
               />
             </div>
 
-            {/* TEKNISI - UTAMA + TAMBAHAN */}
             <div className="pt-1">
               <div className="flex items-center gap-2 mb-1">
                 <Users size={15} className="text-purple-500" />
@@ -148,7 +150,6 @@ export const BaaViewDialog = ({ baa }: BaaViewDialogProps) => {
                 )}
               </div>
 
-              {/* Teknisi Utama */}
               <div className="rounded-xl bg-purple-50 border border-purple-100 px-3 py-2 mb-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-purple-600">Utama</p>
                 <p className="text-sm font-semibold text-slate-800">
@@ -156,7 +157,6 @@ export const BaaViewDialog = ({ baa }: BaaViewDialogProps) => {
                 </p>
               </div>
 
-              {/* Teknisi Tambahan */}
               {baa.teknisiTambahan && baa.teknisiTambahan.length > 0 && (
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 ml-1">
@@ -183,7 +183,6 @@ export const BaaViewDialog = ({ baa }: BaaViewDialogProps) => {
               ) : null}
             </div>
 
-            {/* PERANGKAT JARINGAN */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 pt-1">
               <InfoRow icon={Router} label="OLT" value={baa.olt?.nama_olt ?? `ID #${baa.id_olt}`} />
               <InfoRow icon={GitBranch} label="ODP" value={baa.odp?.nama_odp ?? `ID #${baa.id_odp}`} />
@@ -199,7 +198,6 @@ export const BaaViewDialog = ({ baa }: BaaViewDialogProps) => {
               />
             </div>
 
-            {/* HASIL PENGUKURAN */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 pt-1">
               <InfoRow
                 icon={Gauge}
@@ -211,7 +209,6 @@ export const BaaViewDialog = ({ baa }: BaaViewDialogProps) => {
               <InfoRow icon={Upload} label="Speed Upload" value={baa.speed_upload ?? "-"} />
             </div>
 
-            {/* CATATAN & FOTO */}
             <div className="pt-1">
               <InfoRow icon={StickyNote} label="Catatan Teknisi" value={baa.catatan ?? "-"} />
               {baa.foto_instalasi && (
@@ -232,7 +229,6 @@ export const BaaViewDialog = ({ baa }: BaaViewDialogProps) => {
               )}
             </div>
 
-            {/* DAFTAR MATERIAL */}
             <div className="pt-3 pb-4 sm:pb-0">
               <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
                 <Boxes size={13} className="text-purple-500" /> Material yang Dipakai
