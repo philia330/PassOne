@@ -1,6 +1,7 @@
 "use client";
 
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 type SingleMarkerMapProps = {
@@ -9,7 +10,32 @@ type SingleMarkerMapProps = {
   nama: string;
 };
 
-const COLOR_POP = "#9333ea";
+const COLOR_POP = "#2327ff";
+
+const POP_ICON_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v6M12 13l-5 4M12 13l5 4"/></svg>`;
+
+const createPopIcon = () => {
+  return L.divIcon({
+    className: "custom-network-marker",
+    html: `
+      <div style="
+        background-color: ${COLOR_POP};
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+      ">
+        ${POP_ICON_SVG}
+      </div>
+    `,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  });
+};
 
 export const SingleMarkerMap = ({ lat, lng, nama }: SingleMarkerMapProps) => {
   return (
@@ -25,15 +51,11 @@ export const SingleMarkerMap = ({ lat, lng, nama }: SingleMarkerMapProps) => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; OpenStreetMap contributors'
         />
-        <CircleMarker
-          center={[lat, lng]}
-          radius={9}
-          pathOptions={{ color: COLOR_POP, fillColor: COLOR_POP, fillOpacity: 1 }}
-        >
+        <Marker position={[lat, lng]} icon={createPopIcon()}>
           <Popup>
             <strong>POP:</strong> {nama}
           </Popup>
-        </CircleMarker>
+        </Marker>
       </MapContainer>
     </div>
   );

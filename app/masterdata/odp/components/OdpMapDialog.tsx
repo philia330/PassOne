@@ -23,7 +23,8 @@ const OdpRouteMap = dynamic(
   }
 );
 
-type OdpMapDialogProps = {
+type OdpPoint = {
+  id_odp: number;
   odpNama: string;
   odpLat: number;
   odpLng: number;
@@ -32,13 +33,16 @@ type OdpMapDialogProps = {
   oltLng: number;
 };
 
+type OdpMapDialogProps = {
+  currentId: number;
+  odpNama: string;
+  allPoints: OdpPoint[];
+};
+
 export const OdpMapDialog = ({
+  currentId,
   odpNama,
-  odpLat,
-  odpLng,
-  oltNama,
-  oltLat,
-  oltLng,
+  allPoints,
 }: OdpMapDialogProps) => {
   const [open, setOpen] = useState(false);
 
@@ -58,26 +62,16 @@ export const OdpMapDialog = ({
       <DialogContent className="rounded-3xl sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>
-            <span className="text-amber-500 dark:text-amber-400">
-              Jalur ODP: {odpNama}
+            <span className="text-slate-700 dark:text-slate-300">
+              Peta Semua ODP
             </span>
-            <span className="text-slate-400 dark:text-slate-500"> — </span>
-            <span className="text-sky-600 dark:text-sky-400">
-              OLT: {oltNama}
+            <span className="text-slate-400 dark:text-slate-500">
+              {" "}— disorot: {odpNama}
             </span>
           </DialogTitle>
         </DialogHeader>
 
-        {open && (
-          <OdpRouteMap
-            odpLat={odpLat}
-            odpLng={odpLng}
-            odpNama={odpNama}
-            oltLat={oltLat}
-            oltLng={oltLng}
-            oltNama={oltNama}
-          />
-        )}
+        {open && <OdpRouteMap points={allPoints} highlightId={currentId} />}
       </DialogContent>
     </Dialog>
   );
