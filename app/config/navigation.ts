@@ -114,7 +114,7 @@ export const navigation: NavigationGroup[] = [
         title: "FAB",
         href: "/jaringan/fab", // ✅ tambah leading slash
         icon: FileText,
-        roles: [Role.ADMIN, Role.LEADER, Role.SALES],
+        roles: [Role.ADMIN, Role.LEADER, Role.SALES, Role.TEKNISI],
       },
       {
         title: "BAA",

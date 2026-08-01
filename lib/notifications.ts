@@ -36,7 +36,7 @@ export async function getNotifications(role: Role): Promise<NotificationItem[]> 
 
   if (canSeeFab) {
     const fabPending = await prisma.fab.findMany({
-      where: { status: "PENDING" },
+      where: { status: "OPEN" },
       orderBy: { createdAt: "asc" },
       take: 5,
       select: { id_fab: true, kode_fab: true, nama_pelanggan: true, createdAt: true },
@@ -46,7 +46,7 @@ export async function getNotifications(role: Role): Promise<NotificationItem[]> 
       notifications.push({
         id: `fab-${f.id_fab}`,
         title: "FAB Menunggu Tindak Lanjut",
-        description: `${f.kode_fab} — ${f.nama_pelanggan} masih berstatus Pending.`,
+        description: `${f.kode_fab} — ${f.nama_pelanggan} masih berstatus Open.`,
         href: "/fab",
         severity: "info",
       });

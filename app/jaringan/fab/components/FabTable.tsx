@@ -1,7 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Inbox, Layers, MapPin, Phone } from "lucide-react";
+import {
+  Search,
+  Inbox,
+  Layers,
+  MapPin,
+  Phone,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  ImageIcon,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,47 +23,114 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { FabDialog } from "@/app/jaringan/fab/components/FabDialog";
 import { FabDeleteDialog } from "@/app/jaringan/fab/components/FabDeleteDialog";
 import { FabViewDialog } from "@/app/jaringan/fab/components/FabViewDialog";
 import { FabPagination } from "@/app/jaringan/fab/components/FabPagination";
-import type { FabData, AreaOption, PaketOption, UserOption, StatusFab } from "@/types/fab";
+import type {
+  FabData,
+  AreaOption,
+  PaketOption,
+  UserOption,
+  StatusFab,
+  CurrentUser,
+} from "@/types/fab";
 
 interface FabTableProps {
   data: FabData[];
   areaOptions: AreaOption[];
   paketOptions: PaketOption[];
   salesOptions: UserOption[];
+  currentUser: CurrentUser;
 }
 
 const PAGE_SIZE = 5;
 
 const STATUS_STYLE: Record<StatusFab, string> = {
-  PENDING: "bg-slate-100 text-slate-600 hover:bg-slate-100",
-  SURVEY: "bg-sky-100 text-sky-700 hover:bg-sky-100",
-  INSTALASI: "bg-purple-100 text-purple-700 hover:bg-purple-100",
-  SELESAI: "bg-green-100 text-green-700 hover:bg-green-100",
+  OPEN: "bg-[#6ad2ff]/20 text-[#0284c7] hover:bg-[#6ad2ff]/20",
+  AKTIF: "bg-green-100 text-green-700 hover:bg-green-100",
 };
 
 const STATUS_LABEL: Record<StatusFab, string> = {
-  PENDING: "Pending",
-  SURVEY: "Survey",
-  INSTALASI: "Instalasi",
-  SELESAI: "Selesai",
+  OPEN: "Open",
+  AKTIF: "Aktif",
 };
 
-export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabTableProps) => {
+const formatTanggal = (date: Date) =>
+  new Date(date).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+type SortOrder = "asc" | "desc";
+
+// Icon foto reusable -- dipakai di desktop table & mobile card
+function FabFotoButton({ foto, namaPelanggan }: { foto?: string | null; namaPelanggan: string }) {
+  if (!foto) return <span className="text-slate-300 text-xs">—</span>;
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:border-purple-300 hover:text-purple-600 transition-colors"
+        >
+          <ImageIcon size={16} />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md rounded-3xl p-4">
+        <img
+          src={foto}
+          alt={`Foto depan rumah ${namaPelanggan}`}
+          className="w-full rounded-2xl object-cover"
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Nama penginput + badge "Teknisi" kalau id_penginput beda dari id_user (Sales)
+function DiinputOlehCell({ item }: { item: FabData }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span>{item.penginput?.nama ?? "—"}</span>
+      {item.penginput && item.penginput.id_user !== item.id_user && (
+        <Badge className="text-[10px] px-1.5 py-0 rounded-md bg-sky-100 text-sky-700 hover:bg-sky-100">
+          Teknisi
+        </Badge>
+      )}
+    </div>
+  );
+}
+
+export const FabTable = ({
+  data,
+  areaOptions,
+  paketOptions,
+  salesOptions,
+  currentUser,
+}: FabTableProps) => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  // Sort data by kode_fab from smallest to largest
+  // "desc" = kode terbesar/terbaru duluan, "asc" = kode terkecil/terlama duluan
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+
+  const toggleSort = () => {
+    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    setPage(1);
+  };
+
+  // Sort data by kode_fab sesuai sortOrder yang dipilih user
   const sortedData = useMemo(() => {
     return [...data].sort((a, b) => {
-      const numA = parseInt(a.kode_fab.replace(/\D/g, '')) || 0;
-      const numB = parseInt(b.kode_fab.replace(/\D/g, '')) || 0;
-      return numA - numB;
+      const numA = parseInt(a.kode_fab.replace(/\D/g, "")) || 0;
+      const numB = parseInt(b.kode_fab.replace(/\D/g, "")) || 0;
+      return sortOrder === "asc" ? numA - numB : numB - numA;
     });
-  }, [data]);
+  }, [data, sortOrder]);
 
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
@@ -72,6 +149,17 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
     setSearch(value);
     setPage(1);
   };
+
+const canEdit = (item: FabData) => {
+  if (currentUser.role !== "SALES" && currentUser.role !== "TEKNISI") return true;
+  return item.penginput?.id_user === currentUser.id_user;
+};
+
+const canDelete = () => {
+  return currentUser.role !== "SALES" && currentUser.role !== "TEKNISI";
+};
+
+  const SortIcon = sortOrder === "asc" ? ArrowUp : ArrowDown;
 
   return (
     <div className="space-y-6">
@@ -106,7 +194,20 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
-                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kode</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider p-0">
+                    <button
+                      type="button"
+                      onClick={toggleSort}
+                      className="flex w-full items-center gap-1.5 px-4 py-3.5 text-left hover:text-purple-600 transition-colors cursor-pointer"
+                      title={sortOrder === "asc" ? "Urutan: terlama dulu" : "Urutan: terbaru dulu"}
+                    >
+                      Kode
+                      <SortIcon size={20} className="text-purple-500" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Foto
+                  </TableHead>
                   <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Pelanggan</TableHead>
                   <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">NIK</TableHead>
                   <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">No. HP</TableHead>
@@ -114,7 +215,9 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
                   <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Area</TableHead>
                   <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Paket</TableHead>
                   <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sales</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Diinput Oleh</TableHead>
                   <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Status</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Dibuat</TableHead>
                   <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -122,7 +225,7 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
               <TableBody>
                 {paginated.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-16 text-slate-400">
+                    <TableCell colSpan={13} className="text-center py-16 text-slate-400">
                       <Inbox className="mx-auto mb-3" size={40} />
                       <p className="font-semibold text-slate-700">Belum ada data FAB</p>
                       <p className="text-sm">
@@ -143,6 +246,9 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
                           {item.kode_fab}
                         </Badge>
                       </TableCell>
+                      <TableCell className="text-center">
+                        <FabFotoButton foto={item.foto} namaPelanggan={item.nama_pelanggan} />
+                      </TableCell>
                       <TableCell className="font-semibold text-slate-900">{item.nama_pelanggan}</TableCell>
                       <TableCell className="text-slate-600 font-mono text-sm">{item.nik}</TableCell>
                       <TableCell className="text-slate-600">{item.no_hp}</TableCell>
@@ -154,24 +260,35 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
                       <TableCell className="text-slate-600">{item.area?.nama_area ?? "—"}</TableCell>
                       <TableCell className="text-slate-600">{item.paket?.nama_paket ?? "—"}</TableCell>
                       <TableCell className="text-slate-600">{item.users?.nama ?? "—"}</TableCell>
+                      <TableCell className="text-slate-600">
+                        <DiinputOlehCell item={item} />
+                      </TableCell>
                       <TableCell className="text-center">
                         <Badge className={`rounded-lg font-semibold ${STATUS_STYLE[item.status]}`}>
                           {STATUS_LABEL[item.status]}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex justify-center gap-2">
-                          <FabViewDialog fab={item} />
-                          <FabDialog
-                            mode="edit"
-                            fab={item}
-                            areaOptions={areaOptions}
-                            paketOptions={paketOptions}
-                            salesOptions={salesOptions}
-                          />
-                          <FabDeleteDialog id={item.id_fab} namaPelanggan={item.nama_pelanggan} />
-                        </div>
+                      <TableCell className="text-slate-500 text-sm whitespace-nowrap">
+                        {formatTanggal(item.createdAt)}
                       </TableCell>
+                          <TableCell>
+                            <div className="flex justify-center gap-2">
+                              <FabViewDialog fab={item} />
+                              {canEdit(item) && (
+                                <FabDialog
+                                  mode="edit"
+                                  fab={item}
+                                  areaOptions={areaOptions}
+                                  paketOptions={paketOptions}
+                                  salesOptions={salesOptions}
+                                  currentUser={currentUser}
+                                />
+                              )}
+                              {canDelete() && (
+                                <FabDeleteDialog id={item.id_fab} namaPelanggan={item.nama_pelanggan} />
+                              )}
+                            </div>
+                          </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -179,6 +296,18 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
             </Table>
           </div>
         </Card>
+      </div>
+
+      {/* MOBILE: toggle sort juga, taruh di atas list card */}
+      <div className="md:hidden flex justify-end">
+        <button
+          type="button"
+          onClick={toggleSort}
+          className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:text-purple-600 hover:border-purple-200 transition-colors"
+        >
+          <ArrowUpDown size={20} />
+          {sortOrder === "asc" ? "Terlama dulu" : "Terbaru dulu"}
+        </button>
       </div>
 
       {/* MOBILE: Card list */}
@@ -235,6 +364,19 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
                       <span className="text-slate-400">Sales:</span>
                       <span className="ml-1 text-slate-700">{item.users?.nama ?? "—"}</span>
                     </div>
+                    <div>
+                      <span className="text-slate-400">Diinput:</span>
+                      <span className="ml-1 text-slate-700">{item.penginput?.nama ?? "—"}</span>
+                      {item.penginput && item.penginput.id_user !== item.id_user && (
+                        <Badge className="ml-1 text-[10px] px-1.5 py-0 rounded-md bg-sky-100 text-sky-700 hover:bg-sky-100">
+                          Teknisi
+                        </Badge>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Dibuat:</span>
+                      <span className="ml-1 text-slate-700">{formatTanggal(item.createdAt)}</span>
+                    </div>
                   </div>
 
                   <div className="flex items-start gap-1 mt-1 text-xs">
@@ -243,17 +385,23 @@ export const FabTable = ({ data, areaOptions, paketOptions, salesOptions }: FabT
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1.5 flex-shrink-0">
-                  <FabViewDialog fab={item} />
-                  <FabDialog
-                    mode="edit"
-                    fab={item}
-                    areaOptions={areaOptions}
-                    paketOptions={paketOptions}
-                    salesOptions={salesOptions}
-                  />
-                  <FabDeleteDialog id={item.id_fab} namaPelanggan={item.nama_pelanggan} />
-                </div>
+                    <div className="flex flex-col gap-1.5 flex-shrink-0">
+                      <FabFotoButton foto={item.foto} namaPelanggan={item.nama_pelanggan} />
+                      <FabViewDialog fab={item} />
+                      {canEdit(item) && (
+                        <FabDialog
+                          mode="edit"
+                          fab={item}
+                          areaOptions={areaOptions}
+                          paketOptions={paketOptions}
+                          salesOptions={salesOptions}
+                          currentUser={currentUser}
+                        />
+                      )}
+                      {canDelete() && (
+                        <FabDeleteDialog id={item.id_fab} namaPelanggan={item.nama_pelanggan} />
+                      )}
+                    </div>
               </div>
             </Card>
           ))

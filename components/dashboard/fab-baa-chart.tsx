@@ -239,7 +239,7 @@ export default function FabBaaChart({
             <Bar
               dataKey="fab"
               name="FAB"
-              fill="#6366f1"
+              fill="#6ad2ff"
               radius={[6, 6, 0, 0]}
             />
 
@@ -288,7 +288,7 @@ export default function FabBaaChart({
                   key={entry.name}
                   fill={
                     STATUS_COLORS[entry.name] ??
-                    "#94a3b8"
+                    "#6ad2ff"
                   }
                 />
               ))}
@@ -311,7 +311,8 @@ export default function FabBaaChart({
                   style={{
                     backgroundColor:
                       STATUS_COLORS[item.name] ??
-                      "#94a3b8",
+                     "#6ad2ff"
+
                   }}
                 />
 

@@ -10,7 +10,7 @@ import { createMarkerIcon, TYPE_COLOR, FAB_STATUS_COLORS } from "@/lib/map-icons
 
 const TYPE_LABELS: NetworkPoint["type"][] = ["POP", "OLT", "ODP", "FAB"];
 
-const FAB_STATUS_OPTIONS = ["PENDING", "SURVEY", "INSTALASI", "SELESAI"];
+const FAB_STATUS_OPTIONS = ["OPEN", "AKTIF"];
 
 export default function NetworkMap({ points }: { points: NetworkPoint[] }) {
   const [activeTypes, setActiveTypes] = useState<Set<NetworkPoint["type"]>>(

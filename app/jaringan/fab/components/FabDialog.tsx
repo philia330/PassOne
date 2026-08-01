@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { FabForm } from "@/app/jaringan/fab/components/FabForm";
 import { createFab, updateFab } from "@/app/jaringan/fab/actions";
-import type { FabData, AreaOption, PaketOption, UserOption } from "@/types/fab";
+import type { FabData, AreaOption, PaketOption, UserOption, CurrentUser} from "@/types/fab";
 
 interface FabDialogProps {
   mode: "create" | "edit";
@@ -22,6 +22,7 @@ interface FabDialogProps {
   areaOptions: AreaOption[];
   paketOptions: PaketOption[];
   salesOptions: UserOption[];
+  currentUser: CurrentUser;
 }
 
 export const FabDialog = ({
@@ -31,6 +32,7 @@ export const FabDialog = ({
   areaOptions,
   paketOptions,
   salesOptions,
+  currentUser
 }: FabDialogProps) => {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -91,6 +93,7 @@ export const FabDialog = ({
               areaOptions={areaOptions}
               paketOptions={paketOptions}
               salesOptions={salesOptions}
+              currentUser={currentUser}
             />
 
             {errorMsg && (

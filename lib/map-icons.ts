@@ -2,10 +2,8 @@ import L from "leaflet";
 import type { NetworkPoint } from "@/lib/network-points";
 
 export const FAB_STATUS_COLORS: Record<string, string> = {
-  PENDING: "#ef4444",   // merah — urgensi, perlu perhatian
-  SURVEY: "#003ea1",    // biru — fase pengecekan/informasional
-  INSTALASI: "#f9f516", // oranye — sedang berjalan/progress aktif
-  SELESAI: "#09ff01",   // hijau — sukses, selesai
+  OPEN:  "#6ad2ff",   // merah — urgensi, perlu perhatian
+  AKTIF: "#09ff01",   // hijau — sukses, selesai
 };
 
 export const TYPE_COLOR: Record<NetworkPoint["type"], string> = {

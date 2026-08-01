@@ -1,10 +1,11 @@
-export type StatusFab = "PENDING" | "SURVEY" | "INSTALASI" | "SELESAI";
+export type StatusFab = "OPEN" | "AKTIF";
 
 export interface FabData {
   id_fab: number;
   kode_fab: string;
   nama_pelanggan: string;
   nik: string;
+  foto?: string | null;
   no_hp: string;
   alamat: string;
   latitude: number;
@@ -38,3 +39,14 @@ export interface UserOption {
   id_user: number;
   nama: string;
 }
+
+  export interface FabData {
+  // ...field lain tetap sama...
+  penginput?: { id_user: number; nama: string };
+}
+
+export type CurrentUser = {
+  id_user: number;
+  nama: string;
+  role: "ADMIN" | "LEADER" | "SALES" | "TEKNISI" | "LOGISTIK";
+};

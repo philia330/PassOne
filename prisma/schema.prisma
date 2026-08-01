@@ -22,7 +22,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   baa       baa[]
-  fab       fab[]
+  fabSales      fab[] @relation("FabSales")
+  fabPenginput  fab[] @relation("FabPenginput")
   baaTeknisi baateknisi[]
 
   @@map("users")
@@ -116,24 +117,28 @@ model fab {
   kode_fab       String     @unique(map: "Fab_kode_fab_key")
   nama_pelanggan String
   nik            String     @unique(map: "Fab_nik_key")
+  foto           String?
   no_hp          String
   alamat         String
   latitude       Decimal
   longitude      Decimal
-  status         fab_status @default(PENDING)
+  status         fab_status @default(OPEN)
   id_area        Int
   id_paket       Int
   id_user        Int
+  id_penginput   Int
   createdAt      DateTime   @default(now())
   updatedAt      DateTime @updatedAt
   baa            baa[]
   area           area       @relation(fields: [id_area], references: [id_area], map: "Fab_id_area_fkey")
   paket          paket      @relation(fields: [id_paket], references: [id_paket], map: "Fab_id_paket_fkey")
-  users          User       @relation(fields: [id_user], references: [id_user], map: "Fab_id_user_fkey")
+  users          User      @relation("FabSales", fields: [id_user], references: [id_user], map: "Fab_id_user_fkey")
+  penginput      User      @relation("FabPenginput", fields: [id_penginput], references: [id_user], map: "Fab_id_penginput_fkey")
 
   @@index([id_area], map: "Fab_id_area_fkey")
   @@index([id_paket], map: "Fab_id_paket_fkey")
   @@index([id_user], map: "Fab_id_user_fkey")
+  @@index([id_penginput], map: "Fab_id_penginput_fkey")
 }
 
 model material {
@@ -293,10 +298,8 @@ enum material_kondisi {
 }
 
 enum fab_status {
-  PENDING
-  SURVEY
-  INSTALASI
-  SELESAI
+  OPEN
+  AKTIF
 }
 
 // ======================================================

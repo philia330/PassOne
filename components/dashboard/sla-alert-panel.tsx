@@ -6,13 +6,13 @@ type FabItem = { id_fab: number; kode_fab: string; nama_pelanggan: string; creat
 type BaaItem = { id_baa: number; kode_baa: string; createdAt: Date };
 
 export default function SlaAlertPanel({
-  fabPending,
-  baaPending,
+  fabOpen,
+  baaOpen,
 }: {
-  fabPending: FabItem[];
-  baaPending: BaaItem[];
+  fabOpen: FabItem[];
+  baaOpen: BaaItem[];
 }) {
-  const totalPending = fabPending.length + baaPending.length;
+  const totalPending = fabOpen.length + baaOpen.length;
 
   if (totalPending === 0) {
     return (
@@ -55,7 +55,7 @@ return (
     </div>
 
     <div className="space-y-3">
-{fabPending.map((fab) => {
+{fabOpen.map((fab) => {
   const severity = getSlaSeverity(fab.createdAt);
   const days = getDaysPending(fab.createdAt);
   const colors = SLA_COLORS[severity];
@@ -103,7 +103,7 @@ return (
   );
 })}
 
-{baaPending.map((baa) => {
+{baaOpen.map((baa) => {
   const severity = getSlaSeverity(baa.createdAt);
   const days = getDaysPending(baa.createdAt);
   const colors = SLA_COLORS[severity];

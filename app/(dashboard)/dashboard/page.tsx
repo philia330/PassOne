@@ -193,42 +193,10 @@ export default async function DashboardPage() {
         {/* SLA */}
         <div className="lg:col-span-1">
           <SlaAlertPanel
-            fabPending={slaAlerts.fabPending}
-            baaPending={slaAlerts.baaPending}
+            fabOpen={slaAlerts.fabOpen}
+            baaOpen={slaAlerts.baaOpen}
           />
         </div>
-
-        {/* Quick Action */}
-        {isAdmin && (
-          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 dark:shadow-none sm:p-6 lg:col-span-1">
-           <h2 className="mb-5 text-lg font-bold dark:text-white sm:text-xl">
-              Quick Action
-            </h2>
-
-            <div className="space-y-4">
-              <Link
-                href="/masterdata/user"
-                className="block w-full rounded-xl bg-indigo-600 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-indigo-700 sm:text-base"
-              >
-                + Tambah User
-              </Link>
-
-              <Link
-                href="/fab"
-                className="block w-full rounded-xl bg-emerald-600 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-indigo-700 sm:text-base"
-              >
-                + Buat FAB
-              </Link>
-
-              <Link
-                href="/baa"
-                className="block w-full rounded-xl bg-amber-600 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-indigo-700 sm:text-base"
-              >
-                + Buat BAA
-              </Link>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

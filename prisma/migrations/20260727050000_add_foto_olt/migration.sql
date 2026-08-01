@@ -1,1 +1,0 @@
-ALTER TABLE `olt` ADD COLUMN `foto_olt` VARCHAR(191) NULL;

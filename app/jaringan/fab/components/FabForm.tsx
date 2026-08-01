@@ -18,6 +18,7 @@ import {
   Minimize2,
   Loader2,
   Search,
+  ImageIcon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +30,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { FabData, AreaOption, PaketOption, UserOption, StatusFab } from "@/types/fab";
+import type {
+  FabData,
+  AreaOption,
+  PaketOption,
+  UserOption,
+  StatusFab,
+  CurrentUser,
+} from "@/types/fab";
 
 // Leaflet butuh akses `window`, jadi wajib di-load khusus di client
 // (ssr: false) -- tidak bisa dirender di server.
@@ -48,13 +56,12 @@ interface FabFormProps {
   areaOptions: AreaOption[];
   paketOptions: PaketOption[];
   salesOptions: UserOption[];
+  currentUser: CurrentUser;
 }
 
 const STATUS_LABEL: Record<StatusFab, string> = {
-  PENDING: "Pending",
-  SURVEY: "Survey",
-  INSTALASI: "Instalasi",
-  SELESAI: "Selesai",
+  OPEN: "Open",
+  AKTIF: "Aktif",
 };
 
 // Titik tengah default peta kalau user belum isi alamat/koordinat sama
@@ -71,22 +78,39 @@ export const FabForm = ({
   areaOptions,
   paketOptions,
   salesOptions,
+  currentUser,
 }: FabFormProps) => {
-  const [status, setStatus] = useState<StatusFab>(defaultValues?.status ?? "PENDING");
+  const isTeknisi = currentUser.role === "TEKNISI";
+
+  // Sales / Referral (SATU state ini saja -- jangan dideklarasikan dua kali)
+  const [idUser, setIdUser] = useState<string>(
+    defaultValues?.id_user
+      ? String(defaultValues.id_user)
+      : isTeknisi
+      ? ""
+      : String(currentUser.id_user)
+  );
+
+  const status: StatusFab = defaultValues?.status ?? "OPEN";
   const [idArea, setIdArea] = useState<string>(
     defaultValues?.id_area ? String(defaultValues.id_area) : ""
   );
   const [idPaket, setIdPaket] = useState<string>(
     defaultValues?.id_paket ? String(defaultValues.id_paket) : ""
   );
-  const [idUser, setIdUser] = useState<string>(
-    defaultValues?.id_user ? String(defaultValues.id_user) : ""
-  );
 
   // ==========================================================
   // LOKASI MAP: alamat -> auto-geocode -> latitude/longitude -> peta
   // ==========================================================
   const [alamat, setAlamat] = useState(defaultValues?.alamat ?? "");
+  const [fotoPreview, setFotoPreview] = useState<string | null>(defaultValues?.foto ?? null);
+
+    function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+      const file = e.target.files?.[0];
+      if (file) {
+        setFotoPreview(URL.createObjectURL(file));
+      }
+    }
   const [latitude, setLatitude] = useState(
     defaultValues?.latitude !== undefined ? String(defaultValues.latitude) : ""
   );
@@ -198,17 +222,17 @@ export const FabForm = ({
 
   // ✅ Fungsi untuk mendapatkan nama dari ID
   const getAreaName = (id: string) => {
-    const area = areaOptions.find(a => String(a.id_area) === id);
+    const area = areaOptions.find((a) => String(a.id_area) === id);
     return area?.nama_area || "Pilih area";
   };
 
   const getPaketName = (id: string) => {
-    const paket = paketOptions.find(p => String(p.id_paket) === id);
+    const paket = paketOptions.find((p) => String(p.id_paket) === id);
     return paket?.nama_paket || "Pilih paket";
   };
 
   const getSalesName = (id: string) => {
-    const sales = salesOptions.find(s => String(s.id_user) === id);
+    const sales = salesOptions.find((s) => String(s.id_user) === id);
     return sales?.nama || "Pilih sales";
   };
 
@@ -232,6 +256,33 @@ export const FabForm = ({
         </div>
         <p className="text-xs text-slate-400">Dibuat otomatis, tidak bisa diubah manual</p>
       </div>
+
+      <div className="col-span-2 space-y-2">
+  <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+    <ImageIcon size={13} className="text-purple-500" /> Foto Depan Rumah
+  </Label>
+
+  {fotoPreview && (
+    <img
+      src={fotoPreview}
+      alt="Preview foto depan rumah"
+      className="mb-2 h-32 w-full rounded-2xl border border-slate-200 object-cover"
+    />
+  )}
+
+  <Input
+    name="foto"
+    type="file"
+    accept="image/*"
+    onChange={handleFotoChange}
+    required={!defaultValues?.foto}
+    className="h-12 rounded-2xl border-slate-200 bg-white file:mr-3 file:h-full file:rounded-xl file:border-0 file:bg-slate-100 file:px-3 file:text-sm file:font-medium focus-visible:ring-purple-500"
+  />
+
+  {defaultValues?.foto && (
+    <p className="text-xs text-slate-400">Kosongkan kalau tidak ingin mengganti foto.</p>
+  )}
+</div>
 
       <div className="col-span-2 space-y-2">
         <Label
@@ -314,19 +365,15 @@ export const FabForm = ({
       </div>
 
       {/* ================================================ */}
-      {/* AREA / PAKET / SALES / STATUS -- dipindah ke sini, */}
-      {/* persis sesudah Alamat Lengkap, sebelum Lokasi Map  */}
+      {/* AREA / PAKET / SALES-REFERRAL / STATUS -- dipindah */}
+      {/* ke sini, persis sesudah Alamat Lengkap             */}
       {/* ================================================ */}
       <div className="space-y-2">
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <Building2 size={13} className="text-purple-500" /> Area
         </Label>
-        <Select
-          value={idArea}
-          onValueChange={(v) => setIdArea(v ?? "")}
-        >
+        <Select value={idArea} onValueChange={(v) => setIdArea(v ?? "")}>
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
-            {/* ✅ Perbaikan: Tampilkan nama area, bukan ID */}
             <SelectValue placeholder="Pilih area">
               {idArea ? getAreaName(idArea) : "Pilih area"}
             </SelectValue>
@@ -346,12 +393,8 @@ export const FabForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <Package size={13} className="text-purple-500" /> Paket Internet
         </Label>
-        <Select
-          value={idPaket}
-          onValueChange={(v) => setIdPaket(v ?? "")}
-        >
+        <Select value={idPaket} onValueChange={(v) => setIdPaket(v ?? "")}>
           <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
-            {/* ✅ Perbaikan: Tampilkan nama paket, bukan ID */}
             <SelectValue placeholder="Pilih paket">
               {idPaket ? getPaketName(idPaket) : "Pilih paket"}
             </SelectValue>
@@ -367,54 +410,77 @@ export const FabForm = ({
         <input type="hidden" name="id_paket" value={idPaket} required />
       </div>
 
+      {/* Sales / Referral -- kondisional sesuai role yang login:
+          - TEKNISI: field jadi "Referral", tetap dropdown pilih sales
+          - selain itu (Sales/Admin/Leader/Logistik): dikunci ke nama sendiri */}
       <div className="space-y-2">
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-          <UserCog size={13} className="text-purple-500" /> Sales
+          <UserCog size={13} className="text-purple-500" /> {isTeknisi ? "Referral" : "Sales"}
         </Label>
-        <Select
-          value={idUser}
-          onValueChange={(v) => setIdUser(v ?? "")}
-        >
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
-            {/* ✅ Perbaikan: Tampilkan nama sales, bukan ID */}
-            <SelectValue placeholder="Pilih sales">
-              {idUser ? getSalesName(idUser) : "Pilih sales"}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {salesOptions.map((u) => (
-              <SelectItem key={u.id_user} value={String(u.id_user)}>
-                {u.nama}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+
+        {isTeknisi ? (
+          <Select value={idUser} onValueChange={(v) => setIdUser(v ?? "")}>
+            <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
+              <SelectValue placeholder="Pilih sales referral">
+                {idUser ? getSalesName(idUser) : "Pilih sales referral"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {salesOptions.map((u) => (
+                <SelectItem key={u.id_user} value={String(u.id_user)}>
+                  {u.nama}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="relative">
+            <Input
+              value={currentUser.nama}
+              readOnly
+              className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10"
+            />
+            <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          </div>
+        )}
+        
+        {isTeknisi && (
+  <div className="col-span-2 space-y-2">
+    <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+      <User size={13} className="text-purple-500" /> Nama Teknisi (Penginput)
+    </Label>
+    <div className="relative">
+      <Input
+        value={currentUser.nama}
+        readOnly
+        className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10"
+      />
+      <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+    </div>
+    <p className="text-xs text-slate-400">Tercatat otomatis sebagai yang menginput data ini.</p>
+  </div>
+)}
+
         <input type="hidden" name="id_user" value={idUser} required />
       </div>
 
-      <div className="space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-          <Activity size={13} className="text-purple-500" /> Status
-        </Label>
-        <Select
-          value={status}
-          onValueChange={(v) => setStatus((v ?? "PENDING") as StatusFab)}
-        >
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
-            <SelectValue>
-              {STATUS_LABEL[status]}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.keys(STATUS_LABEL) as StatusFab[]).map((s) => (
-              <SelectItem key={s} value={s}>
-                {STATUS_LABEL[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <input type="hidden" name="status" value={status} />
-      </div>
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+            <Activity size={13} className="text-purple-500" /> Status
+          </Label>
+          <div className="relative">
+            <Input
+              value={STATUS_LABEL[status]}
+              readOnly
+              className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10"
+            />
+            <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          </div>
+          <p className="text-xs text-slate-400">
+            Otomatis berubah jadi Aktif setelah BAA instalasi diselesaikan
+          </p>
+          <input type="hidden" name="status" value={status} />
+        </div>
 
       {/* ================================================ */}
       {/* LOKASI MAP -- label section, di atas peta */}
@@ -445,9 +511,7 @@ export const FabForm = ({
         </div>
         {/* ✅ Perbaikan: Conditional rendering untuk error map search */}
         {shouldShowMapError ? (
-          <p className="text-xs text-yellow-600 mt-1">
-            Minimal 3 karakter untuk mencari lokasi
-          </p>
+          <p className="text-xs text-yellow-600 mt-1">Minimal 3 karakter untuk mencari lokasi</p>
         ) : mapSearchError && mapSearchQuery.trim().length >= 3 ? (
           <p className="text-xs text-amber-600 mt-1">{mapSearchError}</p>
         ) : null}

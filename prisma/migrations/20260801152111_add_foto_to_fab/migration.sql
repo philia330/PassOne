@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `fab` ADD COLUMN `foto` VARCHAR(191) NULL;

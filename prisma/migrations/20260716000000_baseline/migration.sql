@@ -1,23 +1,12 @@
 -- CreateTable
-CREATE TABLE `users` (
-    `id_user` INTEGER NOT NULL AUTO_INCREMENT,
-    `kode_user` VARCHAR(191) NOT NULL,
-    `nama` VARCHAR(191) NOT NULL,
-    `username` VARCHAR(191) NOT NULL,
-    `password` VARCHAR(191) NOT NULL,
-    `jkl` ENUM('LAKI_LAKI', 'PEREMPUAN') NOT NULL,
-    `foto` VARCHAR(191) NULL,
-    `role` ENUM('ADMIN', 'LEADER', 'SALES', 'TEKNISI', 'LOGISTIK') NOT NULL,
-    `no_hp` VARCHAR(191) NULL,
-    `email` VARCHAR(191) NULL,
-    `status` BOOLEAN NOT NULL DEFAULT true,
+CREATE TABLE `activity_logs` (
+    `id_log` INTEGER NOT NULL AUTO_INCREMENT,
+    `type` ENUM('USER_CREATED', 'USER_UPDATED', 'USER_DELETED', 'USER_DEACTIVATED', 'LOGIN', 'FAB_CREATED', 'FAB_UPDATED', 'BAA_CREATED', 'BAA_UPDATED', 'AREA_CREATED', 'AREA_UPDATED', 'POP_CREATED', 'POP_UPDATED', 'OLT_CREATED', 'OLT_UPDATED', 'ODP_CREATED', 'ODP_UPDATED', 'ONT_CREATED', 'ONT_UPDATED', 'PAKET_CREATED', 'PAKET_UPDATED', 'MATERIAL_CREATED', 'MATERIAL_UPDATED', 'SETTINGS_UPDATED') NOT NULL,
+    `description` VARCHAR(191) NOT NULL,
+    `id_user` INTEGER NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updatedAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `users_kode_user_key`(`kode_user`),
-    UNIQUE INDEX `users_username_key`(`username`),
-    UNIQUE INDEX `users_email_key`(`email`),
-    PRIMARY KEY (`id_user`)
+    PRIMARY KEY (`id_log` ASC)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -29,8 +18,8 @@ CREATE TABLE `area` (
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `Area_kode_area_key`(`kode_area`),
-    PRIMARY KEY (`id_area`)
+    UNIQUE INDEX `Area_kode_area_key`(`kode_area` ASC),
+    PRIMARY KEY (`id_area` ASC)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -56,13 +45,25 @@ CREATE TABLE `baa` (
     `speed_upload` VARCHAR(191) NULL,
     `tx_power_dbm` DECIMAL(65, 30) NULL,
 
-    UNIQUE INDEX `Baa_kode_baa_key`(`kode_baa`),
-    INDEX `Baa_id_fab_fkey`(`id_fab`),
-    INDEX `Baa_id_odp_fkey`(`id_odp`),
-    INDEX `Baa_id_olt_fkey`(`id_olt`),
-    INDEX `Baa_id_ont_fkey`(`id_ont`),
-    INDEX `Baa_id_user_fkey`(`id_user`),
-    PRIMARY KEY (`id_baa`)
+    INDEX `Baa_id_fab_fkey`(`id_fab` ASC),
+    INDEX `Baa_id_odp_fkey`(`id_odp` ASC),
+    INDEX `Baa_id_olt_fkey`(`id_olt` ASC),
+    INDEX `Baa_id_ont_fkey`(`id_ont` ASC),
+    INDEX `Baa_id_user_fkey`(`id_user` ASC),
+    UNIQUE INDEX `Baa_kode_baa_key`(`kode_baa` ASC),
+    PRIMARY KEY (`id_baa` ASC)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `baa_teknisi` (
+    `id_baa_teknisi` INTEGER NOT NULL AUTO_INCREMENT,
+    `id_baa` INTEGER NOT NULL,
+    `id_user` INTEGER NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE INDEX `BaaTeknisi_id_baa_id_user_key`(`id_baa` ASC, `id_user` ASC),
+    INDEX `BaaTeknisi_id_user_fkey`(`id_user` ASC),
+    PRIMARY KEY (`id_baa_teknisi` ASC)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -75,21 +76,9 @@ CREATE TABLE `baadetail` (
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
-    INDEX `BaaDetail_id_baa_fkey`(`id_baa`),
-    INDEX `BaaDetail_id_material_fkey`(`id_material`),
-    PRIMARY KEY (`id_baa_detail`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `baa_teknisi` (
-    `id_baa_teknisi` INTEGER NOT NULL AUTO_INCREMENT,
-    `id_baa` INTEGER NOT NULL,
-    `id_user` INTEGER NOT NULL,
-    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-
-    INDEX `BaaTeknisi_id_user_fkey`(`id_user`),
-    UNIQUE INDEX `BaaTeknisi_id_baa_id_user_key`(`id_baa`, `id_user`),
-    PRIMARY KEY (`id_baa_teknisi`)
+    INDEX `BaaDetail_id_baa_fkey`(`id_baa` ASC),
+    INDEX `BaaDetail_id_material_fkey`(`id_material` ASC),
+    PRIMARY KEY (`id_baa_detail` ASC)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -109,12 +98,12 @@ CREATE TABLE `fab` (
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `Fab_kode_fab_key`(`kode_fab`),
-    UNIQUE INDEX `Fab_nik_key`(`nik`),
-    INDEX `Fab_id_area_fkey`(`id_area`),
-    INDEX `Fab_id_paket_fkey`(`id_paket`),
-    INDEX `Fab_id_user_fkey`(`id_user`),
-    PRIMARY KEY (`id_fab`)
+    INDEX `Fab_id_area_fkey`(`id_area` ASC),
+    INDEX `Fab_id_paket_fkey`(`id_paket` ASC),
+    INDEX `Fab_id_user_fkey`(`id_user` ASC),
+    UNIQUE INDEX `Fab_kode_fab_key`(`kode_fab` ASC),
+    UNIQUE INDEX `Fab_nik_key`(`nik` ASC),
+    PRIMARY KEY (`id_fab` ASC)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -131,8 +120,8 @@ CREATE TABLE `material` (
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `Material_kode_material_key`(`kode_material`),
-    PRIMARY KEY (`id_material`)
+    UNIQUE INDEX `Material_kode_material_key`(`kode_material` ASC),
+    PRIMARY KEY (`id_material` ASC)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -143,15 +132,15 @@ CREATE TABLE `odp` (
     `alamat` VARCHAR(191) NOT NULL,
     `latitude` DECIMAL(65, 30) NOT NULL,
     `longitude` DECIMAL(65, 30) NOT NULL,
-    `jumlah_port` INTEGER NULL,
-    `stok_port` INTEGER NULL DEFAULT 0,
     `id_olt` INTEGER NOT NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
+    `jumlah_port` INTEGER NULL,
+    `stok_port` INTEGER NULL DEFAULT 0,
 
-    UNIQUE INDEX `Odp_kode_odp_key`(`kode_odp`),
-    INDEX `Odp_id_olt_fkey`(`id_olt`),
-    PRIMARY KEY (`id_odp`)
+    INDEX `Odp_id_olt_fkey`(`id_olt` ASC),
+    UNIQUE INDEX `Odp_kode_odp_key`(`kode_odp` ASC),
+    PRIMARY KEY (`id_odp` ASC)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -170,9 +159,9 @@ CREATE TABLE `olt` (
     `username_olt` VARCHAR(191) NULL,
     `foto_olt` VARCHAR(191) NULL,
 
-    UNIQUE INDEX `Olt_kode_olt_key`(`kode_olt`),
-    INDEX `Olt_id_pop_fkey`(`id_pop`),
-    PRIMARY KEY (`id_olt`)
+    INDEX `Olt_id_pop_fkey`(`id_pop` ASC),
+    UNIQUE INDEX `Olt_kode_olt_key`(`kode_olt` ASC),
+    PRIMARY KEY (`id_olt` ASC)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -186,10 +175,10 @@ CREATE TABLE `ont` (
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `Ont_serial_number_key`(`serial_number`),
-    INDEX `Ont_id_odp_fkey`(`id_odp`),
-    INDEX `Ont_id_pop_fkey`(`id_pop`),
-    PRIMARY KEY (`id_ont`)
+    INDEX `Ont_id_odp_fkey`(`id_odp` ASC),
+    INDEX `Ont_id_pop_fkey`(`id_pop` ASC),
+    UNIQUE INDEX `Ont_serial_number_key`(`serial_number` ASC),
+    PRIMARY KEY (`id_ont` ASC)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -203,8 +192,8 @@ CREATE TABLE `paket` (
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `Paket_kode_paket_key`(`kode_paket`),
-    PRIMARY KEY (`id_paket`)
+    UNIQUE INDEX `Paket_kode_paket_key`(`kode_paket` ASC),
+    PRIMARY KEY (`id_paket` ASC)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -219,9 +208,9 @@ CREATE TABLE `pop` (
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `Pop_kode_pop_key`(`kode_pop`),
-    INDEX `Pop_id_area_fkey`(`id_area`),
-    PRIMARY KEY (`id_pop`)
+    INDEX `Pop_id_area_fkey`(`id_area` ASC),
+    UNIQUE INDEX `Pop_kode_pop_key`(`kode_pop` ASC),
+    PRIMARY KEY (`id_pop` ASC)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -235,20 +224,9 @@ CREATE TABLE `portpon` (
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
-    INDEX `PortPon_id_odp_fkey`(`id_odp`),
-    UNIQUE INDEX `PortPon_id_olt_nomor_port_key`(`id_olt`, `nomor_port`),
-    PRIMARY KEY (`id_port`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `activity_logs` (
-    `id_log` INTEGER NOT NULL AUTO_INCREMENT,
-    `type` ENUM('USER_CREATED', 'USER_UPDATED', 'USER_DELETED', 'USER_DEACTIVATED', 'LOGIN', 'FAB_CREATED', 'FAB_UPDATED', 'BAA_CREATED', 'BAA_UPDATED', 'AREA_CREATED', 'AREA_UPDATED', 'POP_CREATED', 'POP_UPDATED', 'OLT_CREATED', 'OLT_UPDATED', 'ODP_CREATED', 'ODP_UPDATED', 'ONT_CREATED', 'ONT_UPDATED', 'PAKET_CREATED', 'PAKET_UPDATED', 'MATERIAL_CREATED', 'MATERIAL_UPDATED', 'SETTINGS_UPDATED') NOT NULL,
-    `description` VARCHAR(191) NOT NULL,
-    `id_user` INTEGER NULL,
-    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-
-    PRIMARY KEY (`id_log`)
+    INDEX `PortPon_id_odp_fkey`(`id_odp` ASC),
+    UNIQUE INDEX `PortPon_id_olt_nomor_port_key`(`id_olt` ASC, `nomor_port` ASC),
+    PRIMARY KEY (`id_port` ASC)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -258,8 +236,30 @@ CREATE TABLE `settings` (
     `value` TEXT NOT NULL,
     `updatedAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `settings_key_key`(`key`),
-    PRIMARY KEY (`id_setting`)
+    UNIQUE INDEX `settings_key_key`(`key` ASC),
+    PRIMARY KEY (`id_setting` ASC)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `users` (
+    `id_user` INTEGER NOT NULL AUTO_INCREMENT,
+    `kode_user` VARCHAR(191) NOT NULL,
+    `nama` VARCHAR(191) NOT NULL,
+    `username` VARCHAR(191) NOT NULL,
+    `password` VARCHAR(191) NOT NULL,
+    `foto` VARCHAR(191) NULL,
+    `role` ENUM('ADMIN', 'LEADER', 'SALES', 'TEKNISI', 'LOGISTIK') NOT NULL,
+    `no_hp` VARCHAR(191) NULL,
+    `email` VARCHAR(191) NULL,
+    `status` BOOLEAN NOT NULL DEFAULT true,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+    `jkl` ENUM('LAKI_LAKI', 'PEREMPUAN') NOT NULL,
+
+    UNIQUE INDEX `users_email_key`(`email` ASC),
+    UNIQUE INDEX `users_kode_user_key`(`kode_user` ASC),
+    UNIQUE INDEX `users_username_key`(`username` ASC),
+    PRIMARY KEY (`id_user` ASC)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AddForeignKey
@@ -278,16 +278,16 @@ ALTER TABLE `baa` ADD CONSTRAINT `Baa_id_ont_fkey` FOREIGN KEY (`id_ont`) REFERE
 ALTER TABLE `baa` ADD CONSTRAINT `Baa_id_user_fkey` FOREIGN KEY (`id_user`) REFERENCES `users`(`id_user`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `baadetail` ADD CONSTRAINT `BaaDetail_id_baa_fkey` FOREIGN KEY (`id_baa`) REFERENCES `baa`(`id_baa`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `baadetail` ADD CONSTRAINT `BaaDetail_id_material_fkey` FOREIGN KEY (`id_material`) REFERENCES `material`(`id_material`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE `baa_teknisi` ADD CONSTRAINT `BaaTeknisi_id_baa_fkey` FOREIGN KEY (`id_baa`) REFERENCES `baa`(`id_baa`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `baa_teknisi` ADD CONSTRAINT `BaaTeknisi_id_user_fkey` FOREIGN KEY (`id_user`) REFERENCES `users`(`id_user`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `baadetail` ADD CONSTRAINT `BaaDetail_id_baa_fkey` FOREIGN KEY (`id_baa`) REFERENCES `baa`(`id_baa`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `baadetail` ADD CONSTRAINT `BaaDetail_id_material_fkey` FOREIGN KEY (`id_material`) REFERENCES `material`(`id_material`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `fab` ADD CONSTRAINT `Fab_id_area_fkey` FOREIGN KEY (`id_area`) REFERENCES `area`(`id_area`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -318,3 +318,4 @@ ALTER TABLE `portpon` ADD CONSTRAINT `PortPon_id_odp_fkey` FOREIGN KEY (`id_odp`
 
 -- AddForeignKey
 ALTER TABLE `portpon` ADD CONSTRAINT `PortPon_id_olt_fkey` FOREIGN KEY (`id_olt`) REFERENCES `olt`(`id_olt`) ON DELETE RESTRICT ON UPDATE CASCADE;
+

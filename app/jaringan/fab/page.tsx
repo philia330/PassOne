@@ -1,10 +1,19 @@
 import { ClipboardList } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
+import { auth } from "@/lib/auth";
 import { FabDialog } from "@/app/jaringan/fab/components/FabDialog";
 import { FabTable } from "@/app/jaringan/fab/components/FabTable";
 
 export default async function FabPage() {
+  const session = await auth();
+
+  const currentUser = {
+    id_user: Number(session!.user.id_user),
+    nama: session!.user.nama,
+    role: session!.user.role,
+  };
+
   const [rawFab, areaList, paketList, salesList] = await Promise.all([
     prisma.fab.findMany({
       orderBy: { createdAt: "desc" },
@@ -12,6 +21,7 @@ export default async function FabPage() {
         area: true,
         paket: true,
         users: true, // ✅ user → users
+        penginput: true,
       },
     }),
     prisma.area.findMany({
@@ -72,6 +82,7 @@ export default async function FabPage() {
             areaOptions={areaList}
             paketOptions={paketList}
             salesOptions={salesList}
+            currentUser={currentUser}
           />
         </Card>
 
@@ -80,6 +91,7 @@ export default async function FabPage() {
           areaOptions={areaList}
           paketOptions={paketList}
           salesOptions={salesList}
+          currentUser={currentUser}
         />
 
       </div>

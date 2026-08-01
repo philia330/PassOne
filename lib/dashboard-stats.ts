@@ -96,9 +96,9 @@ export async function getStatusBreakdown() {
 }
 
 export async function getSlaAlerts() {
-  const [fabPending, baaPending] = await Promise.all([
+  const [fabOpen, baaOpen] = await Promise.all([
     prisma.fab.findMany({
-      where: { status: "PENDING" },
+      where: { status: "OPEN" },
       orderBy: { createdAt: "asc" },
       take: 10,
       select: {
@@ -120,5 +120,5 @@ export async function getSlaAlerts() {
     }),
   ]);
 
-  return { fabPending, baaPending };
+  return { fabOpen, baaOpen };
 }
