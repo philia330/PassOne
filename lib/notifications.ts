@@ -13,8 +13,7 @@ export async function getNotifications(role: Role): Promise<NotificationItem[]> 
   const notifications: NotificationItem[] = [];
 
   const canSeeMaterial = role === "ADMIN" || role === "LOGISTIK";
-  const canSeeFab = role === "ADMIN" || role === "SALES" || role === "LEADER";
-  const canSeeBaa = role === "ADMIN" || role === "TEKNISI" || role === "LEADER";
+  const canSeeFab = role === "ADMIN" || role === "SALES" || role === "LEADER" || role === "TEKNISI";
 
   if (canSeeMaterial) {
     const materials = await prisma.material.findMany({
@@ -47,30 +46,12 @@ export async function getNotifications(role: Role): Promise<NotificationItem[]> 
         id: `fab-${f.id_fab}`,
         title: "FAB Menunggu Tindak Lanjut",
         description: `${f.kode_fab} — ${f.nama_pelanggan} masih berstatus Open.`,
-        href: "/fab",
+        href: "/jaringan/fab",
         severity: "info",
       });
     });
   }
 
-  if (canSeeBaa) {
-    const baaPending = await prisma.baa.findMany({
-      where: { status: "PENDING" },
-      orderBy: { createdAt: "asc" },
-      take: 5,
-      select: { id_baa: true, kode_baa: true, createdAt: true },
-    });
-
-    baaPending.forEach((b) => {
-      notifications.push({
-        id: `baa-${b.id_baa}`,
-        title: "BAA Menunggu Tindak Lanjut",
-        description: `${b.kode_baa} masih berstatus Pending.`,
-        href: "/baa",
-        severity: "info",
-      });
-    });
-  }
 
   return notifications;
 }

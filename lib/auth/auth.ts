@@ -7,6 +7,7 @@ import { authConfig } from "./auth.config";
 import { credentialsProvider } from "./credentials";
 import { Role } from "./roles";
 
+
 const REMEMBER_ME_MAX_AGE = 30 * 24 * 60 * 60; // 30 hari
 const DEFAULT_MAX_AGE = 12 * 60 * 60; // 12 jam
 

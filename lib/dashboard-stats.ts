@@ -96,29 +96,19 @@ export async function getStatusBreakdown() {
 }
 
 export async function getSlaAlerts() {
-  const [fabOpen, baaOpen] = await Promise.all([
-    prisma.fab.findMany({
-      where: { status: "OPEN" },
-      orderBy: { createdAt: "asc" },
-      take: 10,
-      select: {
-        id_fab: true,
-        kode_fab: true,
-        nama_pelanggan: true,
-        createdAt: true,
-      },
-    }),
-    prisma.baa.findMany({
-      where: { status: "PENDING" },
-      orderBy: { createdAt: "asc" },
-      take: 10,
-      select: {
-        id_baa: true,
-        kode_baa: true,
-        createdAt: true,
-      },
-    }),
-  ]);
+  const fabOpen = await prisma.fab.findMany({
+    where: { status: "OPEN" },
+    orderBy: { createdAt: "asc" },
+    take: 10,
+    select: {
+      id_fab: true,
+      kode_fab: true,
+      nama_pelanggan: true,
+      createdAt: true,
+    },
+  });
 
-  return { fabOpen, baaOpen };
+  // BAA tidak lagi punya status "pending" -- begitu dibuat langsung Selesai,
+  // jadi tidak ada lagi yang perlu dipantau di sini.
+  return { fabOpen, baaOpen: [] as never[] };
 }

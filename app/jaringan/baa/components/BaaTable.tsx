@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Inbox, Layers, Boxes, ClipboardList, UserCog, MoreVertical, Eye, Pencil, Trash2 } from "lucide-react";
+import { Search, Inbox, Layers, Boxes, ClipboardList, MoreVertical, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +32,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { BaaDialog } from "@/app/jaringan/baa/components/BaaDialog";
 import { BaaDeleteDialog } from "@/app/jaringan/baa/components/BaaDeleteDialog";
-import { BaaViewDialog } from "@/app/jaringan/baa/components/BaaViewDialog";
 import { BaaImageDialog } from "@/app/jaringan/baa/components/BaaImageDialog";
 import { InfoTooltip } from "@/app/jaringan/baa/components/InfoTooltip";
 import type {
@@ -44,6 +43,7 @@ import type {
   OdpOption,
   OntOption,
   MaterialOption,
+  CurrentUser,
 } from "@/types/baa";
 
 interface BaaTableProps {
@@ -54,20 +54,17 @@ interface BaaTableProps {
   odpOptions: OdpOption[];
   ontOptions: OntOption[];
   materialOptions: MaterialOption[];
+  currentUser: CurrentUser;
   onTeknisiAdded?: () => void;
 }
 
 const PAGE_SIZE = 5;
 
 const STATUS_STYLE: Record<StatusBaa, string> = {
-  PENDING: "bg-slate-100 text-slate-600 hover:bg-slate-100",
-  PROSES: "bg-sky-100 text-sky-700 hover:bg-sky-100",
   SELESAI: "bg-green-100 text-green-700 hover:bg-green-100",
 };
 
 const STATUS_LABEL: Record<StatusBaa, string> = {
-  PENDING: "Pending",
-  PROSES: "Proses",
   SELESAI: "Selesai",
 };
 
@@ -81,17 +78,23 @@ function formatTanggal(date: Date) {
 
 function BaaActionMenu({
   item,
-  onView,
   onEdit,
   onDelete,
   triggerClassName,
+  currentUser,
 }: {
   item: BaaData;
-  onView: (item: BaaData) => void;
   onEdit: (item: BaaData) => void;
   onDelete: (item: BaaData) => void;
   triggerClassName: string;
+  currentUser: CurrentUser;
 }) {
+  const isAdminOrLeader = currentUser.role === "ADMIN" || currentUser.role === "LEADER";
+  const isOwner = currentUser.id_user === item.id_user;
+
+  const canDelete = isAdminOrLeader;
+  const canEdit = isAdminOrLeader || isOwner;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -125,43 +128,39 @@ function BaaActionMenu({
           </Link>
         </DropdownMenuItem>
 
+        {(canEdit || canDelete) && (
+          <>
+            <div className="my-1.5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+            <p className="px-2.5 pt-1 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Aksi
+            </p>
+          </>
+        )}
 
-        <div className="my-1.5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+        {canEdit && (
+          <DropdownMenuItem
+            onClick={() => onEdit(item)}
+            className="rounded-xl gap-3 px-2.5 py-2 cursor-pointer focus:bg-amber-50"
+          >
+            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-amber-100">
+              <Pencil className="h-4 w-4 text-amber-600" />
+            </span>
+            <span className="text-sm font-semibold text-slate-700">Edit BAA</span>
+          </DropdownMenuItem>
+        )}
 
-        <p className="px-2.5 pt-1 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          Aksi
-        </p>
-
-        <DropdownMenuItem
-          onClick={() => onView(item)}
-          className="rounded-xl gap-3 px-2.5 py-2 cursor-pointer focus:bg-slate-100"
-        >
-          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100">
-            <Eye className="h-4 w-4 text-slate-500" />
-          </span>
-          <span className="text-sm font-semibold text-slate-700">Lihat Detail</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          onClick={() => onEdit(item)}
-          className="rounded-xl gap-3 px-2.5 py-2 cursor-pointer focus:bg-amber-50"
-        >
-          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-amber-100">
-            <Pencil className="h-4 w-4 text-amber-600" />
-          </span>
-          <span className="text-sm font-semibold text-slate-700">Edit BAA</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          variant="destructive"
-          onClick={() => onDelete(item)}
-          className="rounded-xl gap-3 px-2.5 py-2 cursor-pointer"
-        >
-          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-red-100">
-            <Trash2 className="h-4 w-4 text-red-600" />
-          </span>
-          <span className="text-sm font-semibold text-red-600">Hapus BAA</span>
-        </DropdownMenuItem>
+        {canDelete && (
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={() => onDelete(item)}
+            className="rounded-xl gap-3 px-2.5 py-2 cursor-pointer"
+          >
+            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-red-100">
+              <Trash2 className="h-4 w-4 text-red-600" />
+            </span>
+            <span className="text-sm font-semibold text-red-600">Hapus BAA</span>
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -176,17 +175,26 @@ export const BaaTable = ({
   ontOptions,
   materialOptions,
   onTeknisiAdded,
+  currentUser,
 }: BaaTableProps) => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
-  const [viewItem, setViewItem] = useState<BaaData | null>(null);
+const toggleSort = () => {
+  setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+  setPage(1);
+};
+
   const [editItem, setEditItem] = useState<BaaData | null>(null);
   const [deleteItem, setDeleteItem] = useState<BaaData | null>(null);
 
   const sortedData = useMemo(() => {
-    return [...data].sort((a, b) => a.kode_baa.localeCompare(b.kode_baa, undefined, { numeric: true }));
-  }, [data]);
+  return [...data].sort((a, b) => {
+    const result = a.kode_baa.localeCompare(b.kode_baa, undefined, { numeric: true });
+    return sortOrder === "asc" ? result : -result;
+  });
+}, [data, sortOrder]);
 
   const filtered = useMemo(() => {
     return sortedData.filter(
@@ -212,25 +220,40 @@ export const BaaTable = ({
 
   return (
     <div className="space-y-6">
-      <Card className="flex-row rounded-3xl shadow-xl border bg-white p-4 flex items-center justify-between gap-4 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <Input
-            type="text"
-            placeholder="Cari kode BAA / nama pelanggan..."
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="rounded-2xl h-12 pl-11 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
-          />
-        </div>
-        <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 px-4 py-2.5 text-white shadow-md shadow-purple-200 flex-shrink-0">
-          <Layers size={18} className="text-white/90" />
-          <div className="leading-tight">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-white/80">Total BAA</p>
-            <p className="text-lg font-extrabold">{sortedData.length}</p>
-          </div>
-        </div>
-      </Card>
+<Card className="flex-row rounded-3xl shadow-xl border bg-white p-4 flex items-center justify-between gap-4 flex-wrap">
+  <div className="relative flex-1 min-w-[200px]">
+    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+    <Input
+      type="text"
+      placeholder="Cari kode BAA / nama pelanggan..."
+      value={search}
+      onChange={(e) => handleSearchChange(e.target.value)}
+      className="rounded-2xl h-12 pl-11 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+    />
+  </div>
+
+  {/* Tombol sort -- cuma tampil di mobile, karena desktop sudah bisa klik header */}
+  <button
+    type="button"
+    onClick={toggleSort}
+    className="md:hidden inline-flex h-12 items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors flex-shrink-0"
+  >
+    {sortOrder === "asc" ? (
+      <ArrowUp size={16} className="text-purple-500" />
+    ) : (
+      <ArrowDown size={16} className="text-purple-500" />
+    )}
+    <span>{sortOrder === "asc" ? "Terlama" : "Terbaru"}</span>
+  </button>
+
+  <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 px-4 py-2.5 text-white shadow-md shadow-purple-200 flex-shrink-0">
+    <Layers size={18} className="text-white/90" />
+    <div className="leading-tight">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-white/80">Total BAA</p>
+      <p className="text-lg font-extrabold">{sortedData.length}</p>
+    </div>
+  </div>
+</Card>
 
       <div className="hidden md:block">
         <Card className="rounded-3xl shadow-xl border bg-white overflow-hidden hover:shadow-2xl transition-all">
@@ -238,7 +261,20 @@ export const BaaTable = ({
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
-                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kode</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+  <button
+    type="button"
+    onClick={toggleSort}
+    className="inline-flex items-center gap-1.5 hover:text-purple-600 transition-colors"
+  >
+    Kode
+    {sortOrder === "asc" ? (
+      <ArrowUp size={16} className="text-purple-500" />
+    ) : (
+      <ArrowDown size={16} className="text-purple-500" />
+    )}
+  </button>
+</TableHead>
                   <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Foto</TableHead>
                   <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tanggal Instalasi</TableHead>
                   <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">FAB / Pelanggan</TableHead>
@@ -321,12 +357,12 @@ export const BaaTable = ({
 
                       <TableCell className="text-center">
                         <BaaActionMenu
-                          item={item}
-                          onView={setViewItem}
-                          onEdit={setEditItem}
-                          onDelete={setDeleteItem}
-                          triggerClassName="h-8 w-8 p-0"
-                        />
+                      item={item}
+                      onEdit={setEditItem}
+                      onDelete={setDeleteItem}
+                      triggerClassName="h-8 w-8 p-0"
+                      currentUser={currentUser}
+                    />
                       </TableCell>
                     </TableRow>
                   ))
@@ -371,12 +407,12 @@ export const BaaTable = ({
                 </div>
                 <div className="flex flex-col gap-1.5 flex-shrink-0">
                   <BaaActionMenu
-                    item={item}
-                    onView={setViewItem}
-                    onEdit={setEditItem}
-                    onDelete={setDeleteItem}
-                    triggerClassName="rounded-xl h-8 px-3"
-                  />
+            item={item}
+            onEdit={setEditItem}
+            onDelete={setDeleteItem}
+            triggerClassName="h-8 w-8 p-0"
+            currentUser={currentUser}
+          />
                 </div>
               </div>
               {item.catatan && (
@@ -401,14 +437,6 @@ export const BaaTable = ({
         </Pagination>
       )}
 
-      {viewItem && (
-        <BaaViewDialog
-          baa={viewItem}
-          open={!!viewItem}
-          onOpenChange={(isOpen) => !isOpen && setViewItem(null)}
-        />
-      )}
-
       {editItem && (
         <BaaDialog
           mode="edit"
@@ -420,6 +448,7 @@ export const BaaTable = ({
           ontOptions={ontOptions}
           materialOptions={materialOptions}
           onTeknisiAdded={refreshTeknisi}
+          currentUser={currentUser}
           open={!!editItem}
           onOpenChange={(isOpen) => !isOpen && setEditItem(null)}
         />

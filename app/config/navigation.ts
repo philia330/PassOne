@@ -78,7 +78,7 @@ export const navigation: NavigationGroup[] = [
         title: "ONT",
         href: "/masterdata/ont",
         icon: Boxes,
-        roles: [Role.ADMIN, Role.LOGISTIK],
+        roles: [Role.ADMIN, Role.LOGISTIK, Role.TEKNISI],
       },
       {
         title: "Port PON",

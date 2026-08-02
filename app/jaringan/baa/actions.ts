@@ -1,10 +1,13 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import bcrypt from "bcryptjs";
+import { auth } from "@/lib/auth";
+import { Role } from "@/lib/auth/roles";
 
 /**
  * ======================================
@@ -55,10 +58,18 @@ async function renumberKodeBaa() {
   );
 }
 
-function toOptionalNumber(value: FormDataEntryValue | null): number | null {
+function toOptionalNumber(
+  value: FormDataEntryValue | null,
+  minValue = 0,
+  maxValue = 9999
+): number | null {
   if (value === null || value === "") return null;
   const num = Number(value);
-  return Number.isNaN(num) ? null : num;
+  if (Number.isNaN(num)) return null;
+  if (num < minValue || num > maxValue) {
+    throw new Error(`Nilai ${num} tidak valid. Harus di antara ${minValue} sampai ${maxValue}.`);
+  }
+  return num;
 }
 
 function toOptionalString(value: FormDataEntryValue | null): string | null {
@@ -90,6 +101,108 @@ function parseBaaDetails(raw: string | null): ParsedDetail[] {
       }));
   } catch {
     return [];
+  }
+}
+
+
+// ================================================================
+// HELPER: Validasi stok material cukup atau tidak
+// ================================================================
+async function validateMaterialStock(details: ParsedDetail[], restoredStockMap?: Map<number, number>) {
+  if (details.length === 0) return;
+
+  const materialIds = details.map((d) => d.id_material);
+  const materials = await prisma.material.findMany({
+    where: { id_material: { in: materialIds } },
+  });
+
+  const insufficient: string[] = [];
+  for (const detail of details) {
+    const material = materials.find((m) => m.id_material === detail.id_material);
+    if (!material) {
+      insufficient.push(`Material ID ${detail.id_material} tidak ditemukan`);
+      continue;
+    }
+    const bonus = restoredStockMap?.get(detail.id_material) ?? 0;
+    const effectiveStok = material.stok + bonus;
+    if (effectiveStok < detail.jumlah) {
+      insufficient.push(
+        `${material.nama_material}: stok tersedia ${effectiveStok} ${material.satuan}, diminta ${detail.jumlah} ${material.satuan}`
+      );
+    }
+  }
+
+  if (insufficient.length > 0) {
+    throw new Error(`Stok material tidak cukup:\n${insufficient.join("\n")}`);
+  }
+}
+
+// ================================================================
+// HELPER: Validasi port ODP tersedia
+// ================================================================
+async function validateOdpStock(id_odp: number) {
+  const odp = await prisma.odp.findUnique({ where: { id_odp } });
+  if (!odp) throw new Error("ODP tidak ditemukan");
+  if (odp.stok_port !== null && odp.stok_port <= 0) {
+    throw new Error(`Port ODP "${odp.nama_odp}" sudah habis (stok_port: ${odp.stok_port})`);
+  }
+}
+
+// ================================================================
+// HELPER: Sesuaikan stok_port ODP (aman untuk field nullable)
+// ================================================================
+async function adjustOdpStokPort(
+  tx: Prisma.TransactionClient,
+  id_odp: number,
+  delta: number
+) {
+  const odp = await tx.odp.findUnique({ where: { id_odp }, select: { stok_port: true } });
+  if (odp && odp.stok_port !== null) {
+    await tx.odp.update({
+      where: { id_odp },
+      data: { stok_port: { increment: delta } },
+    });
+  }
+}
+
+// ================================================================
+// HELPER: Cek material mana yang stoknya sudah di bawah minimal
+// ================================================================
+async function getLowStockWarnings(materialIds: number[]): Promise<string[]> {
+  if (materialIds.length === 0) return [];
+  const uniqueIds = [...new Set(materialIds)];
+  const materials = await prisma.material.findMany({
+    where: { id_material: { in: uniqueIds } },
+  });
+  return materials
+    .filter((m) => m.stok <= m.minimal_stok)
+    .map((m) => `${m.nama_material} tersisa ${m.stok} ${m.satuan} (minimal: ${m.minimal_stok})`);
+}
+
+// ================================================================
+// HELPER: Validasi izin Edit/Hapus BAA
+// ================================================================
+async function requireBaaAccess(action: "edit" | "delete", ownerId?: number) {
+  const session = await auth();
+
+  if (!session?.user) {
+    throw new Error("Anda harus login untuk melakukan aksi ini.");
+  }
+
+  const role = session.user.role;
+const isAdminOrLeader = role === Role.ADMIN || role === Role.LEADER;
+
+  if (action === "delete") {
+    if (!isAdminOrLeader) {
+      throw new Error("Hanya Admin atau Leader yang bisa menghapus BAA.");
+    }
+    return;
+  }
+
+  // action === "edit"
+  const isOwner = ownerId !== undefined && session.user.id_user === ownerId;
+  if (!isAdminOrLeader && !isOwner) {
+    throw new Error("Anda hanya bisa mengedit BAA yang Anda input sendiri.");
   }
 }
 
@@ -231,7 +344,7 @@ export async function removeTeknisiTambahan(id_baa_teknisi: number) {
 // ================================================================
 export async function createBaa(formData: FormData) {
   const tanggal_instalasi = formData.get("tanggal_instalasi") as string;
-  const status = formData.get("status") as "PENDING" | "PROSES" | "SELESAI";
+  const status = "SELESAI" as const;
   const id_fab = Number(formData.get("id_fab"));
   const id_user = Number(formData.get("id_user"));
   const id_olt = Number(formData.get("id_olt"));
@@ -246,37 +359,61 @@ export async function createBaa(formData: FormData) {
   }
 
   const details = parseBaaDetails(formData.get("baa_details") as string | null);
+
+  // Validasi stok SEBELUM ada perubahan apapun di database
+  await validateMaterialStock(details);
+  await validateOdpStock(id_odp);
+
   const foto_instalasi = await saveFotoInstalasi(formData, null);
   const kodeSementara = `TMP-${Date.now()}`;
 
-  const newBaa = await prisma.baa.create({
-    data: {
-      kode_baa: kodeSementara,
-      tanggal_instalasi: new Date(tanggal_instalasi),
-      status,
-      id_fab,
-      id_user,
-      id_olt,
-      id_odp,
-      id_ont,
-      port_olt: toOptionalNumber(formData.get("port_olt")),
-      port_odp: toOptionalNumber(formData.get("port_odp")),
-      rx_power_dbm: toOptionalNumber(formData.get("rx_power_dbm")),
-      tx_power_dbm: toOptionalNumber(formData.get("tx_power_dbm")),
-      speed_download: toOptionalString(formData.get("speed_download")),
-      speed_upload: toOptionalString(formData.get("speed_upload")),
-      ping_ms: toOptionalNumber(formData.get("ping_ms")),
-      catatan: toOptionalString(formData.get("catatan")),
-      foto_instalasi,
-      baadetail: {
-        // pakai baadetail (huruf kecil semua)
-        create: details.map((d) => ({
-          id_material: d.id_material,
-          jumlah: d.jumlah,
-          keterangan: d.keterangan,
-        })),
+  const newBaa = await prisma.$transaction(async (tx) => {
+    const created = await tx.baa.create({
+      data: {
+        kode_baa: kodeSementara,
+        tanggal_instalasi: new Date(tanggal_instalasi),
+        status,
+        id_fab,
+        id_user,
+        id_olt,
+        id_odp,
+        id_ont,
+port_olt: toOptionalNumber(formData.get("port_olt"), 0, 9999),
+port_odp: toOptionalNumber(formData.get("port_odp"), 0, 9999),
+rx_power_dbm: toOptionalNumber(formData.get("rx_power_dbm"), -60, 10),
+tx_power_dbm: toOptionalNumber(formData.get("tx_power_dbm"), -10, 20),
+        speed_download: toOptionalString(formData.get("speed_download")),
+        speed_upload: toOptionalString(formData.get("speed_upload")),
+ping_ms: toOptionalNumber(formData.get("ping_ms"), 0, 10000),
+        catatan: toOptionalString(formData.get("catatan")),
+        foto_instalasi,
+        baadetail: {
+          create: details.map((d) => ({
+            id_material: d.id_material,
+            jumlah: d.jumlah,
+            keterangan: d.keterangan,
+          })),
+        },
       },
-    },
+    });
+
+    // Kurangi stok material sesuai pemakaian
+    for (const d of details) {
+      await tx.material.update({
+        where: { id_material: d.id_material },
+        data: { stok: { decrement: d.jumlah } },
+      });
+    }
+
+    // Kurangi stok_port ODP (1 instalasi = 1 port terpakai)
+    await adjustOdpStokPort(tx, id_odp, -1);
+
+    await tx.fab.update({
+      where: { id_fab },
+      data: { status: "AKTIF" },
+    });
+
+    return created;
   });
 
   if (teknisiTambahanIds.length > 0) {
@@ -290,6 +427,12 @@ export async function createBaa(formData: FormData) {
 
   await renumberKodeBaa();
   revalidatePath("/jaringan/baa");
+  revalidatePath("/jaringan/fab");
+  revalidatePath("/masterdata/material");
+  revalidatePath("/masterdata/odp");
+
+  const lowStockMaterials = await getLowStockWarnings(details.map((d) => d.id_material));
+  return { success: true, lowStockMaterials };
 }
 
 // ================================================================
@@ -297,7 +440,7 @@ export async function createBaa(formData: FormData) {
 // ================================================================
 export async function updateBaa(id: number, formData: FormData) {
   const tanggal_instalasi = formData.get("tanggal_instalasi") as string;
-  const status = formData.get("status") as "PENDING" | "PROSES" | "SELESAI";
+  const status = "SELESAI" as const;
   const id_fab = Number(formData.get("id_fab"));
   const id_user = Number(formData.get("id_user"));
   const id_olt = Number(formData.get("id_olt"));
@@ -315,14 +458,38 @@ export async function updateBaa(id: number, formData: FormData) {
   const existingFoto = (formData.get("foto_instalasi_existing") as string | null) || null;
   const foto_instalasi = await saveFotoInstalasi(formData, existingFoto);
 
-  // Hapus teknisi tambahan lama
-  await prisma.baateknisi.deleteMany({
+  const oldBaa = await prisma.baa.findUnique({
     where: { id_baa: id },
+    include: { baadetail: true },
   });
+  if (!oldBaa) throw new Error("BAA tidak ditemukan");
 
-  await prisma.$transaction([
-    prisma.baadetail.deleteMany({ where: { id_baa: id } }),
-    prisma.baa.update({
+  await requireBaaAccess("edit", oldBaa.id_user);
+
+  // Stok yang akan "dikembalikan" dari pemakaian lama, dipakai buat validasi
+  const restoredStockMap = new Map<number, number>();
+  for (const d of oldBaa.baadetail) {
+    restoredStockMap.set(d.id_material, (restoredStockMap.get(d.id_material) ?? 0) + d.jumlah);
+  }
+
+  await validateMaterialStock(details, restoredStockMap);
+  if (oldBaa.id_odp !== id_odp) {
+    await validateOdpStock(id_odp);
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Kembalikan stok material lama
+    for (const d of oldBaa.baadetail) {
+      await tx.material.update({
+        where: { id_material: d.id_material },
+        data: { stok: { increment: d.jumlah } },
+      });
+    }
+
+    await tx.baateknisi.deleteMany({ where: { id_baa: id } });
+    await tx.baadetail.deleteMany({ where: { id_baa: id } });
+
+    await tx.baa.update({
       where: { id_baa: id },
       data: {
         tanggal_instalasi: new Date(tanggal_instalasi),
@@ -332,13 +499,13 @@ export async function updateBaa(id: number, formData: FormData) {
         id_olt,
         id_odp,
         id_ont,
-        port_olt: toOptionalNumber(formData.get("port_olt")),
-        port_odp: toOptionalNumber(formData.get("port_odp")),
-        rx_power_dbm: toOptionalNumber(formData.get("rx_power_dbm")),
-        tx_power_dbm: toOptionalNumber(formData.get("tx_power_dbm")),
+port_olt: toOptionalNumber(formData.get("port_olt"), 0, 9999),
+port_odp: toOptionalNumber(formData.get("port_odp"), 0, 9999),
+rx_power_dbm: toOptionalNumber(formData.get("rx_power_dbm"), -60, 10),
+tx_power_dbm: toOptionalNumber(formData.get("tx_power_dbm"), -10, 20),
         speed_download: toOptionalString(formData.get("speed_download")),
         speed_upload: toOptionalString(formData.get("speed_upload")),
-        ping_ms: toOptionalNumber(formData.get("ping_ms")),
+ping_ms: toOptionalNumber(formData.get("ping_ms"), 0, 10000),
         catatan: toOptionalString(formData.get("catatan")),
         foto_instalasi,
         baadetail: {
@@ -349,8 +516,27 @@ export async function updateBaa(id: number, formData: FormData) {
           })),
         },
       },
-    }),
-  ]);
+    });
+
+    // Kurangi stok material sesuai data baru
+    for (const d of details) {
+      await tx.material.update({
+        where: { id_material: d.id_material },
+        data: { stok: { decrement: d.jumlah } },
+      });
+    }
+
+    // Kalau ODP berubah, kembalikan port lama & kurangi port baru
+    if (oldBaa.id_odp !== id_odp) {
+      await adjustOdpStokPort(tx, oldBaa.id_odp, 1);
+      await adjustOdpStokPort(tx, id_odp, -1);
+    }
+
+    await tx.fab.update({
+      where: { id_fab },
+      data: { status: "AKTIF" },
+    });
+  });
 
   if (teknisiTambahanIds.length > 0) {
     await prisma.baateknisi.createMany({
@@ -362,31 +548,49 @@ export async function updateBaa(id: number, formData: FormData) {
   }
 
   revalidatePath("/jaringan/baa");
+  revalidatePath("/jaringan/fab");
+  revalidatePath("/masterdata/material");
+  revalidatePath("/masterdata/odp");
+
+  const lowStockMaterials = await getLowStockWarnings(details.map((d) => d.id_material));
+  return { success: true, lowStockMaterials };
 }
 
 // ================================================================
 // 6. DELETE BAA
 // ================================================================
 export async function deleteBaa(id: number) {
-  // Hapus teknisi tambahan
-  await prisma.baateknisi.deleteMany({
-    where: { id_baa: id },
-  });
+  await requireBaaAccess("delete");
 
-  // Hapus detail material
-  await prisma.baadetail.deleteMany({
+  const baa = await prisma.baa.findUnique({
     where: { id_baa: id },
+    include: { baadetail: true },
   });
+  // ...sisanya tetap sama
+  if (!baa) throw new Error("BAA tidak ditemukan");
 
-  // Hapus BAA
-  await prisma.baa.delete({
-    where: { id_baa: id },
+  await prisma.$transaction(async (tx) => {
+    // Kembalikan stok material
+    for (const d of baa.baadetail) {
+      await tx.material.update({
+        where: { id_material: d.id_material },
+        data: { stok: { increment: d.jumlah } },
+      });
+    }
+
+    // Kembalikan stok_port ODP
+    await adjustOdpStokPort(tx, baa.id_odp, 1);
+
+    await tx.baateknisi.deleteMany({ where: { id_baa: id } });
+    await tx.baadetail.deleteMany({ where: { id_baa: id } });
+    await tx.baa.delete({ where: { id_baa: id } });
   });
 
   await renumberKodeBaa();
   revalidatePath("/jaringan/baa");
+  revalidatePath("/masterdata/material");
+  revalidatePath("/masterdata/odp");
 }
-
 // ================================================================
 // 7. GET TEKNISI TAMBAHAN
 // ================================================================
@@ -436,6 +640,7 @@ export async function getBaaData() {
 
 export async function getFabOptions() {
   return await prisma.fab.findMany({
+    where: { status: "OPEN" },
     orderBy: { kode_fab: "asc" },
   });
 }

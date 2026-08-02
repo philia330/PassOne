@@ -1,10 +1,17 @@
 import { FileCheck2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { BaaDialog } from "@/app/jaringan/baa/components/BaaDialog";
 import { BaaTable } from "@/app/jaringan/baa/components/BaaTable";
 
 export default async function BaaPage() {
+  const session = await auth();
+    const currentUser = { // ⬅️ tambahkan
+    id_user: Number(session!.user.id_user),
+    nama: session!.user.nama,
+    role: session!.user.role,
+  };
   const [rawBaa, fabList, teknisiList, oltList, odpList, ontList, materialList] =
     await Promise.all([
       prisma.baa.findMany({
@@ -34,9 +41,10 @@ export default async function BaaPage() {
         },
       }),
       prisma.fab.findMany({
-        orderBy: { nama_pelanggan: "asc" },
-        select: { id_fab: true, kode_fab: true, nama_pelanggan: true },
-      }),
+      where: { status: "OPEN" },
+      orderBy: { nama_pelanggan: "asc" },
+      select: { id_fab: true, kode_fab: true, nama_pelanggan: true },
+    }),
       prisma.user.findMany({
         where: { role: "TEKNISI" },
         orderBy: { nama: "asc" },
@@ -133,6 +141,7 @@ const baa = rawBaa.map((item) => ({
             odpOptions={sanitizedOdp}
             ontOptions={ontList}
             materialOptions={sanitizedMaterial}
+            currentUser={currentUser}
           />
         </Card>
 
@@ -144,11 +153,9 @@ const baa = rawBaa.map((item) => ({
           odpOptions={sanitizedOdp}
           ontOptions={ontList}
           materialOptions={sanitizedMaterial}
+          currentUser={currentUser}
         />
 
-        <p className="text-center text-xs text-slate-400 pt-2">
-          © 2025 PASSNET • Sistem Manajemen BAA
-        </p>
       </div>
     </div>
   );

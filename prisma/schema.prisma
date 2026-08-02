@@ -44,7 +44,7 @@ model baa {
   id_baa            Int         @id @default(autoincrement())
   kode_baa          String      @unique(map: "Baa_kode_baa_key")
   tanggal_instalasi DateTime
-  status            baa_status  @default(PENDING)
+  status            baa_status @default(SELESAI)
   catatan           String?
   foto_instalasi    String?
   id_fab            Int
@@ -275,8 +275,6 @@ enum JenisKelamin {
 }
 
 enum baa_status {
-  PENDING
-  PROSES
   SELESAI
 }
 

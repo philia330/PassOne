@@ -43,7 +43,7 @@ export default function NotificationBell() {
     }
 
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60_000); // refresh tiap 1 menit
+    const interval = setInterval(fetchNotifications, 60_000);
     return () => clearInterval(interval);
   }, []);
 
@@ -61,28 +61,28 @@ export default function NotificationBell() {
     <div className="relative" ref={containerRef}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative rounded-xl border border-slate-200 p-3 transition hover:bg-slate-100"
+        className="relative rounded-xl border border-slate-200 p-3 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
       >
         <Bell size={20} />
         {items.length > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+          <span className="absolute -right-2 -top-2 flex h-6 min-w-[24px] items-center justify-center rounded-full border-2 border-white bg-red-500 px-1.5 text-xs font-extrabold leading-none text-white shadow-lg shadow-red-500/50 animate-pulse dark:border-slate-900">
             {items.length > 9 ? "9+" : items.length}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-14 z-50 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
-          <div className="border-b border-slate-100 px-4 py-3">
-            <h3 className="font-semibold text-slate-800">Notifikasi</h3>
-            <p className="text-xs text-slate-400">
+        <div className="absolute right-0 top-14 z-50 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+          <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">Notifikasi</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500">
               {items.length === 0 ? "Semua aman, tidak ada yang perlu ditindak." : `${items.length} hal perlu perhatian`}
             </p>
           </div>
 
           <div className="max-h-80 overflow-y-auto">
             {items.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-slate-400">
+              <div className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
                 🎉 Tidak ada notifikasi
               </div>
             ) : (
@@ -93,14 +93,15 @@ export default function NotificationBell() {
                     key={item.id}
                     href={item.href}
                     onClick={() => setOpen(false)}
-                    className="flex gap-3 border-b border-slate-50 px-4 py-3 transition hover:bg-slate-50"
+                    title={item.description}
+                    className="flex gap-3 border-b border-slate-50 px-4 py-3 transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
                   >
                     <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${SEVERITY_COLOR[item.severity]}`}>
                       <Icon size={16} />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-800">{item.title}</p>
-                      <p className="truncate text-xs text-slate-500">{item.description}</p>
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.title}</p>
+                      <p className="line-clamp-2 text-xs text-slate-500 dark:text-slate-400">{item.description}</p>
                     </div>
                   </Link>
                 );

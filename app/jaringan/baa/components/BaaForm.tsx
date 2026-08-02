@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Tag,
   Calendar,
   Activity,
   ClipboardList,
   UserCog,
+  User,
   Router,
   GitBranch,
   Wifi,
@@ -25,6 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Select,
   SelectContent,
@@ -42,6 +44,7 @@ import type {
   OntOption,
   MaterialOption,
   MaterialRow,
+  CurrentUser, // ⬅️ pastikan type ini ada/diexport di types/baa.ts (atau import dari @/types/fab kalau shared)
 } from "@/types/baa";
 
 interface BaaFormProps {
@@ -53,6 +56,7 @@ interface BaaFormProps {
   odpOptions: OdpOption[];
   ontOptions: OntOption[];
   materialOptions: MaterialOption[];
+  currentUser: CurrentUser; // ⬅️ baru — dipakai buat lock Teknisi Utama
 }
 
 interface TeknisiRow {
@@ -60,11 +64,9 @@ interface TeknisiRow {
   id_user: string;
 }
 
-const STATUS_LABEL: Record<StatusBaa, string> = {
-  PENDING: "Pending",
-  PROSES: "Proses",
-  SELESAI: "Selesai",
-};
+// Status BAA sekarang selalu "SELESAI" -- tidak ada lagi Pending/Proses.
+// Konstanta, bukan state, karena nilainya tidak pernah berubah dari sisi form.
+const status: StatusBaa = "SELESAI";
 
 function toDateInputValue(date?: Date) {
   if (!date) return "";
@@ -85,31 +87,42 @@ export const BaaForm = ({
   odpOptions,
   ontOptions,
   materialOptions,
+  currentUser,
 }: BaaFormProps) => {
-  const [status, setStatus] = useState<StatusBaa>(defaultValues?.status ?? "PENDING");
   const [idFab, setIdFab] = useState(defaultValues?.id_fab ? String(defaultValues.id_fab) : "");
+  const [fotoPreview, setFotoPreview] = useState<string | null>(
+  defaultValues?.foto_instalasi ?? null
+);
+
+function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+  const file = e.target.files?.[0];
+  setFotoPreview(file ? URL.createObjectURL(file) : (defaultValues?.foto_instalasi ?? null));
+}
   const [idOlt, setIdOlt] = useState(defaultValues?.id_olt ? String(defaultValues.id_olt) : "");
   const [idOdp, setIdOdp] = useState(defaultValues?.id_odp ? String(defaultValues.id_odp) : "");
   const [idOnt, setIdOnt] = useState(defaultValues?.id_ont ? String(defaultValues.id_ont) : "");
 
   // ================================================================
-  // TEKNISI — satu list gabungan, diambil dari data User (role TEKNISI)
-  // yang sudah ada, bukan bikin akun baru dari form ini. Baris pertama
-  // yang terisi tetap dikirim sebagai id_user (penanggung jawab) ke
-  // server, sisanya sebagai teknisi_tambahan — supaya actions.ts di
-  // server tidak perlu diubah.
+  // TEKNISI UTAMA -- SELALU dikunci ke user yang login (sama pola
+  // dengan "penginput" di FAB). Tidak lagi dropdown, tidak lagi
+  // dicampur ke dalam list yang sama dengan teknisi tambahan.
   // ================================================================
-  const [teknisiRows, setTeknisiRows] = useState<TeknisiRow[]>(() => {
-    const utama = defaultValues?.id_user
-      ? [{ rowId: makeRowId(), id_user: String(defaultValues.id_user) }]
-      : [];
-    const tambahan =
-      defaultValues?.teknisiTambahan?.map((t) => ({
-        rowId: makeRowId(),
-        id_user: String(t.id_user),
-      })) || [];
-    return [...utama, ...tambahan];
-  });
+  const mainTeknisiId = String(currentUser.id_user);
+
+  // ================================================================
+  // TEKNISI TAMBAHAN -- tetap dropdown, tetap bisa ditambah/dihapus
+  // seperti sebelumnya. Diambil dari data User (role TEKNISI) yang
+  // sudah ada, bukan bikin akun baru dari form ini.
+  // ================================================================
+  const [extraTeknisiRows, setExtraTeknisiRows] = useState<TeknisiRow[]>(
+    () =>
+      defaultValues?.teknisiTambahan
+        ?.filter((t) => String(t.id_user) !== mainTeknisiId) // jaga-jaga jangan dobel sama teknisi utama
+        .map((t) => ({
+          rowId: makeRowId(),
+          id_user: String(t.id_user),
+        })) || []
+  );
 
   // ================================================================
   // MATERIAL
@@ -126,18 +139,18 @@ export const BaaForm = ({
   );
 
   // ================================================================
-  // FUNGSI TEKNISI (baris dinamis)
+  // FUNGSI TEKNISI TAMBAHAN (baris dinamis)
   // ================================================================
   const addTeknisiRow = () => {
-    setTeknisiRows((rows) => [...rows, { rowId: makeRowId(), id_user: "" }]);
+    setExtraTeknisiRows((rows) => [...rows, { rowId: makeRowId(), id_user: "" }]);
   };
 
   const removeTeknisiRow = (rowId: string) => {
-    setTeknisiRows((rows) => rows.filter((r) => r.rowId !== rowId));
+    setExtraTeknisiRows((rows) => rows.filter((r) => r.rowId !== rowId));
   };
 
   const updateTeknisiRow = (rowId: string, value: string) => {
-    setTeknisiRows((rows) =>
+    setExtraTeknisiRows((rows) =>
       rows.map((r) => (r.rowId === rowId ? { ...r, id_user: value } : r))
     );
   };
@@ -148,20 +161,19 @@ export const BaaForm = ({
     }
   };
 
-  // Opsi teknisi untuk satu baris: exclude teknisi yang sudah dipilih di baris lain
+  // Opsi teknisi tambahan: exclude teknisi utama (currentUser) & exclude
+  // yang sudah dipilih di baris tambahan lain
   const getAvailableTeknisiOptions = (currentRowId: string) => {
-    const selectedInOtherRows = teknisiRows
+    const selectedInOtherRows = extraTeknisiRows
       .filter((r) => r.rowId !== currentRowId && r.id_user)
       .map((r) => r.id_user);
 
-    return teknisiOptions.filter((t) => !selectedInOtherRows.includes(String(t.id_user)));
+    return teknisiOptions.filter(
+      (t) => String(t.id_user) !== mainTeknisiId && !selectedInOtherRows.includes(String(t.id_user))
+    );
   };
 
-  // Nilai final yang dikirim ke server: baris pertama yang terisi jadi id_user,
-  // sisanya jadi teknisi_tambahan
-  const filledTeknisiIds = teknisiRows.filter((r) => r.id_user).map((r) => r.id_user);
-  const mainTeknisiId = filledTeknisiIds[0] ?? "";
-  const extraTeknisiIds = filledTeknisiIds.slice(1);
+  const extraTeknisiIds = extraTeknisiRows.filter((r) => r.id_user).map((r) => r.id_user);
 
   // ================================================================
   // FUNGSI MATERIAL
@@ -186,17 +198,6 @@ export const BaaForm = ({
   // ================================================================
   // FUNGSI HANDLER SELECT
   // ================================================================
-  const handleStatusChange = (value: string | null) => {
-    if (value) {
-      setStatus(value as StatusBaa);
-    }
-  };
-
-  const handleFabChange = (value: string | null) => {
-    if (value !== null) {
-      setIdFab(value);
-    }
-  };
 
   const handleOltChange = (value: string | null) => {
     if (value !== null) {
@@ -221,6 +222,20 @@ export const BaaForm = ({
       updateRow(rowId, "id_material", value);
     }
   };
+
+  const mergedFabOptions = useMemo(() => {
+  if (defaultValues?.fab && !fabOptions.some((f) => f.id_fab === defaultValues.fab!.id_fab)) {
+    return [
+      {
+        id_fab: defaultValues.fab.id_fab,
+        kode_fab: defaultValues.fab.kode_fab,
+        nama_pelanggan: defaultValues.fab.nama_pelanggan,
+      } as FabOption,
+      ...fabOptions,
+    ];
+  }
+  return fabOptions;
+}, [fabOptions, defaultValues]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
@@ -258,30 +273,22 @@ export const BaaForm = ({
         />
       </div>
 
-      {/* Status */}
+      {/* Status -- selalu terkunci "Selesai" */}
       <div className="col-span-1 space-y-2">
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <Activity size={13} className="text-purple-500" /> Status
         </Label>
-        <Select
-          value={status}
-          onValueChange={handleStatusChange}
-          items={(Object.keys(STATUS_LABEL) as StatusBaa[]).map((s) => ({
-            value: s,
-            label: STATUS_LABEL[s],
-          }))}
-        >
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.keys(STATUS_LABEL) as StatusBaa[]).map((s) => (
-              <SelectItem key={s} value={s}>
-                {STATUS_LABEL[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="relative">
+          <Input
+            value="Selesai"
+            readOnly
+            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10"
+          />
+          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+        </div>
+        <p className="text-xs text-slate-400">
+          BAA otomatis selesai saat disimpan — FAB terkait ikut jadi Aktif.
+        </p>
         <input type="hidden" name="status" value={status} />
       </div>
 
@@ -290,36 +297,46 @@ export const BaaForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
           <ClipboardList size={13} className="text-purple-500" /> FAB (Pelanggan)
         </Label>
-        <Select
-          value={idFab}
-          onValueChange={handleFabChange}
-          items={fabOptions.map((f) => ({
-            value: String(f.id_fab),
-            label: `${f.kode_fab} — ${f.nama_pelanggan}`,
-          }))}
-        >
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
-            <SelectValue placeholder="Pilih FAB" />
-          </SelectTrigger>
-          <SelectContent>
-            {fabOptions.map((f) => (
-              <SelectItem key={f.id_fab} value={String(f.id_fab)}>
-                {f.kode_fab} — {f.nama_pelanggan}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <input type="hidden" name="id_fab" value={idFab} required />
+        <SearchableSelect
+  value={idFab}
+  onValueChange={setIdFab}
+  options={mergedFabOptions.map((f) => ({
+    value: String(f.id_fab),
+    label: `${f.kode_fab} — ${f.nama_pelanggan}`,
+  }))}
+  placeholder="Pilih FAB"
+  searchPlaceholder="Cari nama pelanggan / kode FAB..."
+  emptyText="FAB tidak ditemukan"
+/>
+<input type="hidden" name="id_fab" value={idFab} required />
       </div>
 
       {/* ============================================================
-          TEKNISI — diambil dari data User (role TEKNISI), tidak ada
-          jalur bikin akun baru dari form ini.
+          TEKNISI UTAMA -- dikunci ke user yang login, tidak dropdown
           ============================================================ */}
-      <div className="col-span-1 md:col-span-2 space-y-3 pt-2 border-t border-slate-100">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-3 gap-2">
+      <div className="col-span-1 md:col-span-2 space-y-2 pt-2 border-t border-slate-100">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 pt-3">
+          <User size={13} className="text-purple-500" /> Teknisi Utama (Anda)
+        </Label>
+        <div className="relative">
+          <Input
+            value={currentUser.nama}
+            readOnly
+            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10"
+          />
+          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+        </div>
+        <p className="text-xs text-slate-400">Tercatat otomatis sebagai teknisi yang menginput BAA ini.</p>
+        <input type="hidden" name="id_user" value={mainTeknisiId} required />
+      </div>
+
+      {/* ============================================================
+          TEKNISI TAMBAHAN -- tetap dropdown, tetap bisa nambah/hapus
+          ============================================================ */}
+      <div className="col-span-1 md:col-span-2 space-y-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-            <UserCog size={13} className="text-purple-500" /> Teknisi
+            <UserCog size={13} className="text-purple-500" /> Teknisi Tambahan
           </Label>
 
           <Button
@@ -333,14 +350,14 @@ export const BaaForm = ({
           </Button>
         </div>
 
-        {teknisiRows.length === 0 ? (
+        {extraTeknisiRows.length === 0 ? (
           <p className="text-xs text-slate-400 italic bg-slate-50 rounded-xl px-3 py-3 text-center">
-            Belum ada teknisi ditambahkan. Klik &quot;Tambah Teknisi&quot; untuk memilih teknisi
-            yang mengerjakan instalasi ini.
+            Belum ada teknisi tambahan. Klik &quot;Tambah Teknisi&quot; kalau ada rekan yang ikut
+            mengerjakan instalasi ini.
           </p>
         ) : (
           <div className="space-y-2">
-            {teknisiRows.map((row) => (
+            {extraTeknisiRows.map((row) => (
               <div
                 key={row.rowId}
                 className="flex items-center gap-2 rounded-2xl border border-slate-200 p-3 bg-slate-50/50"
@@ -379,7 +396,6 @@ export const BaaForm = ({
           </div>
         )}
 
-        <input type="hidden" name="id_user" value={mainTeknisiId} required />
         <input
           type="hidden"
           name="teknisi_tambahan"
@@ -467,14 +483,18 @@ export const BaaForm = ({
         >
           <Hash size={13} className="text-purple-500" /> Port OLT
         </Label>
-        <Input
-          id="port_olt"
-          name="port_olt"
-          type="number"
-          placeholder="Opsional"
-          defaultValue={defaultValues?.port_olt ?? ""}
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
-        />
+          {/* Port OLT */}
+          <Input
+            id="port_olt"
+            name="port_olt"
+            type="number"
+            placeholder="Masukan port OLT"
+            min={1}
+            max={9999}
+            defaultValue={defaultValues?.port_olt ?? ""}
+            className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+            required
+          />
       </div>
 
       {/* Port ODP */}
@@ -485,14 +505,18 @@ export const BaaForm = ({
         >
           <Hash size={13} className="text-purple-500" /> Port ODP
         </Label>
-        <Input
-          id="port_odp"
-          name="port_odp"
-          type="number"
-          placeholder="Opsional"
-          defaultValue={defaultValues?.port_odp ?? ""}
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
-        />
+            {/* Port ODP */}
+            <Input
+              id="port_odp"
+              name="port_odp"
+              type="number"
+              placeholder="Masukan port ODP"
+              min={1}
+              max={9999}
+              defaultValue={defaultValues?.port_odp ?? ""}
+              className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+              required
+            />
       </div>
 
       {/* RX Power */}
@@ -508,7 +532,8 @@ export const BaaForm = ({
           name="rx_power_dbm"
           type="number"
           step="any"
-          placeholder="Opsional, mis. -21.5"
+          placeholder="Masukkan RX Power"
+          required
           defaultValue={defaultValues?.rx_power_dbm ?? ""}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
         />
@@ -527,7 +552,8 @@ export const BaaForm = ({
           name="tx_power_dbm"
           type="number"
           step="any"
-          placeholder="Opsional"
+          placeholder="Masukkan TX Power"
+          required
           defaultValue={defaultValues?.tx_power_dbm ?? ""}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
         />
@@ -544,7 +570,8 @@ export const BaaForm = ({
         <Input
           id="speed_download"
           name="speed_download"
-          placeholder="Opsional, mis. 95 Mbps"
+          placeholder="Masukkan Speed Download"
+          required
           defaultValue={defaultValues?.speed_download ?? ""}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
         />
@@ -561,7 +588,8 @@ export const BaaForm = ({
         <Input
           id="speed_upload"
           name="speed_upload"
-          placeholder="Opsional, mis. 45 Mbps"
+          placeholder="Masukkan Speed Upload"
+          required
           defaultValue={defaultValues?.speed_upload ?? ""}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
         />
@@ -580,49 +608,53 @@ export const BaaForm = ({
           name="ping_ms"
           type="number"
           step="any"
-          placeholder="Opsional"
+          placeholder="Masukkan Ping"
+          required
           defaultValue={defaultValues?.ping_ms ?? ""}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
         />
       </div>
 
-      {/* Foto Instalasi */}
-      <div className="col-span-1 md:col-span-2 space-y-2">
-        <Label
-          htmlFor="foto_instalasi"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
-        >
-          <ImageIcon size={13} className="text-purple-500" /> Foto Instalasi
-        </Label>
+     {/* Foto Instalasi */}
+<div className="col-span-1 md:col-span-2 space-y-2">
+  <Label
+    htmlFor="foto_instalasi"
+    className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+  >
+    <ImageIcon size={13} className="text-purple-500" /> Foto Instalasi
+  </Label>
 
-        {defaultValues?.foto_instalasi && (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-2 mb-1">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={defaultValues.foto_instalasi}
-              alt="Foto instalasi saat ini"
-              className="h-14 w-14 rounded-xl object-cover border border-slate-200"
-            />
-            <p className="text-xs text-slate-500">
-              Foto saat ini. Pilih file baru di bawah kalau mau menggantinya.
-            </p>
-          </div>
-        )}
+  {fotoPreview && (
+    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-2 mb-1">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={fotoPreview}
+        alt="Preview foto instalasi"
+        className="h-14 w-14 rounded-xl object-cover border border-slate-200"
+      />
+      <p className="text-xs text-slate-500">
+        {fotoPreview === defaultValues?.foto_instalasi
+          ? "Foto saat ini. Pilih file baru di bawah kalau mau menggantinya."
+          : "Preview foto baru yang dipilih."}
+      </p>
+    </div>
+  )}
 
-        <Input
-          id="foto_instalasi"
-          name="foto_instalasi"
-          type="file"
-          accept="image/*"
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 file:mr-3 file:h-full file:rounded-l-2xl file:border-0 file:bg-slate-100 file:px-4 file:text-sm file:font-semibold file:text-slate-600 cursor-pointer"
-        />
+  <Input
+    id="foto_instalasi"
+    name="foto_instalasi"
+    type="file"
+    accept="image/*"
+    onChange={handleFotoChange}
+    className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 file:mr-3 file:h-full file:rounded-l-2xl file:border-0 file:bg-slate-100 file:px-4 file:text-sm file:font-semibold file:text-slate-600 cursor-pointer"
+  />
 
-        <input
-          type="hidden"
-          name="foto_instalasi_existing"
-          value={defaultValues?.foto_instalasi ?? ""}
-        />
-      </div>
+  <input
+    type="hidden"
+    name="foto_instalasi_existing"
+    value={defaultValues?.foto_instalasi ?? ""}
+  />
+</div>
 
       {/* Catatan */}
       <div className="col-span-1 md:col-span-2 space-y-2">

@@ -5,6 +5,7 @@ import { Settings, Menu } from "lucide-react";
 
 import NotificationBell from "@/components/dashboard/notification-bell";
 import ThemeToggle from "@/components/shared/theme-toggle";
+import { useEffect, useState } from "react";
 
 type SettingsData = {
   app_name: string;
@@ -20,6 +21,26 @@ export default function Navbar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [now, setNow] = useState<Date | null>(null);
+
+useEffect(() => {
+  setNow(new Date());
+  const interval = setInterval(() => setNow(new Date()), 1000);
+  return () => clearInterval(interval);
+}, []);
+
+const formattedDate = now?.toLocaleDateString("id-ID", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+const formattedTime = now?.toLocaleTimeString("id-ID", {
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+});
 
   const pageTitle = pathname.split("/").filter(Boolean).pop()?.replace("-", " ");
   const title = pageTitle
@@ -28,6 +49,7 @@ export default function Navbar({
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:h-20 sm:px-8">
+
       <div className="flex items-center gap-3">
         {/* Tombol hamburger — cuma muncul di mobile */}
         <button
@@ -47,17 +69,27 @@ export default function Navbar({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3">
-        <ThemeToggle />
-        <NotificationBell />
+<div className="flex items-center gap-2 sm:gap-3">
+  {now && (
+    <div className="flex flex-col items-end mr-1 text-right">
+      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+        {formattedTime}
+      </span>
+      <span className="text-xs text-slate-400 dark:text-slate-500">
+        {formattedDate}
+      </span>
+    </div>
+  )}
+  <ThemeToggle />
+  <NotificationBell />
 
-        <button
-          onClick={() => router.push("/settings")}
-          className="rounded-xl border border-slate-200 p-2.5 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 sm:p-3"
-        >
-          <Settings size={20} />
-        </button>
-      </div>
+  <button
+    onClick={() => router.push("/settings")}
+    className="rounded-xl border border-slate-200 p-2.5 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 sm:p-3"
+  >
+    <Settings size={20} />
+  </button>
+</div>
     </header>
   );
 }

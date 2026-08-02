@@ -41,11 +41,12 @@ type ComparisonData = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: "#ef4444",
-  SURVEY: "#3b82f6",
-  INSTALASI: "#f97316",
-  PROSES: "#f97316",     // BAA pakai "PROSES" bukan "INSTALASI", samain warnanya
-  SELESAI: "#10b981",
+  // FAB
+  OPEN: "#f97316",     // oranye — masih menunggu tindak lanjut
+  AKTIF: "#10b981",    // hijau — sudah aktif/terpasang
+
+  // BAA
+  SELESAI: "#10b981",  // hijau — selesai (satu-satunya status BAA sekarang)
 };
 
 const PERIOD_OPTIONS = [
@@ -283,15 +284,12 @@ export default function FabBaaChart({
               outerRadius={72}
               paddingAngle={3}
             >
-              {fabStatus.map((entry) => (
-                <Cell
-                  key={entry.name}
-                  fill={
-                    STATUS_COLORS[entry.name] ??
-                    "#6ad2ff"
-                  }
-                />
-              ))}
+          {fabStatus.map((entry) => (
+            <Cell
+              key={entry.name}
+              fill={STATUS_COLORS[entry.name] ?? "#94a3b8"}
+            />
+          ))}
             </Pie>
 
             <Tooltip />
@@ -307,14 +305,11 @@ export default function FabBaaChart({
               <span className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
 
                 <span
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{
-                    backgroundColor:
-                      STATUS_COLORS[item.name] ??
-                     "#6ad2ff"
-
-                  }}
-                />
+  className="h-2.5 w-2.5 rounded-full"
+  style={{
+    backgroundColor: STATUS_COLORS[item.name] ?? "#94a3b8",
+  }}
+/>
 
                 {item.name}
 

@@ -6,6 +6,12 @@ export const FAB_STATUS_COLORS: Record<string, string> = {
   AKTIF: "#09ff01",   // hijau — sukses, selesai
 };
 
+export const CABLE_COLOR: Record<string, string> = {
+  "OLT-POP": "#2327ff", // OLT ke POP -- warna sama kayak POP (backbone utama)
+  "ODP-OLT": "#0ea5e9", // ODP ke OLT
+  "FAB-ODP": "#10b981", // FAB ke ODP -- drop cable ke pelanggan
+};
+
 export const TYPE_COLOR: Record<NetworkPoint["type"], string> = {
   POP: "#2327ff",
   OLT: "#0ea5e9",

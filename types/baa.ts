@@ -2,7 +2,7 @@
 // TIPE DATA BAA
 // ================================================================
 
-export type StatusBaa = "PENDING" | "PROSES" | "SELESAI";
+export type StatusBaa = "SELESAI";
 
 // ================================================================
 // BAA TEKNISI (BARU - untuk teknisi tambahan)
@@ -169,3 +169,9 @@ export interface ApiResponse<T = any> {
   error?: string;
   message?: string;
 }
+
+export type CurrentUser = {
+  id_user: number;
+  nama: string;
+  role: "ADMIN" | "LEADER" | "SALES" | "TEKNISI" | "LOGISTIK";
+};
