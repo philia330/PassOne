@@ -44,9 +44,6 @@ export default async function MaterialPage() {
 
         <MaterialTable data={material} />
 
-        <p className="text-center text-xs text-slate-400 pt-2">
-          © 2025 PASSNET • Sistem Manajemen Material
-        </p>
       </div>
     </div>
   );

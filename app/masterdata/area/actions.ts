@@ -84,6 +84,7 @@ export const createArea = async (formData: FormData) => {
   // await logActivity("AREA_CREATED", `Area ${area.nama_area} dibuat.`);
 
   revalidatePath("/masterdata/area");
+  revalidatePath("/workspace");
 };
 
 // ======================================================
@@ -104,6 +105,7 @@ export const updateArea = async (id: number, formData: FormData) => {
   // await logActivity("AREA_UPDATED", `Area ${area.nama_area} diperbarui.`);
 
   revalidatePath("/masterdata/area");
+  revalidatePath("/workspace");
 };
 
 // ======================================================
@@ -117,4 +119,5 @@ export const deleteArea = async (id: number) => {
   // await logActivity("AREA_DELETED", `Area ${area.nama_area} dihapus.`);
 
   revalidatePath("/masterdata/area");
+  revalidatePath("/workspace");
 };

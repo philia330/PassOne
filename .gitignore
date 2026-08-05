@@ -44,3 +44,9 @@ next-env.d.ts
 /app/generated/prisma
 *.lnk
 *.lnk
+
+# Upload files
+/public/uploads/
+/public/uploads/fab/
+/public/uploads/olt/
+/public/uploads/users/

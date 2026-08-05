@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
 import { Search, X } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
@@ -222,9 +223,9 @@ export default function NetworkMap({ points }: { points: NetworkPoint[] }) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* ✅ Kabel penghubung -- pakai rute jalan asli kalau sudah
-            selesai di-fetch (garis solid), fallback garis putus-putus
-            lurus sementara masih loading / kalau OSRM gagal merespons. */}
+        {/* Kabel penghubung -- tetap DI LUAR cluster, supaya garis rute
+            jalan tetap kelihatan utuh walau marker-nya lagi mengumpul
+            jadi cluster bulat */}
         {connections.map((conn) => {
           const roadRoute = routes[conn.id];
           const positions: LatLng[] = roadRoute ?? [
@@ -246,16 +247,20 @@ export default function NetworkMap({ points }: { points: NetworkPoint[] }) {
           );
         })}
 
-        {filteredPoints.map((p) => (
-          <Marker key={p.id} position={[p.lat, p.lng]} icon={createMarkerIcon(p)}>
-            <Popup>
-              <strong>{p.name}</strong>
-              <br />
-              {p.type}
-              {p.info ? ` — ${p.info}` : ""}
-            </Popup>
-          </Marker>
-        ))}
+        {/* Marker DI DALAM cluster -- ini yang bikin 100 titik FAB yang
+            numpuk otomatis dikumpulin jadi 1 lingkaran angka */}
+        <MarkerClusterGroup chunkedLoading maxClusterRadius={60}>
+          {filteredPoints.map((p) => (
+            <Marker key={p.id} position={[p.lat, p.lng]} icon={createMarkerIcon(p)}>
+              <Popup>
+                <strong>{p.name}</strong>
+                <br />
+                {p.type}
+                {p.info ? ` — ${p.info}` : ""}
+              </Popup>
+            </Marker>
+          ))}
+        </MarkerClusterGroup>
       </MapContainer>
 
       {/* Legend */}
@@ -279,7 +284,7 @@ export default function NetworkMap({ points }: { points: NetworkPoint[] }) {
           ))}
         </div>
 
-        {/* ✅ Legend kabel */}
+        {/* Legend kabel */}
         <div className="flex flex-wrap gap-4 border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
           <span className="text-slate-400 dark:text-slate-500">Kabel:</span>
           {Object.entries(CABLE_COLOR).map(([kind, color]) => (

@@ -62,15 +62,15 @@ export const PaketTable = ({ data }: PaketTableProps) => {
   return (
     <div className="space-y-6">
       {/* Search bar + Total Paket */}
-      <Card className="flex-row rounded-3xl shadow-xl border bg-white p-4 flex items-center justify-between gap-4 flex-wrap">
+      <Card className="flex-row rounded-3xl shadow-xl border bg-white p-4 flex items-center justify-between gap-4 flex-wrap dark:border-slate-800 dark:bg-slate-900">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
           <Input
             type="text"
             placeholder="Cari kode / nama paket..."
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="rounded-2xl h-12 pl-11 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+            className="rounded-2xl h-12 pl-11 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
 
@@ -87,17 +87,17 @@ export const PaketTable = ({ data }: PaketTableProps) => {
 
       {/* DESKTOP: Table */}
       <div className="hidden md:block">
-        <Card className="rounded-3xl shadow-xl border bg-white overflow-hidden hover:shadow-2xl transition-all">
+        <Card className="rounded-3xl shadow-xl border bg-white overflow-hidden hover:shadow-2xl transition-all dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+                <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 dark:bg-slate-800/50 dark:hover:bg-slate-800/50">
                   <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">No</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kode</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Paket</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kecepatan</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Harga</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider">Keterangan</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-400">Kode</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-400">Nama Paket</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-400">Kecepatan</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-400">Harga</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-400">Keterangan</TableHead>
                   <TableHead className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -105,9 +105,9 @@ export const PaketTable = ({ data }: PaketTableProps) => {
               <TableBody>
                 {paginated.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-16 text-slate-400">
+                    <TableCell colSpan={7} className="text-center py-16 text-slate-400 dark:text-slate-500">
                       <Inbox className="mx-auto mb-3" size={40} />
-                      <p className="font-semibold text-slate-700">Belum ada data paket</p>
+                      <p className="font-semibold text-slate-700 dark:text-slate-300">Belum ada data paket</p>
                       <p className="text-sm">
                         {search
                           ? "Tidak ada data yang cocok dengan pencarian."
@@ -117,24 +117,24 @@ export const PaketTable = ({ data }: PaketTableProps) => {
                   </TableRow>
                 ) : (
                   paginated.map((item, index) => (
-                    <TableRow key={item.id_paket} className="hover:bg-purple-50/40 transition-colors">
-                      <TableCell className="text-center text-slate-400 font-medium">
+                    <TableRow key={item.id_paket} className="hover:bg-purple-50/40 transition-colors dark:hover:bg-purple-500/10">
+                      <TableCell className="text-center text-slate-400 font-medium dark:text-slate-500">
                         {(page - 1) * PAGE_SIZE + index + 1}
                       </TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className="font-mono rounded-lg border-purple-200 bg-purple-50 text-purple-700 font-semibold"
+                          className="font-mono rounded-lg border-purple-200 bg-purple-50 text-purple-700 font-semibold dark:border-purple-800 dark:bg-purple-500/10 dark:text-purple-400"
                         >
                           {item.kode_paket}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-semibold text-slate-900">{item.nama_paket}</TableCell>
-                      <TableCell className="text-slate-600">{item.kecepatan}</TableCell>
-                      <TableCell className="font-bold text-slate-900 whitespace-nowrap">
+                      <TableCell className="font-semibold text-slate-900 dark:text-slate-100">{item.nama_paket}</TableCell>
+                      <TableCell className="text-slate-600 dark:text-slate-300">{item.kecepatan}</TableCell>
+                      <TableCell className="font-bold text-slate-900 whitespace-nowrap dark:text-slate-100">
                         {formatRupiah(item.harga)}
                       </TableCell>
-                      <TableCell className="text-slate-500 text-sm max-w-[180px]">
+                      <TableCell className="text-slate-500 text-sm max-w-[180px] dark:text-slate-400">
                         <span className="block truncate" title={item.keterangan ?? undefined}>
                           {item.keterangan || "—"}
                         </span>
@@ -157,7 +157,7 @@ export const PaketTable = ({ data }: PaketTableProps) => {
       {/* MOBILE: Card list */}
       <div className="space-y-3 md:hidden">
         {paginated.length === 0 ? (
-          <Card className="rounded-3xl shadow-xl border bg-white p-12 text-center text-slate-400">
+          <Card className="rounded-3xl shadow-xl border bg-white p-12 text-center text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
             <Inbox className="mx-auto mb-3" size={40} />
             <p className="font-semibold text-slate-700">Belum ada data paket</p>
             <p className="text-sm">
@@ -170,37 +170,37 @@ export const PaketTable = ({ data }: PaketTableProps) => {
           paginated.map((item, index) => (
             <Card
               key={item.id_paket}
-              className="rounded-3xl shadow-xl border bg-white p-4 hover:shadow-2xl transition-all"
+              className="rounded-3xl shadow-xl border bg-white p-4 hover:shadow-2xl transition-all dark:border-slate-800 dark:bg-slate-900"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <Badge
                       variant="outline"
-                      className="font-mono rounded-lg border-purple-200 bg-purple-50 text-purple-700 font-semibold text-xs"
+                      className="font-mono rounded-lg border-purple-200 bg-purple-50 text-purple-700 font-semibold text-xs dark:border-purple-800 dark:bg-purple-500/10 dark:text-purple-400"
                     >
                       {item.kode_paket}
                     </Badge>
                   </div>
 
-                  <p className="font-semibold text-slate-900 text-sm truncate">
+                  <p className="font-semibold text-slate-900 text-sm truncate dark:text-slate-100">
                     {item.nama_paket}
                   </p>
 
                   <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 mt-2 text-xs">
                     <div className="flex items-center gap-1">
                       <Gauge size={11} className="text-purple-500 flex-shrink-0" />
-                      <span className="text-slate-700">{item.kecepatan}</span>
+                      <span className="text-slate-700 dark:text-slate-300">{item.kecepatan}</span>
                     </div>
                     <div className="text-right">
-                      <span className="font-bold text-slate-700">
+                      <span className="font-bold text-slate-700 dark:text-slate-300">
                         {formatRupiah(item.harga)}
                       </span>
                     </div>
                   </div>
 
                   {item.keterangan && (
-                    <p className="mt-1 text-xs text-slate-500 line-clamp-2">
+                    <p className="mt-1 text-xs text-slate-500 line-clamp-2 dark:text-slate-400">
                       {item.keterangan}
                     </p>
                   )}

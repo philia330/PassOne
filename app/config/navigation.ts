@@ -118,7 +118,7 @@ export const navigation: NavigationGroup[] = [
       },
       {
         title: "BAA",
-        href: "/workspace?view=fab", // ✅ tambah leading slash
+        href: "/workspace?view=baa", // ✅ tambah leading slash
         icon: FileText,
         roles: [Role.ADMIN, Role.LEADER, Role.TEKNISI, Role.SALES],
       },

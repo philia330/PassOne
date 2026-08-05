@@ -48,10 +48,6 @@ export default async function PaketPage() {
             Total Paket sekarang ditampilkan di PaketTable, nempel di sebelah pagination. */}
 
         <PaketTable data={paket} />
-
-        <p className="text-center text-xs text-slate-400 pt-2">
-          © 2025 PASSNET • Sistem Manajemen Paket Internet
-        </p>
       </div>
     </div>
   );
