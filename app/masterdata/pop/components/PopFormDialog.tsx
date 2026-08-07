@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -28,26 +27,12 @@ import {
 
 import { createPop, updatePop } from "../actions";
 
-const PopMapPicker = dynamic(
-  () => import("./PopMapPicker").then((mod) => mod.PopMapPicker),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-[220px] items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
-        Memuat peta...
-      </div>
-    ),
-  }
-);
-
 type Area = { id_area: number; nama_area: string };
 
 type PopData = {
   id_pop: number;
   nama_pop: string;
   alamat: string;
-  latitude: number | string;
-  longitude: number | string;
   id_area: number;
 };
 
@@ -67,16 +52,8 @@ export const PopFormDialog = ({
     data?.id_area ? String(data.id_area) : ""
   );
 
-  const [lat, setLat] = useState<number>(
-    data?.latitude ? Number(data.latitude) : 0
-  );
-  const [lng, setLng] = useState<number>(
-    data?.longitude ? Number(data.longitude) : 0
-  );
-
-  const handlePick = (pickedLat: number, pickedLng: number) => {
-    setLat(pickedLat);
-    setLng(pickedLng);
+  const handleAreaChange = (value: string | null) => {
+    setAreaValue(value || "");
   };
 
   const handleSubmit = async (formData: FormData) => {
@@ -106,11 +83,7 @@ export const PopFormDialog = ({
           mode === "create" ? (
             <Button className="cursor-pointer h-11 rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white" />
           ) : (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="cursor-pointer rounded-xl"
-            />
+            <Button variant="ghost" size="icon" className="cursor-pointer rounded-xl" />
           )
         }
       >
@@ -136,11 +109,10 @@ export const PopFormDialog = ({
         </DialogHeader>
 
         <form action={handleSubmit} className="space-y-4">
-          {/* Area dipindah ke paling atas */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Area</label>
 
-            <Select value={areaValue} onValueChange={setAreaValue}>
+            <Select value={areaValue} onValueChange={handleAreaChange}>
               <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                 <SelectValue placeholder="Pilih Area">
                   {(value: string) =>
@@ -182,42 +154,6 @@ export const PopFormDialog = ({
               required
               className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             />
-          </div>
-
-          {/* Peta pilih lokasi */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Lokasi di Peta</label>
-            <PopMapPicker lat={lat} lng={lng} onPick={handlePick} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Latitude</label>
-              <Input
-                name="latitude"
-                type="number"
-                step="any"
-                value={lat === 0 ? "" : lat}
-                onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
-                placeholder="-6.178306"
-                required
-                className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Longitude</label>
-              <Input
-                name="longitude"
-                type="number"
-                step="any"
-                value={lng === 0 ? "" : lng}
-                onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
-                placeholder="106.631889"
-                required
-                className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
-              />
-            </div>
           </div>
 
           <DialogFooter>

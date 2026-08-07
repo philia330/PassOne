@@ -4,45 +4,87 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { writeFile, mkdir, unlink } from "fs/promises";
 import path from "path";
-// import { requireRole, requireAuth } from "@/lib/auth/guards"; // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge dari Project Lead
-// import { logActivity } from "@/lib/activity-log"; // TODO: aktifkan lagi setelah lib/activity-log.ts & auth.ts di-merge dari Project Lead
+import { auth } from "@/lib/auth";
+import { Role } from "@/lib/auth/roles";
 
 const PAGE_SIZE = 10;
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "olt");
 
-// ======================================================
-// Simpan file foto OLT ke public/uploads/olt, return path relatif
-// ======================================================
+/**
+ * ======================================
+ * HELPER: Audit Log
+ * ======================================
+ */
+async function logActivity(type: string, description: string) {
+  const session = await auth();
+  try {
+    await prisma.activityLog.create({
+      data: {
+        type: type as any,
+        description,
+        id_user: session?.user?.id_user as number,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to log activity:", error);
+  }
+}
+
+/**
+ * ======================================
+ * HELPER: Cek hak akses
+ * ======================================
+ */
+async function requireAccess() {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  const role = session.user.role;
+  if (role !== Role.ADMIN) {
+    throw new Error("Anda tidak memiliki akses untuk mengelola OLT.");
+  }
+
+  return session;
+}
+
+/**
+ * ======================================
+ * Simpan file foto OLT
+ * ======================================
+ */
 const saveFotoOlt = async (file: File): Promise<string> => {
   await mkdir(UPLOAD_DIR, { recursive: true });
-
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
-
   const ext = path.extname(file.name) || ".jpg";
   const filename = `olt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
   const filePath = path.join(UPLOAD_DIR, filename);
-
   await writeFile(filePath, buffer);
-
   return `/uploads/olt/${filename}`;
 };
 
-// Hapus file foto lama dari disk (dipanggil saat foto diganti/data dihapus)
+/**
+ * ======================================
+ * Hapus file foto lama
+ * ======================================
+ */
 const deleteFotoOlt = async (fotoPath: string | null) => {
   if (!fotoPath) return;
   try {
     const fullPath = path.join(process.cwd(), "public", fotoPath);
     await unlink(fullPath);
   } catch {
-    // Kalau file sudah tidak ada, abaikan saja
+    // File tidak ada, abaikan
   }
 };
 
-// ======================================================
-// Generate kode_olt otomatis, mengisi celah/gap nomor
-// yang kosong. Format: OLT-001, OLT-002, dst
-// ======================================================
+/**
+ * ======================================
+ * Generate kode OLT otomatis
+ * ======================================
+ */
 const generateKodeOlt = async (): Promise<string> => {
   const olts = await prisma.olt.findMany({
     select: { kode_olt: true },
@@ -65,10 +107,12 @@ const generateKodeOlt = async (): Promise<string> => {
   return `OLT-${String(next).padStart(3, "0")}`;
 };
 
-// Ambil data OLT dengan search & pagination, untuk Table + Search + Pagination
+/**
+ * ======================================
+ * GET DATA
+ * ======================================
+ */
 export const getOlts = async (search: string = "", page: number = 1) => {
-  // await requireAuth(); // TODO: aktifkan setelah auth.ts di-merge — modul baca data minimal wajib login
-
   const where = search
     ? {
         OR: [
@@ -90,92 +134,113 @@ export const getOlts = async (search: string = "", page: number = 1) => {
     prisma.olt.count({ where }),
   ]);
 
-  return {
-    data,
-    total,
-    totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
-  };
+  // Convert Decimal to number for latitude/longitude
+  const convertedData = data.map((o) => ({
+    ...o,
+    latitude: Number(o.latitude),
+    longitude: Number(o.longitude),
+  }));
+
+  return { data: convertedData, total, totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
 };
 
-// Ambil daftar POP untuk dropdown Select pada Form Dialog
 export const getPops = async () => {
-  // await requireAuth(); // TODO: aktifkan setelah auth.ts di-merge
-
   return prisma.pop.findMany({
-    select: {
-      id_pop: true,
-      nama_pop: true,
-      alamat: true,
-    },
+    select: { id_pop: true, nama_pop: true, alamat: true },
     orderBy: { nama_pop: "asc" },
   });
 };
 
-// Buat data OLT baru (dipanggil dari Create Dialog)
+/**
+ * ======================================
+ * CREATE OLT
+ * ======================================
+ */
 export const createOlt = async (formData: FormData) => {
-  // await requireRole(["ADMIN"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+  const session = await requireAccess();
 
-  const kode_olt = await generateKodeOlt();
-  const nama_olt = formData.get("nama_olt") as string;
-  const lokasi = formData.get("lokasi") as string;
+  const nama_olt = (formData.get("nama_olt") as string)?.trim();
+  const lokasi = (formData.get("lokasi") as string)?.trim();
   const latitude = parseFloat(formData.get("latitude") as string);
   const longitude = parseFloat(formData.get("longitude") as string);
   const id_pop = parseInt(formData.get("id_pop") as string, 10);
-  const ip_olt = (formData.get("ip_olt") as string) || null;
-  const username_olt = (formData.get("username_olt") as string) || null;
-  const password_olt = (formData.get("password_olt") as string) || null;
+  const ip_olt = (formData.get("ip_olt") as string)?.trim() || null;
+  const username_olt = (formData.get("username_olt") as string)?.trim() || null;
+  const password_olt = (formData.get("password_olt") as string)?.trim() || null;
+
+  if (!nama_olt || !lokasi || isNaN(id_pop)) {
+    throw new Error("Nama OLT, lokasi, dan POP wajib diisi.");
+  }
+
+  if (isNaN(latitude) || isNaN(longitude)) {
+    throw new Error("Latitude dan longitude tidak valid.");
+  }
 
   const fotoFile = formData.get("foto_olt") as File | null;
-  const foto_olt =
-    fotoFile && fotoFile.size > 0 ? await saveFotoOlt(fotoFile) : null;
+  const foto_olt = fotoFile && fotoFile.size > 0 ? await saveFotoOlt(fotoFile) : null;
 
-  const olt = await prisma.olt.create({
-    data: {
-      kode_olt,
-      nama_olt,
-      lokasi,
-      latitude,
-      longitude,
-      id_pop,
-      ip_olt,
-      username_olt,
-      password_olt,
-      foto_olt,
-    },
+  const kode_olt = await generateKodeOlt();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.olt.create({
+      data: {
+        kode_olt,
+        nama_olt,
+        lokasi,
+        latitude,
+        longitude,
+        id_pop,
+        ip_olt,
+        username_olt,
+        password_olt,
+        foto_olt,
+      },
+    });
   });
 
-  // await logActivity("OLT_CREATED", `OLT ${olt.nama_olt} dibuat.`);
-
+  await logActivity("OLT_CREATED", `OLT "${nama_olt}" (${kode_olt}) dibuat oleh ${session.user.nama}`);
   revalidatePath("/masterdata/olt");
 };
 
-// Update data OLT (dipanggil dari Edit Dialog)
+/**
+ * ======================================
+ * UPDATE OLT
+ * ======================================
+ */
 export const updateOlt = async (id: number, formData: FormData) => {
-  // await requireRole(["ADMIN"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+  const session = await requireAccess();
 
-  const nama_olt = formData.get("nama_olt") as string;
-  const lokasi = formData.get("lokasi") as string;
+  const existing = await prisma.olt.findUnique({ where: { id_olt: id } });
+  if (!existing) {
+    throw new Error("OLT tidak ditemukan.");
+  }
+
+  const nama_olt = (formData.get("nama_olt") as string)?.trim();
+  const lokasi = (formData.get("lokasi") as string)?.trim();
   const latitude = parseFloat(formData.get("latitude") as string);
   const longitude = parseFloat(formData.get("longitude") as string);
   const id_pop = parseInt(formData.get("id_pop") as string, 10);
-  const ip_olt = (formData.get("ip_olt") as string) || null;
-  const username_olt = (formData.get("username_olt") as string) || null;
-  const password_olt = (formData.get("password_olt") as string) || null;
+  const ip_olt = (formData.get("ip_olt") as string)?.trim() || null;
+  const username_olt = (formData.get("username_olt") as string)?.trim() || null;
+  const password_olt = (formData.get("password_olt") as string)?.trim() || null;
 
-  const existing = await prisma.olt.findUnique({
-    where: { id_olt: id },
-    select: { foto_olt: true },
-  });
+  if (!nama_olt || !lokasi || isNaN(id_pop)) {
+    throw new Error("Nama OLT, lokasi, dan POP wajib diisi.");
+  }
+
+  if (isNaN(latitude) || isNaN(longitude)) {
+    throw new Error("Latitude dan longitude tidak valid.");
+  }
 
   const fotoFile = formData.get("foto_olt") as File | null;
-  let foto_olt = existing?.foto_olt ?? null;
+  let foto_olt = existing.foto_olt;
 
   if (fotoFile && fotoFile.size > 0) {
-    await deleteFotoOlt(existing?.foto_olt ?? null);
+    await deleteFotoOlt(existing.foto_olt);
     foto_olt = await saveFotoOlt(fotoFile);
   }
 
-  const olt = await prisma.olt.update({
+  await prisma.olt.update({
     where: { id_olt: id },
     data: {
       nama_olt,
@@ -190,20 +255,37 @@ export const updateOlt = async (id: number, formData: FormData) => {
     },
   });
 
-  // await logActivity("OLT_UPDATED", `OLT ${olt.nama_olt} diperbarui.`);
-
+  await logActivity("OLT_UPDATED", `OLT "${nama_olt}" (${existing.kode_olt}) diupdate oleh ${session.user.nama}`);
   revalidatePath("/masterdata/olt");
 };
 
-// Hapus data OLT (dipanggil dari Delete AlertDialog)
+/**
+ * ======================================
+ * DELETE OLT
+ * ======================================
+ */
 export const deleteOlt = async (id: number) => {
-  // await requireRole(["ADMIN"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+  const session = await requireAccess();
 
-  const olt = await prisma.olt.delete({ where: { id_olt: id } });
+  const olt = await prisma.olt.findUnique({
+    where: { id_olt: id },
+    include: { _count: { select: { odp: true, baa: true } } },
+  });
+
+  if (!olt) {
+    throw new Error("OLT tidak ditemukan.");
+  }
+
+  // Cek apakah OLT dipakai
+  if (olt._count.odp > 0 || olt._count.baa > 0) {
+    throw new Error(
+      `OLT "${olt.nama_olt}" tidak bisa dihapus karena masih dipakai oleh ${olt._count.odp} ODP dan ${olt._count.baa} BAA.`
+    );
+  }
 
   await deleteFotoOlt(olt.foto_olt);
+  await prisma.olt.delete({ where: { id_olt: id } });
 
-  // await logActivity("OLT_DELETED", `OLT ${olt.nama_olt} dihapus.`);
-
+  await logActivity("OLT_DELETED", `OLT "${olt.nama_olt}" (${olt.kode_olt}) dihapus oleh ${session.user.nama}`);
   revalidatePath("/masterdata/olt");
 };

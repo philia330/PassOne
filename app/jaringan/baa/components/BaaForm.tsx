@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useRef, useState, useMemo } from "react";
 import {
   Tag,
   Calendar,
@@ -44,7 +44,7 @@ import type {
   OntOption,
   MaterialOption,
   MaterialRow,
-  CurrentUser, // ⬅️ pastikan type ini ada/diexport di types/baa.ts (atau import dari @/types/fab kalau shared)
+  CurrentUser,
 } from "@/types/baa";
 
 interface BaaFormProps {
@@ -56,7 +56,7 @@ interface BaaFormProps {
   odpOptions: OdpOption[];
   ontOptions: OntOption[];
   materialOptions: MaterialOption[];
-  currentUser: CurrentUser; // ⬅️ baru — dipakai buat lock Teknisi Utama
+  currentUser: CurrentUser;
 }
 
 interface TeknisiRow {
@@ -65,7 +65,6 @@ interface TeknisiRow {
 }
 
 // Status BAA sekarang selalu "SELESAI" -- tidak ada lagi Pending/Proses.
-// Konstanta, bukan state, karena nilainya tidak pernah berubah dari sisi form.
 const status: StatusBaa = "SELESAI";
 
 function toDateInputValue(date?: Date) {
@@ -90,34 +89,44 @@ export const BaaForm = ({
   currentUser,
 }: BaaFormProps) => {
   const [idFab, setIdFab] = useState(defaultValues?.id_fab ? String(defaultValues.id_fab) : "");
-  const [fotoPreview, setFotoPreview] = useState<string | null>(
-  defaultValues?.foto_instalasi ?? null
-);
 
-function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-  const file = e.target.files?.[0];
-  setFotoPreview(file ? URL.createObjectURL(file) : (defaultValues?.foto_instalasi ?? null));
-}
+  // ================================================================
+  // FOTO INSTALASI -- dropzone custom, ganti input file bawaan browser
+  // ================================================================
+  const [fotoPreview, setFotoPreview] = useState<string | null>(
+    defaultValues?.foto_instalasi ?? null
+  );
+  const [fotoFileName, setFotoFileName] = useState<string | null>(null);
+  const fotoInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFotoPreview(URL.createObjectURL(file));
+      setFotoFileName(file.name);
+    } else {
+      setFotoPreview(defaultValues?.foto_instalasi ?? null);
+      setFotoFileName(null);
+    }
+  }
+
   const [idOlt, setIdOlt] = useState(defaultValues?.id_olt ? String(defaultValues.id_olt) : "");
   const [idOdp, setIdOdp] = useState(defaultValues?.id_odp ? String(defaultValues.id_odp) : "");
   const [idOnt, setIdOnt] = useState(defaultValues?.id_ont ? String(defaultValues.id_ont) : "");
 
   // ================================================================
   // TEKNISI UTAMA -- SELALU dikunci ke user yang login (sama pola
-  // dengan "penginput" di FAB). Tidak lagi dropdown, tidak lagi
-  // dicampur ke dalam list yang sama dengan teknisi tambahan.
+  // dengan "penginput" di FAB).
   // ================================================================
   const mainTeknisiId = String(currentUser.id_user);
 
   // ================================================================
-  // TEKNISI TAMBAHAN -- tetap dropdown, tetap bisa ditambah/dihapus
-  // seperti sebelumnya. Diambil dari data User (role TEKNISI) yang
-  // sudah ada, bukan bikin akun baru dari form ini.
+  // TEKNISI TAMBAHAN
   // ================================================================
   const [extraTeknisiRows, setExtraTeknisiRows] = useState<TeknisiRow[]>(
     () =>
       defaultValues?.teknisiTambahan
-        ?.filter((t) => String(t.id_user) !== mainTeknisiId) // jaga-jaga jangan dobel sama teknisi utama
+        ?.filter((t) => String(t.id_user) !== mainTeknisiId)
         .map((t) => ({
           rowId: makeRowId(),
           id_user: String(t.id_user),
@@ -138,9 +147,6 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
       : []
   );
 
-  // ================================================================
-  // FUNGSI TEKNISI TAMBAHAN (baris dinamis)
-  // ================================================================
   const addTeknisiRow = () => {
     setExtraTeknisiRows((rows) => [...rows, { rowId: makeRowId(), id_user: "" }]);
   };
@@ -161,8 +167,6 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     }
   };
 
-  // Opsi teknisi tambahan: exclude teknisi utama (currentUser) & exclude
-  // yang sudah dipilih di baris tambahan lain
   const getAvailableTeknisiOptions = (currentRowId: string) => {
     const selectedInOtherRows = extraTeknisiRows
       .filter((r) => r.rowId !== currentRowId && r.id_user)
@@ -175,9 +179,6 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
 
   const extraTeknisiIds = extraTeknisiRows.filter((r) => r.id_user).map((r) => r.id_user);
 
-  // ================================================================
-  // FUNGSI MATERIAL
-  // ================================================================
   const addRow = () => {
     setMaterialRows((rows) => [
       ...rows,
@@ -195,26 +196,16 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     );
   };
 
-  // ================================================================
-  // FUNGSI HANDLER SELECT
-  // ================================================================
-
   const handleOltChange = (value: string | null) => {
-    if (value !== null) {
-      setIdOlt(value);
-    }
+    if (value !== null) setIdOlt(value);
   };
 
   const handleOdpChange = (value: string | null) => {
-    if (value !== null) {
-      setIdOdp(value);
-    }
+    if (value !== null) setIdOdp(value);
   };
 
   const handleOntChange = (value: string | null) => {
-    if (value !== null) {
-      setIdOnt(value);
-    }
+    if (value !== null) setIdOnt(value);
   };
 
   const handleMaterialChange = (rowId: string, value: string | null) => {
@@ -224,42 +215,42 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
   };
 
   const mergedFabOptions = useMemo(() => {
-  if (defaultValues?.fab && !fabOptions.some((f) => f.id_fab === defaultValues.fab!.id_fab)) {
-    return [
-      {
-        id_fab: defaultValues.fab.id_fab,
-        kode_fab: defaultValues.fab.kode_fab,
-        nama_pelanggan: defaultValues.fab.nama_pelanggan,
-      } as FabOption,
-      ...fabOptions,
-    ];
-  }
-  return fabOptions;
-}, [fabOptions, defaultValues]);
+    if (defaultValues?.fab && !fabOptions.some((f) => f.id_fab === defaultValues.fab!.id_fab)) {
+      return [
+        {
+          id_fab: defaultValues.fab.id_fab,
+          kode_fab: defaultValues.fab.kode_fab,
+          nama_pelanggan: defaultValues.fab.nama_pelanggan,
+        } as FabOption,
+        ...fabOptions,
+      ];
+    }
+    return fabOptions;
+  }, [fabOptions, defaultValues]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
       {/* Kode BAA */}
       <div className="col-span-1 md:col-span-2 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <Tag size={13} className="text-purple-500" /> Kode BAA
         </Label>
         <div className="relative">
           <Input
             value={defaultValues?.kode_baa ?? kodeOtomatis ?? ""}
             readOnly
-            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-mono font-semibold text-slate-500 cursor-not-allowed pr-10"
+            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-mono font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
           />
-          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
         </div>
-        <p className="text-xs text-slate-400">Dibuat otomatis, tidak bisa diubah manual</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500">Dibuat otomatis, tidak bisa diubah manual</p>
       </div>
 
       {/* Tanggal Instalasi */}
       <div className="col-span-1 space-y-2">
         <Label
           htmlFor="tanggal_instalasi"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <Calendar size={13} className="text-purple-500" /> Tanggal Instalasi
         </Label>
@@ -268,25 +259,25 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
           name="tanggal_instalasi"
           type="date"
           defaultValue={toDateInputValue(defaultValues?.tanggal_instalasi)}
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           required
         />
       </div>
 
       {/* Status -- selalu terkunci "Selesai" */}
       <div className="col-span-1 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <Activity size={13} className="text-purple-500" /> Status
         </Label>
         <div className="relative">
           <Input
             value="Selesai"
             readOnly
-            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10"
+            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
           />
-          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
         </div>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-slate-400 dark:text-slate-500">
           BAA otomatis selesai saat disimpan — FAB terkait ikut jadi Aktif.
         </p>
         <input type="hidden" name="status" value={status} />
@@ -294,48 +285,44 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
 
       {/* FAB */}
       <div className="col-span-1 md:col-span-2 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <ClipboardList size={13} className="text-purple-500" /> FAB (Pelanggan)
         </Label>
         <SearchableSelect
-  value={idFab}
-  onValueChange={setIdFab}
-  options={mergedFabOptions.map((f) => ({
-    value: String(f.id_fab),
-    label: `${f.kode_fab} — ${f.nama_pelanggan}`,
-  }))}
-  placeholder="Pilih FAB"
-  searchPlaceholder="Cari nama pelanggan / kode FAB..."
-  emptyText="FAB tidak ditemukan"
-/>
-<input type="hidden" name="id_fab" value={idFab} required />
+          value={idFab}
+          onValueChange={setIdFab}
+          options={mergedFabOptions.map((f) => ({
+            value: String(f.id_fab),
+            label: `${f.kode_fab} — ${f.nama_pelanggan}`,
+          }))}
+          placeholder="Pilih FAB"
+          searchPlaceholder="Cari nama pelanggan / kode FAB..."
+          emptyText="FAB tidak ditemukan"
+        />
+        <input type="hidden" name="id_fab" value={idFab} required />
       </div>
 
-      {/* ============================================================
-          TEKNISI UTAMA -- dikunci ke user yang login, tidak dropdown
-          ============================================================ */}
-      <div className="col-span-1 md:col-span-2 space-y-2 pt-2 border-t border-slate-100">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 pt-3">
+      {/* TEKNISI UTAMA -- dikunci ke user yang login */}
+      <div className="col-span-1 md:col-span-2 space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 pt-3 dark:text-slate-400">
           <User size={13} className="text-purple-500" /> Teknisi Utama (Anda)
         </Label>
         <div className="relative">
           <Input
             value={currentUser.nama}
             readOnly
-            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10"
+            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
           />
-          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
         </div>
-        <p className="text-xs text-slate-400">Tercatat otomatis sebagai teknisi yang menginput BAA ini.</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500">Tercatat otomatis sebagai teknisi yang menginput BAA ini.</p>
         <input type="hidden" name="id_user" value={mainTeknisiId} required />
       </div>
 
-      {/* ============================================================
-          TEKNISI TAMBAHAN -- tetap dropdown, tetap bisa nambah/hapus
-          ============================================================ */}
+      {/* TEKNISI TAMBAHAN */}
       <div className="col-span-1 md:col-span-2 space-y-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             <UserCog size={13} className="text-purple-500" /> Teknisi Tambahan
           </Label>
 
@@ -344,14 +331,14 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
             size="sm"
             variant="outline"
             onClick={addTeknisiRow}
-            className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 w-full sm:w-auto"
+            className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 w-full sm:w-auto dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
           >
             <Plus className="mr-1 h-3.5 w-3.5" /> Tambah Teknisi
           </Button>
         </div>
 
         {extraTeknisiRows.length === 0 ? (
-          <p className="text-xs text-slate-400 italic bg-slate-50 rounded-xl px-3 py-3 text-center">
+          <p className="text-xs text-slate-400 italic bg-slate-50 rounded-xl px-3 py-3 text-center dark:text-slate-500 dark:bg-slate-800/50">
             Belum ada teknisi tambahan. Klik &quot;Tambah Teknisi&quot; kalau ada rekan yang ikut
             mengerjakan instalasi ini.
           </p>
@@ -360,7 +347,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
             {extraTeknisiRows.map((row) => (
               <div
                 key={row.rowId}
-                className="flex items-center gap-2 rounded-2xl border border-slate-200 p-3 bg-slate-50/50"
+                className="flex items-center gap-2 rounded-2xl border border-slate-200 p-3 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50"
               >
                 <div className="flex-1">
                   <Select
@@ -371,7 +358,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
                       label: `${t.nama}${t.username ? ` (@${t.username})` : ""}`,
                     }))}
                   >
-                    <SelectTrigger className="rounded-xl h-10 border-slate-200 bg-white text-sm w-full">
+                    <SelectTrigger className="rounded-xl h-10 border-slate-200 bg-white text-sm w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                       <SelectValue placeholder="Pilih teknisi" />
                     </SelectTrigger>
                     <SelectContent>
@@ -387,7 +374,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
                 <button
                   type="button"
                   onClick={() => removeTeknisiRow(row.rowId)}
-                  className="h-10 w-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                  className="h-10 w-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 dark:hover:bg-red-500/10"
                 >
                   <X size={16} />
                 </button>
@@ -405,7 +392,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
 
       {/* OLT */}
       <div className="col-span-1 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <Router size={13} className="text-purple-500" /> OLT
         </Label>
         <Select
@@ -413,7 +400,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
           onValueChange={handleOltChange}
           items={oltOptions.map((o) => ({ value: String(o.id_olt), label: o.nama_olt }))}
         >
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
+          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
             <SelectValue placeholder="Pilih OLT" />
           </SelectTrigger>
           <SelectContent>
@@ -429,7 +416,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
 
       {/* ODP */}
       <div className="col-span-1 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <GitBranch size={13} className="text-purple-500" /> ODP
         </Label>
         <Select
@@ -437,7 +424,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
           onValueChange={handleOdpChange}
           items={odpOptions.map((o) => ({ value: String(o.id_odp), label: o.nama_odp }))}
         >
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
+          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
             <SelectValue placeholder="Pilih ODP" />
           </SelectTrigger>
           <SelectContent>
@@ -453,7 +440,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
 
       {/* ONT */}
       <div className="col-span-1 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <Wifi size={13} className="text-purple-500" /> ONT
         </Label>
         <Select
@@ -461,7 +448,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
           onValueChange={handleOntChange}
           items={ontOptions.map((o) => ({ value: String(o.id_ont), label: o.serial_number }))}
         >
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
+          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
             <SelectValue placeholder="Pilih ONT" />
           </SelectTrigger>
           <SelectContent>
@@ -479,51 +466,49 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
       <div className="col-span-1 space-y-2">
         <Label
           htmlFor="port_olt"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <Hash size={13} className="text-purple-500" /> Port OLT
         </Label>
-          {/* Port OLT */}
-          <Input
-            id="port_olt"
-            name="port_olt"
-            type="number"
-            placeholder="Masukan port OLT"
-            min={1}
-            max={9999}
-            defaultValue={defaultValues?.port_olt ?? ""}
-            className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
-            required
-          />
+        <Input
+          id="port_olt"
+          name="port_olt"
+          type="number"
+          placeholder="Masukan port OLT"
+          min={1}
+          max={9999}
+          defaultValue={defaultValues?.port_olt ?? ""}
+          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          required
+        />
       </div>
 
       {/* Port ODP */}
       <div className="col-span-1 space-y-2">
         <Label
           htmlFor="port_odp"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <Hash size={13} className="text-purple-500" /> Port ODP
         </Label>
-            {/* Port ODP */}
-            <Input
-              id="port_odp"
-              name="port_odp"
-              type="number"
-              placeholder="Masukan port ODP"
-              min={1}
-              max={9999}
-              defaultValue={defaultValues?.port_odp ?? ""}
-              className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
-              required
-            />
+        <Input
+          id="port_odp"
+          name="port_odp"
+          type="number"
+          placeholder="Masukan port ODP"
+          min={1}
+          max={9999}
+          defaultValue={defaultValues?.port_odp ?? ""}
+          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          required
+        />
       </div>
 
       {/* RX Power */}
       <div className="col-span-1 space-y-2">
         <Label
           htmlFor="rx_power_dbm"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <Gauge size={13} className="text-purple-500" /> RX Power (dBm)
         </Label>
@@ -535,7 +520,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
           placeholder="Masukkan RX Power"
           required
           defaultValue={defaultValues?.rx_power_dbm ?? ""}
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
 
@@ -543,7 +528,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
       <div className="col-span-1 space-y-2">
         <Label
           htmlFor="tx_power_dbm"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <Gauge size={13} className="text-purple-500" /> TX Power (dBm)
         </Label>
@@ -555,7 +540,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
           placeholder="Masukkan TX Power"
           required
           defaultValue={defaultValues?.tx_power_dbm ?? ""}
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
 
@@ -563,7 +548,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
       <div className="col-span-1 space-y-2">
         <Label
           htmlFor="speed_download"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <Download size={13} className="text-purple-500" /> Speed Download
         </Label>
@@ -573,7 +558,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
           placeholder="Masukkan Speed Download"
           required
           defaultValue={defaultValues?.speed_download ?? ""}
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
 
@@ -581,7 +566,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
       <div className="col-span-1 space-y-2">
         <Label
           htmlFor="speed_upload"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <Upload size={13} className="text-purple-500" /> Speed Upload
         </Label>
@@ -591,7 +576,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
           placeholder="Masukkan Speed Upload"
           required
           defaultValue={defaultValues?.speed_upload ?? ""}
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
 
@@ -599,7 +584,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
       <div className="col-span-1 space-y-2">
         <Label
           htmlFor="ping_ms"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <Timer size={13} className="text-purple-500" /> Ping (ms)
         </Label>
@@ -611,56 +596,84 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
           placeholder="Masukkan Ping"
           required
           defaultValue={defaultValues?.ping_ms ?? ""}
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
 
-     {/* Foto Instalasi */}
-<div className="col-span-1 md:col-span-2 space-y-2">
-  <Label
-    htmlFor="foto_instalasi"
-    className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
-  >
-    <ImageIcon size={13} className="text-purple-500" /> Foto Instalasi
-  </Label>
+      {/* ================================================ */}
+      {/* FOTO INSTALASI -- dropzone custom, ganti input file bawaan */}
+      {/* ================================================ */}
+      <div className="col-span-1 md:col-span-2 space-y-2">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <ImageIcon size={13} className="text-purple-500" /> Foto Instalasi
+        </Label>
 
-  {fotoPreview && (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-2 mb-1">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={fotoPreview}
-        alt="Preview foto instalasi"
-        className="h-14 w-14 rounded-xl object-cover border border-slate-200"
-      />
-      <p className="text-xs text-slate-500">
-        {fotoPreview === defaultValues?.foto_instalasi
-          ? "Foto saat ini. Pilih file baru di bawah kalau mau menggantinya."
-          : "Preview foto baru yang dipilih."}
-      </p>
-    </div>
-  )}
+        {/* Input asli disembunyikan -- semua interaksi lewat dropzone custom */}
+        <input
+          ref={fotoInputRef}
+          id="foto_instalasi"
+          name="foto_instalasi"
+          type="file"
+          accept="image/*"
+          onChange={handleFotoChange}
+          className="sr-only"
+        />
 
-  <Input
-    id="foto_instalasi"
-    name="foto_instalasi"
-    type="file"
-    accept="image/*"
-    onChange={handleFotoChange}
-    className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 file:mr-3 file:h-full file:rounded-l-2xl file:border-0 file:bg-slate-100 file:px-4 file:text-sm file:font-semibold file:text-slate-600 cursor-pointer"
-  />
+        <button
+          type="button"
+          onClick={() => fotoInputRef.current?.click()}
+          className="group relative w-full overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-purple-300 hover:bg-purple-50/50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-purple-700 dark:hover:bg-purple-500/10"
+        >
+          {fotoPreview ? (
+            <div className="relative">
+              <img
+                src={fotoPreview}
+                alt="Preview foto instalasi"
+                className="h-40 w-full object-cover"
+              />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100">
+                <span className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                  Ganti Foto
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-2 px-4 py-8">
+              <div className="rounded-full bg-purple-100 p-3 dark:bg-purple-500/20">
+                <ImageIcon size={20} className="text-purple-600 dark:text-purple-400" />
+              </div>
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                Klik untuk pilih foto instalasi
+              </p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                JPG, PNG — maks. 5MB
+              </p>
+            </div>
+          )}
+        </button>
 
-  <input
-    type="hidden"
-    name="foto_instalasi_existing"
-    value={defaultValues?.foto_instalasi ?? ""}
-  />
-</div>
+        {fotoFileName ? (
+          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+            File dipilih: <span className="font-medium">{fotoFileName}</span>
+          </p>
+        ) : fotoPreview && fotoPreview === defaultValues?.foto_instalasi ? (
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            Foto saat ini. Klik dropzone kalau mau menggantinya.
+          </p>
+        ) : null}
+
+        <input
+          type="hidden"
+          name="foto_instalasi_existing"
+          value={defaultValues?.foto_instalasi ?? ""}
+        />
+      </div>
 
       {/* Catatan */}
       <div className="col-span-1 md:col-span-2 space-y-2">
         <Label
           htmlFor="catatan"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <StickyNote size={13} className="text-purple-500" /> Catatan Teknisi
         </Label>
@@ -670,14 +683,14 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
           rows={2}
           placeholder="Catatan tambahan (opsional)"
           defaultValue={defaultValues?.catatan ?? ""}
-          className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 resize-none"
+          className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 resize-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
         />
       </div>
 
       {/* DAFTAR MATERIAL */}
-      <div className="col-span-1 md:col-span-2 space-y-3 pt-2 border-t border-slate-100">
+      <div className="col-span-1 md:col-span-2 space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-3 gap-2">
-          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             <Boxes size={13} className="text-purple-500" /> Material yang Dipakai
           </Label>
           <Button
@@ -685,14 +698,14 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
             size="sm"
             variant="outline"
             onClick={addRow}
-            className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 w-full sm:w-auto"
+            className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 w-full sm:w-auto dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
           >
             <Plus className="mr-1 h-3.5 w-3.5" /> Tambah Material
           </Button>
         </div>
 
         {materialRows.length === 0 ? (
-          <p className="text-xs text-slate-400 italic bg-slate-50 rounded-xl px-3 py-3 text-center">
+          <p className="text-xs text-slate-400 italic bg-slate-50 rounded-xl px-3 py-3 text-center dark:text-slate-500 dark:bg-slate-800/50">
             Belum ada material ditambahkan. Klik &quot;Tambah Material&quot; kalau ada material
             yang dipakai pada instalasi ini.
           </p>
@@ -701,7 +714,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
             {materialRows.map((row) => (
               <div
                 key={row.rowId}
-                className="flex flex-col sm:flex-row items-start sm:items-center gap-2 rounded-2xl border border-slate-200 p-3 bg-slate-50/50"
+                className="flex flex-col sm:flex-row items-start sm:items-center gap-2 rounded-2xl border border-slate-200 p-3 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50"
               >
                 <div className="flex-1 w-full sm:w-auto space-y-1.5">
                   <Select
@@ -712,7 +725,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
                       label: `${m.nama_material} (${m.satuan})`,
                     }))}
                   >
-                    <SelectTrigger className="rounded-xl h-10 border-slate-200 bg-white text-sm w-full">
+                    <SelectTrigger className="rounded-xl h-10 border-slate-200 bg-white text-sm w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                       <SelectValue placeholder="Pilih material" />
                     </SelectTrigger>
                     <SelectContent>
@@ -732,7 +745,7 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
                     placeholder="Jml"
                     value={row.jumlah}
                     onChange={(e) => updateRow(row.rowId, "jumlah", e.target.value)}
-                    className="rounded-xl h-10 border-slate-200 bg-white text-sm text-center"
+                    className="rounded-xl h-10 border-slate-200 bg-white text-sm text-center dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
@@ -741,14 +754,14 @@ function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
                     placeholder="Keterangan (opsional)"
                     value={row.keterangan}
                     onChange={(e) => updateRow(row.rowId, "keterangan", e.target.value)}
-                    className="rounded-xl h-10 border-slate-200 bg-white text-sm"
+                    className="rounded-xl h-10 border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
                 <button
                   type="button"
                   onClick={() => removeRow(row.rowId)}
-                  className="h-10 w-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                  className="h-10 w-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 dark:hover:bg-red-500/10"
                 >
                   <X size={16} />
                 </button>

@@ -14,7 +14,7 @@ export const OltImageDialog = ({
   fotoUrl,
   namaOlt,
 }: {
-  fotoUrl: string | null;
+  fotoUrl?: string | null;
   namaOlt: string;
 }) => {
   const [open, setOpen] = useState(false);

@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Loader2, Navigation } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -71,6 +71,10 @@ export const OdpFormDialog = ({
     data?.id_olt ? String(data.id_olt) : ""
   );
 
+  const handleOltChange = (value: string | null) => {
+    setOltValue(value || "");
+  };
+
   const [lat, setLat] = useState<number>(
     data?.latitude ? Number(data.latitude) : 0
   );
@@ -81,6 +85,49 @@ export const OdpFormDialog = ({
   const [jumlahPort, setJumlahPort] = useState<string>(
     data?.jumlah_port != null ? String(data.jumlah_port) : ""
   );
+
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setGpsError("Geolocation tidak didukung browser ini.");
+      return;
+    }
+
+    setGpsLoading(true);
+    setGpsError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setLat(parseFloat(latitude.toFixed(6)));
+        setLng(parseFloat(longitude.toFixed(6)));
+        setGpsLoading(false);
+      },
+      (error) => {
+        setGpsLoading(false);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setGpsError("Izin lokasi ditolak. Aktifkan di pengaturan browser.");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setGpsError("Lokasi tidak tersedia.");
+            break;
+          case error.TIMEOUT:
+            setGpsError("Waktu habis mencari lokasi.");
+            break;
+          default:
+            setGpsError("Gagal mendapatkan lokasi.");
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
 
   const handlePick = (pickedLat: number, pickedLng: number) => {
     setLat(pickedLat);
@@ -144,7 +191,7 @@ export const OdpFormDialog = ({
           <div className="space-y-2">
             <label className="text-sm font-medium">OLT</label>
 
-            <Select value={oltValue} onValueChange={setOltValue}>
+            <Select value={oltValue} onValueChange={handleOltChange}>
               <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                 <SelectValue placeholder="Pilih OLT">
                   {(value: string) =>
@@ -209,7 +256,32 @@ export const OdpFormDialog = ({
 
           {/* Peta pilih lokasi */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Lokasi di Peta</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Lokasi di Peta</label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={getCurrentLocation}
+                disabled={gpsLoading}
+                className="rounded-xl h-8 text-xs border-cyan-200 text-cyan-700 hover:bg-cyan-50 gap-1.5 dark:border-cyan-800 dark:text-cyan-400 dark:hover:bg-cyan-500/10"
+              >
+                {gpsLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Navigation className="h-3.5 w-3.5" />
+                )}
+                {gpsLoading ? "Mencari..." : "GPS Saya"}
+              </Button>
+            </div>
+            {gpsError && (
+              <p className="text-xs text-red-500 dark:text-red-400">{gpsError}</p>
+            )}
+            {lat !== 0 && lng !== 0 && !gpsError && (
+              <p className="text-xs text-emerald-500 dark:text-emerald-400">
+                Lokasi tersimpan: {lat}, {lng}
+              </p>
+            )}
             <OdpMapPicker lat={lat} lng={lng} onPick={handlePick} />
           </div>
 

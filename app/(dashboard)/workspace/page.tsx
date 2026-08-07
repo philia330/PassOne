@@ -11,9 +11,11 @@ import PaketPage from "@/app/masterdata/paket/page";
 import UserPage from "@/app/masterdata/user/page";
 import FabPage from "@/app/jaringan/fab/page";
 import BaaPage from "@/app/jaringan/baa/page";
+import SettingsPage from "@/app/settings/page";
 
 import { WORKSPACE_MODULES, DEFAULT_MODULE, type WorkspaceModuleKey } from "./modules";
-import { WorkspaceTabs } from "./workspace-tabs";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 // Peta key -> komponen halaman asli (import langsung dari route masing-masing)
 const MODULE_COMPONENTS: Record<WorkspaceModuleKey, React.ComponentType<any>> = {
@@ -28,6 +30,7 @@ const MODULE_COMPONENTS: Record<WorkspaceModuleKey, React.ComponentType<any>> = 
   user: UserPage,
   fab: FabPage,
   baa: BaaPage,
+  settings: SettingsPage,
 };
 
 interface WorkspacePageProps {
@@ -35,6 +38,7 @@ interface WorkspacePageProps {
 }
 
 export default async function WorkspacePage({ searchParams }: WorkspacePageProps) {
+  const session = await auth();
   const params = await searchParams;
   const view = (params.view as WorkspaceModuleKey) ?? DEFAULT_MODULE;
 
@@ -42,6 +46,11 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
 
   if (!moduleConfig) {
     notFound();
+  }
+
+  // Settings hanya boleh diakses oleh ADMIN
+  if (view === "settings" && session?.user?.role !== "ADMIN") {
+    redirect("/dashboard");
   }
 
   const ModuleComponent = MODULE_COMPONENTS[view];
@@ -53,8 +62,6 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
 
   return (
     <div className="space-y-4">
-      <WorkspaceTabs activeView={view} />
-
       {moduleConfig.usesSearchParams ? (
         <ModuleComponent searchParams={Promise.resolve(restParams)} />
       ) : (

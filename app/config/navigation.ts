@@ -130,7 +130,7 @@ export const navigation: NavigationGroup[] = [
     items: [
       {
         title: "Settings",
-        href: "/settings",
+        href: "/workspace?view=settings",
         icon: Settings,
         roles: [Role.ADMIN],
       },

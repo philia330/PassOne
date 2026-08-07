@@ -1,45 +1,43 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { Role } from "@/lib/auth/roles";
 import * as XLSX from "xlsx";
 
 export async function POST(request: Request) {
+  // Proteksi: Hanya ADMIN yang boleh import
+  const session = await auth();
+  if (!session || session.user?.role !== Role.ADMIN) {
+    return NextResponse.json(
+      { success: false, message: "Akses ditolak. Hanya Admin yang dapat mengimpor data." },
+      { status: 403 }
+    );
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
     if (!file) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "File tidak ditemukan",
-        },
-        {
-          status: 400,
-        }
+        { success: false, message: "File tidak ditemukan" },
+        { status: 400 }
       );
     }
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const workbook = XLSX.read(buffer, {
-      type: "buffer",
-    });
-
+    const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
 
     const rows: any[] = XLSX.utils.sheet_to_json(sheet);
 
     if (rows.length === 0) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "File Excel kosong",
-        },
-        {
-          status: 400,
-        }
+        { success: false, message: "File Excel kosong" },
+        { status: 400 }
       );
     }
 
@@ -48,83 +46,106 @@ export async function POST(request: Request) {
 
     const data = rows.map((row, index) => {
       if (
-        !row.kode_fab ||
-        !row.nama_pelanggan ||
-        !row.nik ||
-        row.latitude == null ||
-        row.longitude == null ||
-        row.id_area == null ||
-        row.id_paket == null ||
+        !row.kode_baa ||
+        !row.tanggal_instalasi ||
+        row.id_fab == null ||
         row.id_user == null ||
-        row.id_penginput == null
+        row.id_olt == null ||
+        row.id_odp == null
       ) {
         throw new Error(`Data tidak lengkap pada baris Excel ke-${index + 2}`);
       }
 
       return {
-        kode_fab: String(row.kode_fab).trim(),
-        nama_pelanggan: String(row.nama_pelanggan).trim(),
-        nik: String(row.nik).trim(),
-        foto: row.foto ? String(row.foto).trim() : null,
-        no_hp: String(row.no_hp).trim(),
-        alamat: String(row.alamat).trim(),
+        kode_baa: String(row.kode_baa).trim(),
 
-        latitude: new Prisma.Decimal(row.latitude),
-        longitude: new Prisma.Decimal(row.longitude),
+        tanggal_instalasi: new Date(row.tanggal_instalasi),
 
-        status: String(row.status).toUpperCase(),
+        status: "SELESAI" as const,
 
-        id_area: Number(row.id_area),
-        id_paket: Number(row.id_paket),
+        catatan: row.catatan
+          ? String(row.catatan).trim()
+          : null,
+
+        foto_instalasi: row.foto_instalasi
+          ? String(row.foto_instalasi).trim()
+          : null,
+
+        id_fab: Number(row.id_fab),
         id_user: Number(row.id_user),
-        id_penginput: Number(row.id_penginput),
+        id_olt: Number(row.id_olt),
+        id_odp: Number(row.id_odp),
+
+        id_ont: row.id_ont
+          ? Number(row.id_ont)
+          : null,
+
+        ping_ms: row.ping_ms
+          ? new Prisma.Decimal(row.ping_ms)
+          : null,
+
+        port_odp: row.port_odp
+          ? Number(row.port_odp)
+          : null,
+
+        port_olt: row.port_olt
+          ? Number(row.port_olt)
+          : null,
+
+        rx_power_dbm: row.rx_power_dbm
+          ? new Prisma.Decimal(row.rx_power_dbm)
+          : null,
+
+        speed_download: row.speed_download
+          ? String(row.speed_download)
+          : null,
+
+        speed_upload: row.speed_upload
+          ? String(row.speed_upload)
+          : null,
+
+        tx_power_dbm: row.tx_power_dbm
+          ? new Prisma.Decimal(row.tx_power_dbm)
+          : null,
       };
     });
 
-    console.log("Jumlah Data :", data.length);
-    console.log("DATA PERTAMA :", data[0]);
+    const kodeList = data.map((d) => d.kode_baa);
 
-    // Cek duplikat NIK di file Excel
-    const nikList = data.map((d) => d.nik);
-    const duplicateNik = nikList.filter(
-      (nik, index) => nikList.indexOf(nik) !== index
+    const duplicate = kodeList.filter(
+      (kode, index) => kodeList.indexOf(kode) !== index
     );
 
-    if (duplicateNik.length > 0) {
+    if (duplicate.length > 0) {
       return NextResponse.json(
         {
           success: false,
-          message: "Terdapat NIK duplikat di file Excel.",
-          duplicateNik,
+          message: "Kode BAA duplikat di Excel",
+          duplicate,
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    const result = await prisma.fab.createMany({
+    const result = await prisma.baa.createMany({
       data,
     });
 
     return NextResponse.json({
       success: true,
-      message: "Import berhasil",
+      message: "Import BAA berhasil",
       totalImport: result.count,
     });
+
   } catch (error: any) {
-    console.error("========== IMPORT ERROR ==========");
-    console.error(error);
-    console.error("==================================");
+    console.error("IMPORT BAA ERROR :", error);
 
     return NextResponse.json(
       {
         success: false,
         message: error.message,
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }

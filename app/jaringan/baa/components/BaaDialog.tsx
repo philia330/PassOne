@@ -37,7 +37,6 @@ interface BaaDialogProps {
   ontOptions: OntOption[];
   materialOptions: MaterialOption[];
   currentUser: CurrentUser;
-  onTeknisiAdded?: () => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -52,7 +51,6 @@ export const BaaDialog = ({
   odpOptions,
   ontOptions,
   materialOptions,
-  onTeknisiAdded,
   currentUser,
   open: openProp,
   onOpenChange: onOpenChangeProp,
@@ -95,21 +93,15 @@ export const BaaDialog = ({
     });
   };
 
-  const handleTeknisiAdded = () => {
-    if (onTeknisiAdded) {
-      onTeknisiAdded();
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {!isControlled && (
         <DialogTrigger
           render={
             mode === "create" ? (
-              <Button className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white w-full sm:w-auto" />
+              <Button className="h-12 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white w-full sm:w-auto" />
             ) : (
-              <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto" />
+              <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700" />
             )
           }
         >
@@ -131,7 +123,7 @@ export const BaaDialog = ({
         "
       >
         <DialogHeader className="flex-shrink-0 px-4 pt-4 sm:px-0 sm:pt-0">
-          <DialogTitle className="text-lg sm:text-xl">
+          <DialogTitle className="text-lg sm:text-xl dark:text-slate-100">
             {mode === "create" ? "Tambah BAA" : "Edit BAA"}
           </DialogTitle>
         </DialogHeader>
@@ -150,22 +142,21 @@ export const BaaDialog = ({
               odpOptions={odpOptions}
               ontOptions={ontOptions}
               materialOptions={materialOptions}
-              onTeknisiAdded={handleTeknisiAdded}
               currentUser={currentUser}
             />
 
             {errorMsg && (
-              <p className="mt-3 whitespace-pre-line text-sm font-medium text-red-600 bg-red-50 rounded-xl px-3 py-2">
+              <p className="mt-3 whitespace-pre-line text-sm font-medium text-red-600 bg-red-50 rounded-xl px-3 py-2 dark:text-red-400 dark:bg-red-500/10">
                 {errorMsg}
               </p>
             )}
           </div>
 
-          <DialogFooter className="flex-shrink-0 border-t border-slate-100 pt-4 pb-4 sm:pb-0 sm:border-t-0 sm:pt-6">
+          <DialogFooter className="flex-shrink-0 border-t border-slate-100 pt-4 pb-4 sm:pb-0 sm:border-t-0 sm:pt-6 dark:border-slate-800">
             <Button
               type="button"
               variant="outline"
-              className="rounded-2xl h-11 flex-1 sm:flex-none"
+              className="rounded-2xl h-11 flex-1 sm:flex-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               onClick={() => setOpen(false)}
               disabled={isPending}
             >

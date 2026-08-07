@@ -55,8 +55,8 @@ export const PaketDialog = ({ mode, paket, kodeOtomatis }: PaketDialogProps) => 
             <Plus className="mr-2 h-4 w-4" /> Tambah Paket
           </Button>
         ) : (
-          <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto">
-            <Pencil className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="cursor-pointer rounded-xl">
+            <Pencil className="h-4 w-4 text-slate-500 dark:text-slate-400" />
           </Button>
         )}
       </DialogTrigger>

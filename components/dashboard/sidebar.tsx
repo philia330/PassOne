@@ -8,7 +8,7 @@ import { LogOut, UserCircle2, X } from "lucide-react";
 import ImagePreview from "@/components/shared/image-preview";
 
 import { navigation } from "@/app/config/navigation";
-import { RoleLabel } from "@/lib/auth/roles";
+import { RoleLabel, Role } from "@/lib/auth/roles";
 
 type Settings = {
   app_name: string;
@@ -78,7 +78,7 @@ export default function Sidebar({
       <nav className="no-scrollbar flex-1 overflow-y-auto px-4 py-6">
         {navigation.map((group) => {
           const visibleItems = role
-            ? group.items.filter((item) => item.roles.includes(role))
+            ? group.items.filter((item) => item.roles.includes(role as Role))
             : [];
 
           if (visibleItems.length === 0) return null;

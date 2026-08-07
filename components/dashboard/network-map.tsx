@@ -1,13 +1,31 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import { Search, X } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
 import type { NetworkPoint } from "@/lib/network-points";
 import { createMarkerIcon, TYPE_COLOR, FAB_STATUS_COLORS, CABLE_COLOR } from "@/lib/map-icons";
+
+// Component untuk auto-pan ke hasil search
+function MapAutoPan({ searchQuery, filteredPoints }: { searchQuery: string; filteredPoints: NetworkPoint[] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (searchQuery.trim().length > 0 && filteredPoints.length > 0) {
+      // Pan langsung ke hasil pertama tanpa delay
+      const first = filteredPoints[0];
+      map.flyTo([first.lat, first.lng], 16, {
+        animate: true,
+        duration: 0.5
+      });
+    }
+  }, [searchQuery, filteredPoints, map]);
+
+  return null;
+}
 
 const TYPE_LABELS: NetworkPoint["type"][] = ["POP", "OLT", "ODP", "FAB"];
 
@@ -218,6 +236,7 @@ export default function NetworkMap({ points }: { points: NetworkPoint[] }) {
         style={{ height: 400, width: "100%" }}
         scrollWheelZoom={false}
       >
+        <MapAutoPan searchQuery={searchQuery} filteredPoints={filteredPoints} />
         <TileLayer
           attribution='&copy; OpenStreetMap contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -257,6 +276,32 @@ export default function NetworkMap({ points }: { points: NetworkPoint[] }) {
                 <br />
                 {p.type}
                 {p.info ? ` — ${p.info}` : ""}
+                {p.type === "ODP" && p.connectedFabs && p.connectedFabs.length > 0 && (
+                  <>
+                    <br />
+                    <span style={{ fontSize: '11px', color: '#666' }}>
+                      Pelanggan ({p.connectedFabs.length}):
+                    </span>
+                    <ul style={{ margin: '4px 0 0 0', paddingLeft: '16px', fontSize: '11px' }}>
+                      {p.connectedFabs.slice(0, 5).map((fab) => (
+                        <li key={fab.id}>
+                          {fab.name}
+                          {fab.status === "AKTIF" && (
+                            <span style={{ color: '#10b981', marginLeft: '4px' }}>✓</span>
+                          )}
+                          {fab.status === "OPEN" && (
+                            <span style={{ color: '#f97316', marginLeft: '4px' }}>⏳</span>
+                          )}
+                        </li>
+                      ))}
+                      {p.connectedFabs.length > 5 && (
+                        <li style={{ color: '#999' }}>
+                          +{p.connectedFabs.length - 5} lagi...
+                        </li>
+                      )}
+                    </ul>
+                  </>
+                )}
               </Popup>
             </Marker>
           ))}

@@ -63,9 +63,6 @@ const formattedTime = now?.toLocaleTimeString("id-ID", {
           <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100 sm:text-2xl">
             {title}
           </h1>
-          <p className="hidden text-sm text-slate-500 dark:text-slate-400 sm:block">
-            Selamat datang di {settings.app_name} {settings.app_subtitle}
-          </p>
         </div>
       </div>
 
@@ -84,8 +81,9 @@ const formattedTime = now?.toLocaleTimeString("id-ID", {
   <NotificationBell />
 
   <button
-    onClick={() => router.push("/settings")}
+    onClick={() => router.push("/workspace?view=settings")}
     className="rounded-xl border border-slate-200 p-2.5 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 sm:p-3"
+    title="Pengaturan"
   >
     <Settings size={20} />
   </button>

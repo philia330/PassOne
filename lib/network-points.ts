@@ -1,5 +1,11 @@
 import { prisma } from "@/lib/prisma";
 
+export type ConnectedFab = {
+  id: string;
+  name: string;
+  status: string;
+};
+
 export type NetworkPoint = {
   id: string;
   type: "POP" | "OLT" | "ODP" | "FAB";
@@ -13,6 +19,8 @@ export type NetworkPoint = {
   // - FAB -> ODP (BISA lebih dari satu, dari histori BAA): parentIds
   parentId?: string;
   parentIds?: string[];
+  // ✅ BARU: FAB yang terhubung ke ODP ini (untuk tooltip)
+  connectedFabs?: ConnectedFab[];
 };
 
 export async function getNetworkPoints(): Promise<NetworkPoint[]> {
@@ -49,6 +57,24 @@ export async function getNetworkPoints(): Promise<NetworkPoint[]> {
     fabToOdpMap.get(b.id_fab)!.add(b.id_odp);
   }
 
+  // ✅ BARU: Buat mapping FAB per ODP untuk tooltip
+  const odpToFabsMap = new Map<number, ConnectedFab[]>();
+  for (const fab of fabs) {
+    const odpIds = fabToOdpMap.get(fab.id_fab);
+    if (odpIds) {
+      for (const odpId of odpIds) {
+        if (!odpToFabsMap.has(odpId)) {
+          odpToFabsMap.set(odpId, []);
+        }
+        odpToFabsMap.get(odpId)!.push({
+          id: `fab-${fab.id_fab}`,
+          name: fab.nama_pelanggan,
+          status: fab.status,
+        });
+      }
+    }
+  }
+
   return [
     ...pops.map((p) => ({
       id: `pop-${p.id_pop}`,
@@ -72,6 +98,7 @@ export async function getNetworkPoints(): Promise<NetworkPoint[]> {
       lat: Number(o.latitude),
       lng: Number(o.longitude),
       parentId: `olt-${o.id_olt}`,
+      connectedFabs: odpToFabsMap.get(o.id_odp) ?? [],
     })),
     ...fabs.map((f) => ({
       id: `fab-${f.id_fab}`,

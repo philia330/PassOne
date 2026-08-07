@@ -127,7 +127,7 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
       <div className="pointer-events-none absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-fuchsia-200/30 blur-3xl" />
 
       <div className="relative p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
-        <Link href="/jaringan/baa">
+        <Link href="/workspace?view=baa">
           <Button variant="ghost" className="rounded-xl gap-2 text-slate-600 hover:text-purple-600">
             <ArrowLeft className="h-4 w-4" />
             Kembali ke Daftar BAA
@@ -155,7 +155,14 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
             </div>
 
             <div className="flex gap-2">
-              
+              <a
+                href={`/jaringan/baadetail/${id_baa}/print`}
+                target="_blank"
+                className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-purple-700"
+              >
+                <Download className="h-4 w-4" />
+                Cetak Invoice
+              </a>
             </div>
           </div>
         </Card>
@@ -201,13 +208,27 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
                 <p className="text-xs text-purple-600 font-medium">Teknisi Utama</p>
                 <p className="font-semibold text-slate-900">{baa.users?.nama}</p>
               </div>
+
+              {/* Info Referral/Sales - jika teknisi input FAB untuk sales */}
+              {baa.fab?.penginput && baa.fab?.penginput.id_user !== baa.fab?.id_user && (
+                <div className="rounded-xl bg-amber-50 border border-amber-100 p-3">
+                  <p className="text-xs text-amber-600 font-medium">Referal / Sales</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="font-semibold text-slate-900">{baa.fab?.users?.nama}</p>
+                    <Badge className="text-[10px] px-1.5 py-0 rounded-md bg-amber-100 text-amber-700">Referral</Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    FAB diinput oleh teknisi <span className="font-medium text-amber-700">{baa.fab?.penginput?.nama}</span>
+                  </p>
+                </div>
+              )}
+
               {baa.teknisiTambahan.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-xs text-slate-400 font-medium">Teknisi Tambahan</p>
                   {baa.teknisiTambahan.map((t) => (
                     <div key={t.id_baa_teknisi} className="rounded-xl bg-slate-50 border border-slate-200 p-2.5 flex items-center justify-between">
                       <span className="font-medium text-slate-700">{t.users?.nama}</span>
-                     
                     </div>
                   ))}
                 </div>

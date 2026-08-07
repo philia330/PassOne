@@ -1,7 +1,8 @@
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, AlertCircle, CheckCircle2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { FabDialog } from "@/app/jaringan/fab/components/FabDialog";
 import { FabTable } from "@/app/jaringan/fab/components/FabTable";
 
@@ -14,13 +15,13 @@ export default async function FabPage() {
     role: session!.user.role,
   };
 
-  const [rawFab, areaList, paketList, salesList] = await Promise.all([
+  const [rawFab, areaList, paketList, salesList, fabStats] = await Promise.all([
     prisma.fab.findMany({
       orderBy: { createdAt: "desc" },
       include: {
         area: true,
         paket: true,
-        users: true, // ✅ user → users
+        users: true,
         penginput: true,
       },
     }),
@@ -37,64 +38,94 @@ export default async function FabPage() {
       orderBy: { nama: "asc" },
       select: { id_user: true, nama: true },
     }),
+    prisma.fab.groupBy({
+      by: ["status"],
+      _count: { status: true },
+    }),
   ]);
 
   const fab = rawFab.map((item) => ({
     ...item,
     latitude: Number(item.latitude),
     longitude: Number(item.longitude),
-    // ⬇️ relasi nested "paket" juga bawa field Decimal (harga),
-    // harus dikonversi juga karena ikut dikirim ke Client Component
     paket: {
       ...item.paket,
       harga: Number(item.paket.harga),
     },
   }));
 
+  // Statistik OPEN dan AKTIF
+  const fabOpen = fabStats.find((s) => s.status === "OPEN")?._count.status ?? 0;
+  const fabAktif = fabStats.find((s) => s.status === "AKTIF")?._count.status ?? 0;
+
   const kodeOtomatis = `FAB${String(fab.length + 1).padStart(3, "0")}`;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans antialiased relative overflow-hidden">
-      <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-purple-200/40 blur-3xl" />
-      <div className="pointer-events-none absolute top-40 -right-24 h-80 w-80 rounded-full bg-sky-200/40 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-fuchsia-200/30 blur-3xl" />
+    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+      <PageHeader
+        title="Data FAB"
+        description="Form Aktivasi Berlangganan — pengajuan pemasangan pelanggan"
+      />
 
-      <div className="relative p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
-        {/* Header */}
-        <Card className="flex-row relative overflow-hidden rounded-3xl shadow-xl border bg-white p-4 sm:p-6 flex items-center justify-between gap-4 flex-wrap">
-          <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500" />
-
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-200">
-              <ClipboardList className="text-white" size={18} />
-            </div>
+      {/* Statistik */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {/* Total FAB - Purple gradient */}
+        <Card className="rounded-3xl border-0 bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-600 text-white shadow-lg shadow-purple-500/20 overflow-hidden relative">
+          <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-white/10" />
+          <div className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-white/5" />
+          <CardContent className="flex items-center justify-between p-6 relative">
             <div>
-              <h1 className="text-base sm:text-xl font-bold text-slate-900 tracking-tight">Data FAB</h1>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                Form Aktivasi Berlangganan — pengajuan pemasangan pelanggan
-              </p>
+              <p className="text-sm text-white/80 font-medium">Total FAB</p>
+              <h2 className="mt-2 text-5xl font-bold tracking-tight">{fab.length}</h2>
+              <p className="mt-1 text-xs text-white/60">Pengajuan Terdaftar</p>
             </div>
-          </div>
-
-          <FabDialog
-            mode="create"
-            kodeOtomatis={kodeOtomatis}
-            areaOptions={areaList}
-            paketOptions={paketList}
-            salesOptions={salesList}
-            currentUser={currentUser}
-          />
+            <div className="rounded-2xl bg-white/20 p-4 backdrop-blur-sm">
+              <ClipboardList className="h-8 w-8" />
+            </div>
+          </CardContent>
         </Card>
 
-        <FabTable
-          data={fab}
-          areaOptions={areaList}
-          paketOptions={paketList}
-          salesOptions={salesList}
-          currentUser={currentUser}
-        />
+        {/* Open - Sky/Cyan gradient */}
+        <Card className="rounded-3xl border-0 bg-gradient-to-br from-cyan-500 via-sky-500 to-blue-500 text-white shadow-lg shadow-sky-500/20 overflow-hidden relative">
+          <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-white/10" />
+          <div className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-white/5" />
+          <CardContent className="flex items-center justify-between p-6 relative">
+            <div>
+              <p className="text-sm text-white/80 font-medium">Status Open</p>
+              <h2 className="mt-2 text-5xl font-bold tracking-tight">{fabOpen}</h2>
+              <p className="mt-1 text-xs text-white/60">Menunggu Aktivasi</p>
+            </div>
+            <div className="rounded-2xl bg-white/20 p-4 backdrop-blur-sm">
+              <AlertCircle className="h-8 w-8" />
+            </div>
+          </CardContent>
+        </Card>
 
+        {/* Aktif - Green gradient */}
+        <Card className="rounded-3xl border-0 bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 text-white shadow-lg shadow-green-500/20 overflow-hidden relative">
+          <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-white/10" />
+          <div className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-white/5" />
+          <CardContent className="flex items-center justify-between p-6 relative">
+            <div>
+              <p className="text-sm text-white/80 font-medium">Status Aktif</p>
+              <h2 className="mt-2 text-5xl font-bold tracking-tight">{fabAktif}</h2>
+              <p className="mt-1 text-xs text-white/60">Sudah Terpasang</p>
+            </div>
+            <div className="rounded-2xl bg-white/20 p-4 backdrop-blur-sm">
+              <CheckCircle2 className="h-8 w-8" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      <FabTable
+        data={fab}
+        areaOptions={areaList}
+        paketOptions={paketList}
+        salesOptions={salesList}
+        currentUser={currentUser}
+        kodeOtomatis={kodeOtomatis}
+      />
     </div>
   );
 }

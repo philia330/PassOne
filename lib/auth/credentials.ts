@@ -76,6 +76,7 @@ export const credentialsProvider = Credentials({
       email: user.email,
       role: user.role,
       foto: user.foto,
+      theme_preference: user.theme_preference,
       rememberMe: rememberMe === "true",
     };
   },

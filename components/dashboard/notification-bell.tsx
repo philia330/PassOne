@@ -66,21 +66,28 @@ export default function NotificationBell() {
         <Bell size={20} />
         {items.length > 0 && (
           <span className="absolute -right-2 -top-2 flex h-6 min-w-[24px] items-center justify-center rounded-full border-2 border-white bg-red-500 px-1.5 text-xs font-extrabold leading-none text-white shadow-lg shadow-red-500/50 animate-pulse dark:border-slate-900">
-            {items.length > 9 ? "9+" : items.length}
+            {items.length > 99 ? "99+" : items.length}
           </span>
         )}
       </button>
 
       {open && (
         <div className="absolute right-0 top-14 z-50 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
-          <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-            <h3 className="font-semibold text-slate-800 dark:text-slate-100">Notifikasi</h3>
-            <p className="text-xs text-slate-400 dark:text-slate-500">
-              {items.length === 0 ? "Semua aman, tidak ada yang perlu ditindak." : `${items.length} hal perlu perhatian`}
-            </p>
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+            <div>
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100">Notifikasi</h3>
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                {items.length === 0 ? "Semua aman" : `${items.length} perlu perhatian`}
+              </p>
+            </div>
+            {items.length > 0 && (
+              <span className="flex h-6 min-w-[24px] items-center justify-center rounded-full bg-red-100 px-2 text-xs font-bold text-red-600 dark:bg-red-500/20 dark:text-red-400">
+                {items.length > 99 ? "99+" : items.length}
+              </span>
+            )}
           </div>
 
-          <div className="max-h-80 overflow-y-auto">
+          <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
             {items.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
                 🎉 Tidak ada notifikasi

@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import {
   BarChart,
   Bar,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -14,7 +18,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, BarChart3, TrendingUpIcon, AreaChart as AreaChartIcon } from "lucide-react";
 
 type MonthlyData = {
   label: string;
@@ -116,6 +120,9 @@ export default function FabBaaChart({
   const [period, setPeriod] =
     useState(6);
 
+  const [chartType, setChartType] =
+    useState<"bar" | "line" | "area">("bar");
+
   const [loading, setLoading] =
     useState(false);
 
@@ -173,22 +180,58 @@ export default function FabBaaChart({
             </div>
           </div>
 
-          <select
-            value={period}
-            onChange={(e) =>
-              setPeriod(Number(e.target.value))
-            }
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:w-auto"
-          >
-            {PERIOD_OPTIONS.map((opt) => (
-              <option
-                key={opt.value}
-                value={opt.value}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Chart Type Selector */}
+            <div className="flex rounded-lg border border-slate-200 dark:border-slate-700">
+              <button
+                onClick={() => setChartType("bar")}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm transition ${
+                  chartType === "bar"
+                    ? "bg-indigo-500 text-white"
+                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                }`}
               >
-                {opt.label}
-              </option>
-            ))}
-          </select>
+                <BarChart3 size={14} />
+              </button>
+              <button
+                onClick={() => setChartType("line")}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm transition border-l border-slate-200 dark:border-slate-700 ${
+                  chartType === "line"
+                    ? "bg-indigo-500 text-white"
+                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                }`}
+              >
+                <TrendingUpIcon size={14} />
+              </button>
+              <button
+                onClick={() => setChartType("area")}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm transition border-l border-slate-200 dark:border-slate-700 ${
+                  chartType === "area"
+                    ? "bg-indigo-500 text-white"
+                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                }`}
+              >
+                <AreaChartIcon size={14} />
+              </button>
+            </div>
+
+            <select
+              value={period}
+              onChange={(e) =>
+                setPeriod(Number(e.target.value))
+              }
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+            >
+              {PERIOD_OPTIONS.map((opt) => (
+                <option
+                  key={opt.value}
+                  value={opt.value}
+                >
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
         </div>
 
@@ -196,62 +239,39 @@ export default function FabBaaChart({
           width="100%"
           height={320}
         >
-          <BarChart data={monthly}>
-
-            <CartesianGrid
-              strokeDasharray="3 3"
-              className="stroke-slate-100 dark:stroke-slate-800"
-            />
-
-            <XAxis
-              dataKey="label"
-              tick={{
-                fontSize: 12,
-                fill: "currentColor",
-              }}
-              className="text-slate-400 dark:text-slate-500"
-            />
-
-            <YAxis
-              allowDecimals={false}
-              tick={{
-                fontSize: 12,
-                fill: "currentColor",
-              }}
-              className="text-slate-400 dark:text-slate-500"
-            />
-
-            <Tooltip
-              contentStyle={{
-                borderRadius: 12,
-                border: "1px solid #e2e8f0",
-              }}
-              wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white"
-            />
-
-            <Legend
-              verticalAlign="bottom"
-              wrapperStyle={{
-                fontSize: 13,
-                paddingTop: 12,
-              }}
-            />
-
-            <Bar
-              dataKey="fab"
-              name="FAB"
-              fill="#6ad2ff"
-              radius={[6, 6, 0, 0]}
-            />
-
-            <Bar
-              dataKey="baa"
-              name="BAA"
-              fill="#10b981"
-              radius={[6, 6, 0, 0]}
-            />
-
-          </BarChart>
+          {chartType === "bar" && (
+            <BarChart data={monthly}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
+              <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
+              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
+              <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
+              <Bar dataKey="fab" name="FAB" fill="#6ad2ff" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="baa" name="BAA" fill="#10b981" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          )}
+          {chartType === "line" && (
+            <LineChart data={monthly}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
+              <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
+              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
+              <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
+              <Line type="monotone" dataKey="fab" name="FAB" stroke="#6ad2ff" strokeWidth={3} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="baa" name="BAA" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />
+            </LineChart>
+          )}
+          {chartType === "area" && (
+            <AreaChart data={monthly}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
+              <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
+              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
+              <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
+              <Area type="monotone" dataKey="fab" name="FAB" fill="#6ad2ff" stroke="#6ad2ff" fillOpacity={0.3} />
+              <Area type="monotone" dataKey="baa" name="BAA" fill="#10b981" stroke="#10b981" fillOpacity={0.3} />
+            </AreaChart>
+          )}
         </ResponsiveContainer>
 
         {loading && (

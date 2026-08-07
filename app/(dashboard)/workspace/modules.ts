@@ -1,7 +1,7 @@
-import { MapPin, Box, Router, Boxes, Cable, PackageOpen, Users, ClipboardList, FileCheck2 } from "lucide-react";
+import { MapPin, Box, Router, Boxes, Cable, PackageOpen, Users, ClipboardList, FileCheck2, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-export type WorkspaceModuleKey = "area" | "material" | "pop" | "olt" | "odp" | "ont" | "portpon" | "paket" | "user" | "fab" | "baa";
+export type WorkspaceModuleKey = "area" | "material" | "pop" | "olt" | "odp" | "ont" | "portpon" | "paket" | "user" | "fab" | "baa" | "settings";
 
 export type WorkspaceModuleConfig = {
   key: WorkspaceModuleKey;
@@ -22,6 +22,7 @@ export const WORKSPACE_MODULES: WorkspaceModuleConfig[] = [
   { key: "user", title: "User", icon: Users, usesSearchParams: true },
   { key: "fab", title: "FAB", icon: ClipboardList, usesSearchParams: false },
   { key: "baa", title: "BAA", icon: FileCheck2, usesSearchParams: false },
+  { key: "settings", title: "Settings", icon: Settings, usesSearchParams: false },
 ];
 
 export const DEFAULT_MODULE: WorkspaceModuleKey = "area";

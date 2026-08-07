@@ -2,18 +2,57 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { StatusOnt } from "@prisma/client";
-// import { requireRole, requireAuth } from "@/lib/auth/guards"; // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge dari Project Lead
-// import { logActivity } from "@/lib/activity-log"; // TODO: aktifkan lagi setelah lib/activity-log.ts & auth.ts di-merge dari Project Lead
+import { ont_status } from "@prisma/client";
+import { auth } from "@/lib/auth";
+import { Role } from "@/lib/auth/roles";
 
 const PAGE_SIZE = 10;
 
-// ======================================================
-// Ambil data ONT dengan search & pagination
-// ======================================================
-export const getOnts = async (search: string = "", page: number = 1) => {
-  // await requireAuth(); // TODO: aktifkan setelah auth.ts di-merge — modul baca data minimal wajib login
+/**
+ * ======================================
+ * HELPER: Audit Log
+ * ======================================
+ */
+async function logActivity(type: string, description: string) {
+  const session = await auth();
+  try {
+    await prisma.activityLog.create({
+      data: {
+        type: type as any,
+        description,
+        id_user: session?.user?.id_user as number,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to log activity:", error);
+  }
+}
 
+/**
+ * ======================================
+ * HELPER: Cek hak akses
+ * ======================================
+ */
+async function requireAccess() {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  const role = session.user.role;
+  if (role !== Role.ADMIN && role !== Role.LOGISTIK) {
+    throw new Error("Anda tidak memiliki akses untuk mengelola ONT.");
+  }
+
+  return session;
+}
+
+/**
+ * ======================================
+ * GET DATA
+ * ======================================
+ */
+export const getOnts = async (search: string = "", page: number = 1) => {
   const where = search
     ? {
         OR: [
@@ -36,19 +75,10 @@ export const getOnts = async (search: string = "", page: number = 1) => {
     prisma.ont.count({ where }),
   ]);
 
-  return {
-    data,
-    total,
-    totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
-  };
+  return { data, total, totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
 };
 
-// ======================================================
-// Dropdown POP & ODP (select agar tidak bawa field Decimal)
-// ======================================================
 export const getPops = async () => {
-  // await requireAuth(); // TODO: aktifkan setelah auth.ts di-merge
-
   return prisma.pop.findMany({
     select: { id_pop: true, nama_pop: true },
     orderBy: { nama_pop: "asc" },
@@ -56,66 +86,135 @@ export const getPops = async () => {
 };
 
 export const getOdps = async () => {
-  // await requireAuth(); // TODO: aktifkan setelah auth.ts di-merge
-
   return prisma.odp.findMany({
     select: { id_odp: true, nama_odp: true },
     orderBy: { nama_odp: "asc" },
   });
 };
 
-// ======================================================
-// Tambah ONT
-// ======================================================
+/**
+ * ======================================
+ * CREATE ONT
+ * ======================================
+ */
 export const createOnt = async (formData: FormData) => {
-  // await requireRole(["ADMIN", "LOGISTIK"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+  const session = await requireAccess();
 
-  const serial_number = formData.get("serial_number") as string;
-  const pelanggan = formData.get("pelanggan") as string;
-  const status = formData.get("status") as StatusOnt;
+  const serial_number = (formData.get("serial_number") as string)?.trim();
+  const pelanggan = (formData.get("pelanggan") as string)?.trim();
+  const status = formData.get("status") as ont_status;
   const id_pop = parseInt(formData.get("id_pop") as string, 10);
   const id_odp = parseInt(formData.get("id_odp") as string, 10);
 
-  const ont = await prisma.ont.create({
-    data: { serial_number, pelanggan, status, id_pop, id_odp },
+  if (!serial_number || !pelanggan || isNaN(id_pop) || isNaN(id_odp)) {
+    throw new Error("Serial number, pelanggan, POP, dan ODP wajib diisi.");
+  }
+
+  // Cek duplikat serial number
+  const existing = await prisma.ont.findUnique({
+    where: { serial_number },
   });
 
-  // await logActivity("ONT_CREATED", `ONT ${ont.serial_number} dibuat.`);
+  if (existing) {
+    throw new Error(`ONT dengan serial number "${serial_number}" sudah ada.`);
+  }
 
+  await prisma.$transaction(async (tx) => {
+    // Double-check dalam transaction
+    const existingInTx = await tx.ont.findUnique({ where: { serial_number } });
+    if (existingInTx) {
+      throw new Error(`ONT dengan serial number "${serial_number}" sudah ada.`);
+    }
+
+    await tx.ont.create({
+      data: { serial_number, pelanggan, status: status || "TERSEDIA", id_pop, id_odp },
+    });
+  });
+
+  await logActivity("ONT_CREATED", `ONT "${serial_number}" (${pelanggan}) dibuat oleh ${session.user.nama}`);
   revalidatePath("/masterdata/ont");
 };
 
-// ======================================================
-// Update ONT
-// ======================================================
+/**
+ * ======================================
+ * UPDATE ONT
+ * ======================================
+ */
 export const updateOnt = async (id: number, formData: FormData) => {
-  // await requireRole(["ADMIN", "LOGISTIK"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+  const session = await requireAccess();
 
-  const serial_number = formData.get("serial_number") as string;
-  const pelanggan = formData.get("pelanggan") as string;
-  const status = formData.get("status") as StatusOnt;
+  const existing = await prisma.ont.findUnique({ where: { id_ont: id } });
+  if (!existing) {
+    throw new Error("ONT tidak ditemukan.");
+  }
+
+  const serial_number = (formData.get("serial_number") as string)?.trim();
+  const pelanggan = (formData.get("pelanggan") as string)?.trim();
+  const status = formData.get("status") as ont_status;
   const id_pop = parseInt(formData.get("id_pop") as string, 10);
   const id_odp = parseInt(formData.get("id_odp") as string, 10);
 
-  const ont = await prisma.ont.update({
-    where: { id_ont: id },
-    data: { serial_number, pelanggan, status, id_pop, id_odp },
+  if (!serial_number || !pelanggan || isNaN(id_pop) || isNaN(id_odp)) {
+    throw new Error("Serial number, pelanggan, POP, dan ODP wajib diisi.");
+  }
+
+  // Cek duplikat jika serial berubah
+  if (serial_number !== existing.serial_number) {
+    const duplicate = await prisma.ont.findFirst({
+      where: { serial_number, id_ont: { not: id } },
+    });
+
+    if (duplicate) {
+      throw new Error(`ONT dengan serial number "${serial_number}" sudah ada.`);
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (serial_number !== existing.serial_number) {
+      const existingInTx = await tx.ont.findFirst({
+        where: { serial_number, id_ont: { not: id } },
+      });
+      if (existingInTx) {
+        throw new Error(`ONT dengan serial number "${serial_number}" sudah ada.`);
+      }
+    }
+
+    await tx.ont.update({
+      where: { id_ont: id },
+      data: { serial_number, pelanggan, status: status || "TERSEDIA", id_pop, id_odp },
+    });
   });
 
-  // await logActivity("ONT_UPDATED", `ONT ${ont.serial_number} diperbarui.`);
-
+  await logActivity("ONT_UPDATED", `ONT "${serial_number}" (${pelanggan}) diupdate oleh ${session.user.nama}`);
   revalidatePath("/masterdata/ont");
 };
 
-// ======================================================
-// Hapus ONT
-// ======================================================
+/**
+ * ======================================
+ * DELETE ONT
+ * ======================================
+ */
 export const deleteOnt = async (id: number) => {
-  // await requireRole(["ADMIN", "LOGISTIK"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+  const session = await requireAccess();
 
-  const ont = await prisma.ont.delete({ where: { id_ont: id } });
+  const ont = await prisma.ont.findUnique({
+    where: { id_ont: id },
+    include: { _count: { select: { baa: true } } },
+  });
 
-  // await logActivity("ONT_DELETED", `ONT ${ont.serial_number} dihapus.`);
+  if (!ont) {
+    throw new Error("ONT tidak ditemukan.");
+  }
 
+  // Cek apakah ONT dipakai di BAA
+  if (ont._count.baa > 0) {
+    throw new Error(
+      `ONT "${ont.serial_number}" tidak bisa dihapus karena masih dipakai oleh ${ont._count.baa} BAA.`
+    );
+  }
+
+  await prisma.ont.delete({ where: { id_ont: id } });
+
+  await logActivity("ONT_DELETED", `ONT "${ont.serial_number}" (${ont.pelanggan}) dihapus oleh ${session.user.nama}`);
   revalidatePath("/masterdata/ont");
 };

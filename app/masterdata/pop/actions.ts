@@ -2,11 +2,55 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-// import { requireRole, requireAuth } from "@/lib/auth/guards"; // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge dari Project Lead
-// import { logActivity } from "@/lib/activity-log"; // TODO: aktifkan lagi setelah lib/activity-log.ts & auth.ts di-merge dari Project Lead
+import { auth } from "@/lib/auth";
+import { Role } from "@/lib/auth/roles";
 
 const PAGE_SIZE = 10;
 
+/**
+ * ======================================
+ * HELPER: Audit Log
+ * ======================================
+ */
+async function logActivity(type: string, description: string) {
+  const session = await auth();
+  try {
+    await prisma.activityLog.create({
+      data: {
+        type: type as any,
+        description,
+        id_user: session?.user?.id_user as number,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to log activity:", error);
+  }
+}
+
+/**
+ * ======================================
+ * HELPER: Cek hak akses
+ * ======================================
+ */
+async function requireAccess() {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  const role = session.user.role;
+  if (role !== Role.ADMIN) {
+    throw new Error("Anda tidak memiliki akses untuk mengelola POP.");
+  }
+
+  return session;
+}
+
+/**
+ * ======================================
+ * Generate kode POP otomatis
+ * ======================================
+ */
 const generateKodePop = async (): Promise<string> => {
   const pops = await prisma.pop.findMany({
     select: { kode_pop: true },
@@ -29,9 +73,12 @@ const generateKodePop = async (): Promise<string> => {
   return `POP-${String(next).padStart(3, "0")}`;
 };
 
+/**
+ * ======================================
+ * GET DATA
+ * ======================================
+ */
 export const getPops = async (search: string = "", page: number = 1) => {
-  // await requireAuth(); // TODO: aktifkan setelah auth.ts di-merge — modul baca data minimal wajib login
-
   const where = search
     ? {
         OR: [
@@ -54,66 +101,100 @@ export const getPops = async (search: string = "", page: number = 1) => {
     prisma.pop.count({ where }),
   ]);
 
-  return {
-    data,
-    total,
-    totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
-  };
+  return { data, total, totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
 };
 
 export const getAreas = async () => {
-  // await requireAuth(); // TODO: aktifkan setelah auth.ts di-merge
-
   return prisma.area.findMany({
     select: { id_area: true, nama_area: true },
     orderBy: { nama_area: "asc" },
   });
 };
 
+/**
+ * ======================================
+ * CREATE POP
+ * ======================================
+ */
 export const createPop = async (formData: FormData) => {
-  // await requireRole(["ADMIN"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+  const session = await requireAccess();
+
+  const nama_pop = (formData.get("nama_pop") as string)?.trim();
+  const alamat = (formData.get("alamat") as string)?.trim();
+  const id_area = parseInt(formData.get("id_area") as string, 10);
+
+  if (!nama_pop || !alamat || isNaN(id_area)) {
+    throw new Error("Nama POP, alamat, dan Area wajib diisi.");
+  }
 
   const kode_pop = await generateKodePop();
-  const nama_pop = formData.get("nama_pop") as string;
-  const alamat = formData.get("alamat") as string;
-  const latitude = parseFloat(formData.get("latitude") as string);
-  const longitude = parseFloat(formData.get("longitude") as string);
-  const id_area = parseInt(formData.get("id_area") as string, 10);
 
-  const pop = await prisma.pop.create({
-    data: { kode_pop, nama_pop, alamat, latitude, longitude, id_area },
+  await prisma.$transaction(async (tx) => {
+    await tx.pop.create({
+      data: { kode_pop, nama_pop, alamat, id_area, latitude: 0, longitude: 0 },
+    });
   });
 
-  // await logActivity("POP_CREATED", `POP ${pop.nama_pop} dibuat.`);
-
+  await logActivity("POP_CREATED", `POP "${nama_pop}" (${kode_pop}) dibuat oleh ${session.user.nama}`);
   revalidatePath("/masterdata/pop");
 };
 
+/**
+ * ======================================
+ * UPDATE POP
+ * ======================================
+ */
 export const updatePop = async (id: number, formData: FormData) => {
-  // await requireRole(["ADMIN"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+  const session = await requireAccess();
 
-  const nama_pop = formData.get("nama_pop") as string;
-  const alamat = formData.get("alamat") as string;
-  const latitude = parseFloat(formData.get("latitude") as string);
-  const longitude = parseFloat(formData.get("longitude") as string);
+  const existing = await prisma.pop.findUnique({ where: { id_pop: id } });
+  if (!existing) {
+    throw new Error("POP tidak ditemukan.");
+  }
+
+  const nama_pop = (formData.get("nama_pop") as string)?.trim();
+  const alamat = (formData.get("alamat") as string)?.trim();
   const id_area = parseInt(formData.get("id_area") as string, 10);
 
-  const pop = await prisma.pop.update({
+  if (!nama_pop || !alamat || isNaN(id_area)) {
+    throw new Error("Nama POP, alamat, dan Area wajib diisi.");
+  }
+
+  await prisma.pop.update({
     where: { id_pop: id },
-    data: { nama_pop, alamat, latitude, longitude, id_area },
+    data: { nama_pop, alamat, id_area },
   });
 
-  // await logActivity("POP_UPDATED", `POP ${pop.nama_pop} diperbarui.`);
-
+  await logActivity("POP_UPDATED", `POP "${nama_pop}" (${existing.kode_pop}) diupdate oleh ${session.user.nama}`);
   revalidatePath("/masterdata/pop");
 };
 
+/**
+ * ======================================
+ * DELETE POP
+ * ======================================
+ */
 export const deletePop = async (id: number) => {
-  // await requireRole(["ADMIN"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+  const session = await requireAccess();
 
-  const pop = await prisma.pop.delete({ where: { id_pop: id } });
+  const pop = await prisma.pop.findUnique({
+    where: { id_pop: id },
+    include: { _count: { select: { olt: true, ont: true } } },
+  });
 
-  // await logActivity("POP_DELETED", `POP ${pop.nama_pop} dihapus.`);
+  if (!pop) {
+    throw new Error("POP tidak ditemukan.");
+  }
 
+  // Cek apakah POP dipakai
+  if (pop._count.olt > 0 || pop._count.ont > 0) {
+    throw new Error(
+      `POP "${pop.nama_pop}" tidak bisa dihapus karena masih dipakai oleh ${pop._count.olt} OLT dan ${pop._count.ont} ONT.`
+    );
+  }
+
+  await prisma.pop.delete({ where: { id_pop: id } });
+
+  await logActivity("POP_DELETED", `POP "${pop.nama_pop}" (${pop.kode_pop}) dihapus oleh ${session.user.nama}`);
   revalidatePath("/masterdata/pop");
 };

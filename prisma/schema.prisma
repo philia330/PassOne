@@ -8,23 +8,24 @@ datasource db {
 }
 
 model User {
-  id_user   Int      @id @default(autoincrement())
-  kode_user String   @unique
-  nama      String
-  username  String   @unique
-  password  String
-  jkl       JenisKelamin
-  foto      String?
-  role      Role
-  no_hp     String?
-  email     String?  @unique
-  status    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  baa       baa[]
-  fabSales      fab[] @relation("FabSales")
-  fabPenginput  fab[] @relation("FabPenginput")
-  baaTeknisi baateknisi[]
+  id_user           Int          @id @default(autoincrement())
+  kode_user         String       @unique
+  nama              String
+  username          String       @unique
+  password          String
+  jkl               JenisKelamin
+  foto              String?
+  role              Role
+  no_hp             String?
+  email             String?      @unique
+  status            Boolean      @default(true)
+  theme_preference  String       @default("SYSTEM") // LIGHT, DARK, SYSTEM
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  baa               baa[]
+  fabSales          fab[]        @relation("FabSales")
+  fabPenginput      fab[]        @relation("FabPenginput")
+  baaTeknisi        baateknisi[]
 
   @@map("users")
 }
@@ -41,18 +42,18 @@ model area {
 }
 
 model baa {
-  id_baa            Int         @id @default(autoincrement())
-  kode_baa          String      @unique(map: "Baa_kode_baa_key")
+  id_baa            Int          @id @default(autoincrement())
+  kode_baa          String       @unique(map: "Baa_kode_baa_key")
   tanggal_instalasi DateTime
-  status            baa_status @default(SELESAI)
+  status            baa_status   @default(SELESAI)
   catatan           String?
   foto_instalasi    String?
   id_fab            Int
   id_user           Int
   id_olt            Int
-  id_ont            Int
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime @updatedAt
+  id_ont            Int?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
   id_odp            Int
   ping_ms           Decimal?
   port_odp          Int?
@@ -61,11 +62,11 @@ model baa {
   speed_download    String?
   speed_upload      String?
   tx_power_dbm      Decimal?
-  fab               fab         @relation(fields: [id_fab], references: [id_fab], map: "Baa_id_fab_fkey")
-  odp               odp         @relation(fields: [id_odp], references: [id_odp], map: "Baa_id_odp_fkey")
-  olt               olt         @relation(fields: [id_olt], references: [id_olt], map: "Baa_id_olt_fkey")
-  ont               ont         @relation(fields: [id_ont], references: [id_ont], map: "Baa_id_ont_fkey")
-  users             User        @relation(fields: [id_user], references: [id_user], map: "Baa_id_user_fkey")
+  fab               fab          @relation(fields: [id_fab], references: [id_fab], map: "Baa_id_fab_fkey")
+  odp               odp          @relation(fields: [id_odp], references: [id_odp], map: "Baa_id_odp_fkey")
+  olt               olt          @relation(fields: [id_olt], references: [id_olt], map: "Baa_id_olt_fkey")
+  ont               ont?         @relation(fields: [id_ont], references: [id_ont], map: "Baa_id_ont_fkey")
+  users             User         @relation(fields: [id_user], references: [id_user], map: "Baa_id_user_fkey")
   baadetail         baadetail[]
   teknisiTambahan   baateknisi[]
 
@@ -128,12 +129,12 @@ model fab {
   id_user        Int
   id_penginput   Int
   createdAt      DateTime   @default(now())
-  updatedAt      DateTime @updatedAt
+  updatedAt      DateTime   @updatedAt
   baa            baa[]
   area           area       @relation(fields: [id_area], references: [id_area], map: "Fab_id_area_fkey")
   paket          paket      @relation(fields: [id_paket], references: [id_paket], map: "Fab_id_paket_fkey")
-  users          User      @relation("FabSales", fields: [id_user], references: [id_user], map: "Fab_id_user_fkey")
-  penginput      User      @relation("FabPenginput", fields: [id_penginput], references: [id_user], map: "Fab_id_penginput_fkey")
+  users          User       @relation("FabSales", fields: [id_user], references: [id_user], map: "Fab_id_user_fkey")
+  penginput      User       @relation("FabPenginput", fields: [id_penginput], references: [id_user], map: "Fab_id_penginput_fkey")
 
   @@index([id_area], map: "Fab_id_area_fkey")
   @@index([id_paket], map: "Fab_id_paket_fkey")
@@ -152,7 +153,7 @@ model material {
   kondisi       material_kondisi @default(BAIK)
   keterangan    String?
   createdAt     DateTime         @default(now())
-  updatedAt     DateTime @updatedAt
+  updatedAt     DateTime         @updatedAt
   baadetail     baadetail[]
 }
 
@@ -206,7 +207,7 @@ model ont {
   id_pop        Int
   id_odp        Int
   createdAt     DateTime   @default(now())
-  updatedAt     DateTime @updatedAt
+  updatedAt     DateTime   @updatedAt
   baa           baa[]
   odp           odp        @relation(fields: [id_odp], references: [id_odp], map: "Ont_id_odp_fkey")
   pop           pop        @relation(fields: [id_pop], references: [id_pop], map: "Ont_id_pop_fkey")
@@ -252,7 +253,7 @@ model portPon {
   id_olt     Int
   id_odp     Int?
   createdAt  DateTime       @default(now())
-  updatedAt  DateTime @updatedAt
+  updatedAt  DateTime       @updatedAt
   odp        odp?           @relation(fields: [id_odp], references: [id_odp], map: "PortPon_id_odp_fkey")
   olt        olt            @relation(fields: [id_olt], references: [id_olt], map: "PortPon_id_olt_fkey")
 
@@ -316,24 +317,35 @@ enum ActivityType {
   // Transaksi (Fahry pegang)
   FAB_CREATED
   FAB_UPDATED
+  FAB_DELETED
   BAA_CREATED
   BAA_UPDATED
+  BAA_DELETED
 
   // Master Data (dipegang tim)
   AREA_CREATED
   AREA_UPDATED
+  AREA_DELETED
   POP_CREATED
   POP_UPDATED
+  POP_DELETED
   OLT_CREATED
   OLT_UPDATED
+  OLT_DELETED
   ODP_CREATED
   ODP_UPDATED
   ONT_CREATED
   ONT_UPDATED
+  ONT_DELETED
+  ODP_CREATED
+  ODP_UPDATED
+  ODP_DELETED
   PAKET_CREATED
   PAKET_UPDATED
+  PAKET_DELETED
   MATERIAL_CREATED
   MATERIAL_UPDATED
+  MATERIAL_DELETED
 
   // Pengaturan
   SETTINGS_UPDATED

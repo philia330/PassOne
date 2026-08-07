@@ -3,15 +3,14 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import bcrypt from "bcryptjs";
 import { auth } from "@/lib/auth";
 import { Role } from "@/lib/auth/roles";
+import { optimizeImageToWebP } from "@/lib/image-utils";
 
 /**
  * ======================================
- * HELPER: Simpan foto instalasi
+ * HELPER: Simpan foto instalasi (WebP optimized)
  * ======================================
  */
 async function saveFotoInstalasi(
@@ -21,20 +20,30 @@ async function saveFotoInstalasi(
   const file = formData.get("foto_instalasi") as File | null;
 
   if (file && file.size > 0) {
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "baa");
-    await mkdir(uploadDir, { recursive: true });
-
-    const ext = file.name.split(".").pop() || "jpg";
-    const filename = `baa-${Date.now()}.${ext}`;
-    await writeFile(path.join(uploadDir, filename), buffer);
-
-    return `/uploads/baa/${filename}`;
+    return optimizeImageToWebP(file, "baa");
   }
 
   return existingPath;
+}
+
+/**
+ * ======================================
+ * HELPER: Audit Log
+ * ======================================
+ */
+async function logActivity(type: string, description: string) {
+  const session = await auth();
+  try {
+    await prisma.activityLog.create({
+      data: {
+        type: type as any,
+        description,
+        id_user: session?.user?.id_user as number,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to log activity:", error);
+  }
 }
 
 /**
@@ -104,10 +113,11 @@ function parseBaaDetails(raw: string | null): ParsedDetail[] {
   }
 }
 
-
-// ================================================================
-// HELPER: Validasi stok material cukup atau tidak
-// ================================================================
+/**
+ * ======================================
+ * HELPER: Validasi stok material cukup
+ * ======================================
+ */
 async function validateMaterialStock(details: ParsedDetail[], restoredStockMap?: Map<number, number>) {
   if (details.length === 0) return;
 
@@ -137,9 +147,11 @@ async function validateMaterialStock(details: ParsedDetail[], restoredStockMap?:
   }
 }
 
-// ================================================================
-// HELPER: Validasi port ODP tersedia
-// ================================================================
+/**
+ * ======================================
+ * HELPER: Validasi port ODP tersedia
+ * ======================================
+ */
 async function validateOdpStock(id_odp: number) {
   const odp = await prisma.odp.findUnique({ where: { id_odp } });
   if (!odp) throw new Error("ODP tidak ditemukan");
@@ -148,9 +160,11 @@ async function validateOdpStock(id_odp: number) {
   }
 }
 
-// ================================================================
-// HELPER: Sesuaikan stok_port ODP (aman untuk field nullable)
-// ================================================================
+/**
+ * ======================================
+ * HELPER: Sesuaikan stok_port ODP
+ * ======================================
+ */
 async function adjustOdpStokPort(
   tx: Prisma.TransactionClient,
   id_odp: number,
@@ -165,9 +179,11 @@ async function adjustOdpStokPort(
   }
 }
 
-// ================================================================
-// HELPER: Cek material mana yang stoknya sudah di bawah minimal
-// ================================================================
+/**
+ * ======================================
+ * HELPER: Cek material dengan stok rendah
+ * ======================================
+ */
 async function getLowStockWarnings(materialIds: number[]): Promise<string[]> {
   if (materialIds.length === 0) return [];
   const uniqueIds = [...new Set(materialIds)];
@@ -179,9 +195,11 @@ async function getLowStockWarnings(materialIds: number[]): Promise<string[]> {
     .map((m) => `${m.nama_material} tersisa ${m.stok} ${m.satuan} (minimal: ${m.minimal_stok})`);
 }
 
-// ================================================================
-// HELPER: Validasi izin Edit/Hapus BAA
-// ================================================================
+/**
+ * ======================================
+ * HELPER: Validasi izin Edit/Hapus BAA
+ * ======================================
+ */
 async function requireBaaAccess(action: "edit" | "delete", ownerId?: number) {
   const session = await auth();
 
@@ -190,7 +208,7 @@ async function requireBaaAccess(action: "edit" | "delete", ownerId?: number) {
   }
 
   const role = session.user.role;
-const isAdminOrLeader = role === Role.ADMIN || role === Role.LEADER;
+  const isAdminOrLeader = role === Role.ADMIN || role === Role.LEADER;
 
   if (action === "delete") {
     if (!isAdminOrLeader) {
@@ -199,31 +217,38 @@ const isAdminOrLeader = role === Role.ADMIN || role === Role.LEADER;
     return;
   }
 
-  // action === "edit"
   const isOwner = ownerId !== undefined && session.user.id_user === ownerId;
   if (!isAdminOrLeader && !isOwner) {
     throw new Error("Anda hanya bisa mengedit BAA yang Anda input sendiri.");
   }
 }
 
-// ================================================================
-// 1. CREATE TEKNISI BARU (dari form BAA)
-// ================================================================
+/**
+ * ======================================
+ * 1. CREATE TEKNISI BARU
+ * ======================================
+ */
 export async function createTeknisi(formData: FormData) {
-  const nama = formData.get("nama_teknisi") as string;
-  const username = formData.get("username_teknisi") as string;
-  const email = formData.get("email_teknisi") as string;
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  const nama = (formData.get("nama_teknisi") as string)?.trim();
+  const username = (formData.get("username_teknisi") as string)?.trim().toLowerCase();
+  const email = (formData.get("email_teknisi") as string)?.trim();
 
   if (!nama || !username) {
     throw new Error("Nama dan Username wajib diisi");
   }
 
+  // Cek duplikat username
   const existing = await prisma.user.findUnique({
     where: { username },
   });
 
   if (existing) {
-    throw new Error(`Username "${username}" sudah terdaftar`);
+    throw new Error(`Username "${username}" sudah terdaftar. Gunakan username lain.`);
   }
 
   const lastUser = await prisma.user.findFirst({
@@ -255,6 +280,7 @@ export async function createTeknisi(formData: FormData) {
     },
   });
 
+  await logActivity("USER_CREATED", `Teknisi "${nama}" (${username}) dibuat oleh ${session.user.nama}`);
   revalidatePath("/jaringan/baa");
 
   return {
@@ -270,11 +296,18 @@ export async function createTeknisi(formData: FormData) {
   };
 }
 
-// ================================================================
-// 2. TAMBAH TEKNISI TAMBAHAN KE BAA
-// ================================================================
+/**
+ * ======================================
+ * 2. TAMBAH TEKNISI TAMBAHAN KE BAA
+ * ======================================
+ */
 export async function addTeknisiTambahan(baaId: number, userId: number) {
-  // Cek apakah sudah ada - pakai baateknisi (huruf kecil semua)
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  // Cek apakah sudah ada
   const existing = await prisma.baateknisi.findUnique({
     where: {
       id_baa_id_user: {
@@ -305,7 +338,6 @@ export async function addTeknisiTambahan(baaId: number, userId: number) {
     },
     include: {
       users: {
-        // relasi ke User pakai users
         select: {
           id_user: true,
           nama: true,
@@ -315,15 +347,22 @@ export async function addTeknisiTambahan(baaId: number, userId: number) {
     },
   });
 
-  revalidatePath(`/jaringan/baateknisi/${baaId}`);
+  await logActivity("BAA_UPDATED", `Teknisi tambahan ditambahkan ke BAA #${baaId} oleh ${session.user.nama}`);
   revalidatePath("/jaringan/baa");
   return result;
 }
 
-// ================================================================
-// 3. HAPUS TEKNISI TAMBAHAN DARI BAA
-// ================================================================
+/**
+ * ======================================
+ * 3. HAPUS TEKNISI TAMBAHAN
+ * ======================================
+ */
 export async function removeTeknisiTambahan(id_baa_teknisi: number) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
   const baaTeknisi = await prisma.baateknisi.findUnique({
     where: { id_baa_teknisi },
     select: { id_baa: true },
@@ -333,16 +372,21 @@ export async function removeTeknisiTambahan(id_baa_teknisi: number) {
     where: { id_baa_teknisi },
   });
 
-  if (baaTeknisi) {
-    revalidatePath(`/jaringan/baateknisi/${baaTeknisi.id_baa}`);
-  }
+  await logActivity("BAA_UPDATED", `Teknisi tambahan dihapus dari BAA #${baaTeknisi?.id_baa} oleh ${session.user.nama}`);
   revalidatePath("/jaringan/baa");
 }
 
-// ================================================================
-// 4. CREATE BAA
-// ================================================================
+/**
+ * ======================================
+ * 4. CREATE BAA - dengan audit log
+ * ======================================
+ */
 export async function createBaa(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
   const tanggal_instalasi = formData.get("tanggal_instalasi") as string;
   const status = "SELESAI" as const;
   const id_fab = Number(formData.get("id_fab"));
@@ -360,7 +404,7 @@ export async function createBaa(formData: FormData) {
 
   const details = parseBaaDetails(formData.get("baa_details") as string | null);
 
-  // Validasi stok SEBELUM ada perubahan apapun di database
+  // Validasi stok SEBELUM ada perubahan
   await validateMaterialStock(details);
   await validateOdpStock(id_odp);
 
@@ -378,13 +422,13 @@ export async function createBaa(formData: FormData) {
         id_olt,
         id_odp,
         id_ont,
-port_olt: toOptionalNumber(formData.get("port_olt"), 0, 9999),
-port_odp: toOptionalNumber(formData.get("port_odp"), 0, 9999),
-rx_power_dbm: toOptionalNumber(formData.get("rx_power_dbm"), -60, 10),
-tx_power_dbm: toOptionalNumber(formData.get("tx_power_dbm"), -10, 20),
+        port_olt: toOptionalNumber(formData.get("port_olt"), 0, 9999),
+        port_odp: toOptionalNumber(formData.get("port_odp"), 0, 9999),
+        rx_power_dbm: toOptionalNumber(formData.get("rx_power_dbm"), -60, 10),
+        tx_power_dbm: toOptionalNumber(formData.get("tx_power_dbm"), -10, 20),
         speed_download: toOptionalString(formData.get("speed_download")),
         speed_upload: toOptionalString(formData.get("speed_upload")),
-ping_ms: toOptionalNumber(formData.get("ping_ms"), 0, 10000),
+        ping_ms: toOptionalNumber(formData.get("ping_ms"), 0, 10000),
         catatan: toOptionalString(formData.get("catatan")),
         foto_instalasi,
         baadetail: {
@@ -397,7 +441,7 @@ ping_ms: toOptionalNumber(formData.get("ping_ms"), 0, 10000),
       },
     });
 
-    // Kurangi stok material sesuai pemakaian
+    // Kurangi stok material
     for (const d of details) {
       await tx.material.update({
         where: { id_material: d.id_material },
@@ -405,9 +449,10 @@ ping_ms: toOptionalNumber(formData.get("ping_ms"), 0, 10000),
       });
     }
 
-    // Kurangi stok_port ODP (1 instalasi = 1 port terpakai)
+    // Kurangi stok_port ODP
     await adjustOdpStokPort(tx, id_odp, -1);
 
+    // Update status FAB ke AKTIF
     await tx.fab.update({
       where: { id_fab },
       data: { status: "AKTIF" },
@@ -416,6 +461,7 @@ ping_ms: toOptionalNumber(formData.get("ping_ms"), 0, 10000),
     return created;
   });
 
+  // Tambah teknisi tambahan
   if (teknisiTambahanIds.length > 0) {
     await prisma.baateknisi.createMany({
       data: teknisiTambahanIds.map((id_user) => ({
@@ -426,6 +472,8 @@ ping_ms: toOptionalNumber(formData.get("ping_ms"), 0, 10000),
   }
 
   await renumberKodeBaa();
+  await logActivity("BAA_CREATED", `BAA #${newBaa.kode_baa} dibuat oleh ${session.user.nama}`);
+
   revalidatePath("/jaringan/baa");
   revalidatePath("/jaringan/fab");
   revalidatePath("/masterdata/material");
@@ -435,12 +483,26 @@ ping_ms: toOptionalNumber(formData.get("ping_ms"), 0, 10000),
   return { success: true, lowStockMaterials };
 }
 
-// ================================================================
-// 5. UPDATE BAA
-// ================================================================
+/**
+ * ======================================
+ * 5. UPDATE BAA - dengan audit log
+ * ======================================
+ */
 export async function updateBaa(id: number, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  const oldBaa = await prisma.baa.findUnique({
+    where: { id_baa: id },
+    include: { baadetail: true },
+  });
+  if (!oldBaa) throw new Error("BAA tidak ditemukan");
+
+  await requireBaaAccess("edit", oldBaa.id_user);
+
   const tanggal_instalasi = formData.get("tanggal_instalasi") as string;
-  const status = "SELESAI" as const;
   const id_fab = Number(formData.get("id_fab"));
   const id_user = Number(formData.get("id_user"));
   const id_olt = Number(formData.get("id_olt"));
@@ -458,15 +520,7 @@ export async function updateBaa(id: number, formData: FormData) {
   const existingFoto = (formData.get("foto_instalasi_existing") as string | null) || null;
   const foto_instalasi = await saveFotoInstalasi(formData, existingFoto);
 
-  const oldBaa = await prisma.baa.findUnique({
-    where: { id_baa: id },
-    include: { baadetail: true },
-  });
-  if (!oldBaa) throw new Error("BAA tidak ditemukan");
-
-  await requireBaaAccess("edit", oldBaa.id_user);
-
-  // Stok yang akan "dikembalikan" dari pemakaian lama, dipakai buat validasi
+  // Stok yang akan "dikembalikan"
   const restoredStockMap = new Map<number, number>();
   for (const d of oldBaa.baadetail) {
     restoredStockMap.set(d.id_material, (restoredStockMap.get(d.id_material) ?? 0) + d.jumlah);
@@ -493,19 +547,19 @@ export async function updateBaa(id: number, formData: FormData) {
       where: { id_baa: id },
       data: {
         tanggal_instalasi: new Date(tanggal_instalasi),
-        status,
+        status: "SELESAI",
         id_fab,
         id_user,
         id_olt,
         id_odp,
         id_ont,
-port_olt: toOptionalNumber(formData.get("port_olt"), 0, 9999),
-port_odp: toOptionalNumber(formData.get("port_odp"), 0, 9999),
-rx_power_dbm: toOptionalNumber(formData.get("rx_power_dbm"), -60, 10),
-tx_power_dbm: toOptionalNumber(formData.get("tx_power_dbm"), -10, 20),
+        port_olt: toOptionalNumber(formData.get("port_olt"), 0, 9999),
+        port_odp: toOptionalNumber(formData.get("port_odp"), 0, 9999),
+        rx_power_dbm: toOptionalNumber(formData.get("rx_power_dbm"), -60, 10),
+        tx_power_dbm: toOptionalNumber(formData.get("tx_power_dbm"), -10, 20),
         speed_download: toOptionalString(formData.get("speed_download")),
         speed_upload: toOptionalString(formData.get("speed_upload")),
-ping_ms: toOptionalNumber(formData.get("ping_ms"), 0, 10000),
+        ping_ms: toOptionalNumber(formData.get("ping_ms"), 0, 10000),
         catatan: toOptionalString(formData.get("catatan")),
         foto_instalasi,
         baadetail: {
@@ -526,7 +580,7 @@ ping_ms: toOptionalNumber(formData.get("ping_ms"), 0, 10000),
       });
     }
 
-    // Kalau ODP berubah, kembalikan port lama & kurangi port baru
+    // Kalau ODP berubah
     if (oldBaa.id_odp !== id_odp) {
       await adjustOdpStokPort(tx, oldBaa.id_odp, 1);
       await adjustOdpStokPort(tx, id_odp, -1);
@@ -547,6 +601,8 @@ ping_ms: toOptionalNumber(formData.get("ping_ms"), 0, 10000),
     });
   }
 
+  await logActivity("BAA_UPDATED", `BAA #${oldBaa.kode_baa} diupdate oleh ${session.user.nama}`);
+
   revalidatePath("/jaringan/baa");
   revalidatePath("/jaringan/fab");
   revalidatePath("/masterdata/material");
@@ -556,17 +612,23 @@ ping_ms: toOptionalNumber(formData.get("ping_ms"), 0, 10000),
   return { success: true, lowStockMaterials };
 }
 
-// ================================================================
-// 6. DELETE BAA
-// ================================================================
+/**
+ * ======================================
+ * 6. DELETE BAA - dengan audit log
+ * ======================================
+ */
 export async function deleteBaa(id: number) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
   await requireBaaAccess("delete");
 
   const baa = await prisma.baa.findUnique({
     where: { id_baa: id },
     include: { baadetail: true },
   });
-  // ...sisanya tetap sama
   if (!baa) throw new Error("BAA tidak ditemukan");
 
   await prisma.$transaction(async (tx) => {
@@ -587,36 +649,18 @@ export async function deleteBaa(id: number) {
   });
 
   await renumberKodeBaa();
+  await logActivity("BAA_DELETED", `BAA #${baa.kode_baa} dihapus oleh ${session.user.nama}`);
+
   revalidatePath("/jaringan/baa");
   revalidatePath("/masterdata/material");
   revalidatePath("/masterdata/odp");
 }
-// ================================================================
-// 7. GET TEKNISI TAMBAHAN
-// ================================================================
-export async function getTeknisiTambahan(baaId: number) {
-  return await prisma.baateknisi.findMany({
-    where: { id_baa: baaId },
-    include: {
-      users: {
-        // relasi ke User pakai users
-        select: {
-          id_user: true,
-          nama: true,
-          username: true,
-          email: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-  });
-}
-// ================================================================
-// 8. GET DATA UNTUK TABEL (TAMBAHAN BARU)
-// ================================================================
 
+/**
+ * ======================================
+ * GET DATA
+ * ======================================
+ */
 export async function getBaaData() {
   return await prisma.baa.findMany({
     include: {
@@ -685,6 +729,7 @@ export async function getBaaById(id: number) {
           area: true,
           paket: true,
           users: true,
+          penginput: true,
         },
       },
       users: true,

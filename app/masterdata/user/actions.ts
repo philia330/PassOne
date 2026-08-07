@@ -9,6 +9,7 @@ import { Role, JenisKelamin } from "@prisma/client";
 import path from "path";
 import fs from "fs/promises";
 import { requireRole } from "@/lib/auth/guards";
+import { optimizeImageToWebP } from "@/lib/image-utils";
 
 const PAGE_SIZE = 10;
 
@@ -97,7 +98,7 @@ export const getUsers = async (search = "", page = 1) => {
 };
 
 // ======================================================
-// Upload Foto User
+// Upload Foto User (WebP optimized)
 // ======================================================
 
 const uploadFoto = async (file: File | null): Promise<string | null> => {
@@ -117,21 +118,7 @@ const uploadFoto = async (file: File | null): Promise<string | null> => {
     throw new Error("Ukuran foto maksimal 2MB");
   }
 
-  const extension = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-  const filename = `user-${Date.now()}.${extension}`;
-
-  const uploadDir = path.join(process.cwd(), "public", "uploads", "users");
-
-  await fs.mkdir(uploadDir, { recursive: true });
-
-  const uploadPath = path.join(uploadDir, filename);
-
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-
-  await fs.writeFile(uploadPath, buffer);
-
-  return `/uploads/users/${filename}`;
+  return optimizeImageToWebP(file, "users");
 };
 
 // ======================================================
