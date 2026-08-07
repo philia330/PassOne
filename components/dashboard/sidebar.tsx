@@ -2,18 +2,26 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { LogOut, UserCircle2, X } from "lucide-react";
 import ImagePreview from "@/components/shared/image-preview";
 
 import { navigation } from "@/app/config/navigation";
-import { RoleLabel } from "@/lib/auth/roles";
+import { RoleLabel, Role } from "@/lib/auth/roles";
 
 type Settings = {
   app_name: string;
   app_subtitle: string;
 };
+
+function isActiveNavItem(href: string, pathname: string, searchParams: URLSearchParams) {
+  const [hrefPath, hrefQuery] = href.split("?");
+  if (hrefPath !== pathname) return false;
+  if (!hrefQuery) return true;
+  const view = new URLSearchParams(hrefQuery).get("view");
+  return view ? searchParams.get("view") === view : true;
+}
 
 export default function Sidebar({
   settings,
@@ -25,6 +33,7 @@ export default function Sidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
   const [counts, setCounts] = useState<Record<string, number>>({});
 
@@ -69,7 +78,7 @@ export default function Sidebar({
       <nav className="no-scrollbar flex-1 overflow-y-auto px-4 py-6">
         {navigation.map((group) => {
           const visibleItems = role
-            ? group.items.filter((item) => item.roles.includes(role))
+            ? group.items.filter((item) => item.roles.includes(role as Role))
             : [];
 
           if (visibleItems.length === 0) return null;
@@ -83,7 +92,7 @@ export default function Sidebar({
               <div className="space-y-1">
                 {visibleItems.map((item) => {
                   const Icon = item.icon;
-                  const active = pathname === item.href;
+                  const active = isActiveNavItem(item.href, pathname, searchParams);
                   const count = counts[item.href];
 
                   return (

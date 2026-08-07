@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
-import { Router } from "lucide-react";
+import { Router, Wifi, FileText } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -17,6 +17,7 @@ import { DeleteOdpDialog } from "./components/DeleteOdpDialog";
 import { OdpMapDialog } from "./components/OdpMapDialog";
 import { OdpSearch } from "./components/OdpSearch";
 import { OdpPagination } from "./components/OdpPagination";
+import { OdpConnectionDialog } from "./components/OdpConnectionDialog";
 import { requirePageAccess } from "@/lib/auth/guards";
 
 export default async function OdpPage({
@@ -35,7 +36,7 @@ export default async function OdpPage({
   const page = Number(params.page ?? 1);
 
   const [{ data: odps, total, totalPages }, olts] = await Promise.all([
-    getOdps(search, page),
+    getOdps(search, page, true), // true = include counts
     getOlts(),
   ]);
 
@@ -58,16 +59,49 @@ export default async function OdpPage({
 
       {/* Statistik */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="rounded-3xl border-0 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-lg">
-          <CardContent className="flex items-center justify-between p-6">
+        <Card className="rounded-3xl border-0 bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-600 text-white shadow-lg shadow-purple-500/20 overflow-hidden relative">
+          <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-white/10" />
+          <div className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-white/5" />
+          <CardContent className="flex items-center justify-between p-6 relative">
             <div>
-              <p className="text-sm text-white/80">Total ODP</p>
-              <h2 className="mt-2 text-5xl font-bold">{total}</h2>
-              <p className="mt-1 text-sm text-white/80">Perangkat Terdaftar</p>
+              <p className="text-sm text-white/80 font-medium">Total ODP</p>
+              <h2 className="mt-2 text-5xl font-bold tracking-tight">{total}</h2>
+              <p className="mt-1 text-xs text-white/60">Perangkat Terdaftar</p>
             </div>
-
-            <div className="rounded-2xl bg-white/20 p-4">
+            <div className="rounded-2xl bg-white/20 p-4 backdrop-blur-sm">
               <Router className="h-8 w-8" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-sky-50 shadow-md dark:border-blue-900/30 dark:from-blue-950 dark:to-sky-950 overflow-hidden relative">
+          <div className="absolute -top-4 -right-4 h-20 w-20 rounded-full bg-blue-200/30 dark:bg-blue-800/20" />
+          <CardContent className="flex items-center justify-between p-6 relative">
+            <div>
+              <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Total ONT</p>
+              <h2 className="mt-2 text-4xl font-bold text-blue-700 dark:text-blue-300 tracking-tight">
+                {odps.reduce((sum, o) => sum + ((o as any)._count?.ont || 0), 0)}
+              </h2>
+              <p className="mt-1 text-xs text-blue-500/70 dark:text-blue-400/50">ONT Terpasang</p>
+            </div>
+            <div className="rounded-xl bg-blue-100 p-3 dark:bg-blue-900/50">
+              <Wifi className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-3xl border border-green-100 bg-gradient-to-br from-green-50 to-emerald-50 shadow-md dark:border-green-900/30 dark:from-green-950 dark:to-emerald-950 overflow-hidden relative">
+          <div className="absolute -top-4 -right-4 h-20 w-20 rounded-full bg-green-200/30 dark:bg-green-800/20" />
+          <CardContent className="flex items-center justify-between p-6 relative">
+            <div>
+              <p className="text-sm text-green-600 dark:text-green-400 font-medium">Total BAA</p>
+              <h2 className="mt-2 text-4xl font-bold text-green-700 dark:text-green-300 tracking-tight">
+                {odps.reduce((sum, o) => sum + ((o as any)._count?.baa || 0), 0)}
+              </h2>
+              <p className="mt-1 text-xs text-green-500/70 dark:text-green-400/50">BAA Terbuat</p>
+            </div>
+            <div className="rounded-xl bg-green-100 p-3 dark:bg-green-900/50">
+              <FileText className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
           </CardContent>
         </Card>
@@ -92,9 +126,9 @@ export default async function OdpPage({
                   <TableHead className="dark:text-slate-300">Nama ODP</TableHead>
                   <TableHead className="dark:text-slate-300">Alamat</TableHead>
                   <TableHead className="dark:text-slate-300">OLT</TableHead>
-                  <TableHead className="text-center dark:text-slate-300">Jumlah Port</TableHead>
-                  <TableHead className="dark:text-slate-300">Dibuat</TableHead>
-                  <TableHead className="text-right dark:text-slate-300">Aksi</TableHead>
+                  <TableHead className="text-center dark:text-slate-300">Port</TableHead>
+                  <TableHead className="text-center dark:text-slate-300">Terhubung</TableHead>
+                  <TableHead className="text-center dark:text-slate-300">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -113,15 +147,26 @@ export default async function OdpPage({
                     <TableCell className="text-center dark:text-slate-400">
                       {odp.jumlah_port ?? "-"}
                     </TableCell>
-                    <TableCell className="text-slate-500 dark:text-slate-400">
-                      {new Date(odp.createdAt).toLocaleDateString("id-ID", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                    <TableCell className="text-center">
+                      {(odp as any)._count && (
+                        <OdpConnectionDialog
+                          odpId={odp.id_odp}
+                          odpName={odp.nama_odp}
+                          trigger={
+                            <span className="cursor-pointer inline-flex items-center gap-1 text-purple-600 hover:text-purple-800 font-medium">
+                              <span>{(odp as any)._count?.ont || 0} ONT</span>
+                              <span className="text-slate-400">+</span>
+                              <span>{(odp as any)._count?.baa || 0} BAA</span>
+                            </span>
+                          }
+                        />
+                      )}
+                      {!(odp as any)._count && (
+                        <span className="text-slate-400">-</span>
+                      )}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
+                    <TableCell className="text-center">
+                      <div className="flex justify-center gap-1">
                         <OdpMapDialog
                           currentId={odp.id_odp}
                           odpNama={odp.nama_odp}
@@ -149,7 +194,7 @@ export default async function OdpPage({
                 {odps.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       className="py-10 text-center text-slate-400 dark:text-slate-500"
                     >
                       {search
@@ -209,17 +254,22 @@ export default async function OdpPage({
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   OLT: {odp.olt?.nama_olt ?? "-"}
                 </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">
-                  Jumlah Port: {odp.jumlah_port ?? "-"}
-                </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">
-                  Dibuat:{" "}
-                  {new Date(odp.createdAt).toLocaleDateString("id-ID", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </p>
+                <div className="flex items-center gap-4">
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    Port: {odp.jumlah_port ?? "-"}
+                  </p>
+                  {(odp as any)._count && (
+                    <OdpConnectionDialog
+                      odpId={odp.id_odp}
+                      odpName={odp.nama_odp}
+                      trigger={
+                        <span className="cursor-pointer text-xs text-purple-600 hover:text-purple-800 font-medium">
+                          {(odp as any)._count?.ont || 0} ONT + {(odp as any)._count?.baa || 0} BAA
+                        </span>
+                      }
+                    />
+                  )}
+                </div>
               </div>
             ))}
 

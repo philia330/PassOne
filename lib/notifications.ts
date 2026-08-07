@@ -12,8 +12,14 @@ export type NotificationItem = {
 export async function getNotifications(role: Role): Promise<NotificationItem[]> {
   const notifications: NotificationItem[] = [];
 
-  const canSeeMaterial = role === "ADMIN" || role === "LOGISTIK";
-  const canSeeFab = role === "ADMIN" || role === "SALES" || role === "LEADER" || role === "TEKNISI";
+  // ADMIN: melihat semua notifikasi
+  // SALES: hanya notifikasi FAB
+  // LOGISTIK: hanya notifikasi material
+  // LEADER/TEKNISI: FAB + material
+
+  const isAdmin = role === "ADMIN";
+  const canSeeMaterial = isAdmin || role === "LOGISTIK" || role === "LEADER" || role === "TEKNISI";
+  const canSeeFab = isAdmin || role === "SALES" || role === "LEADER" || role === "TEKNISI";
 
   if (canSeeMaterial) {
     const materials = await prisma.material.findMany({
@@ -27,7 +33,7 @@ export async function getNotifications(role: Role): Promise<NotificationItem[]> 
           id: `material-${m.id_material}`,
           title: "Stok Material Menipis",
           description: `${m.nama_material} tersisa ${m.stok} unit (minimal ${m.minimal_stok}).`,
-          href: "/masterdata/material",
+          href: "/workspace?view=material",
           severity: m.stok === 0 ? "danger" : "warning",
         });
       });
@@ -37,7 +43,7 @@ export async function getNotifications(role: Role): Promise<NotificationItem[]> 
     const fabPending = await prisma.fab.findMany({
       where: { status: "OPEN" },
       orderBy: { createdAt: "asc" },
-      take: 5,
+      // Hapus take(5) - tampilkan semua FAB pending
       select: { id_fab: true, kode_fab: true, nama_pelanggan: true, createdAt: true },
     });
 
@@ -46,12 +52,27 @@ export async function getNotifications(role: Role): Promise<NotificationItem[]> 
         id: `fab-${f.id_fab}`,
         title: "FAB Menunggu Tindak Lanjut",
         description: `${f.kode_fab} — ${f.nama_pelanggan} masih berstatus Open.`,
-        href: "/jaringan/fab",
+        href: "/workspace?view=fab",
         severity: "info",
       });
     });
   }
 
+  // Admin juga melihat statistik keseluruhan
+  if (isAdmin) {
+    const fabOpenCount = await prisma.fab.count({ where: { status: "OPEN" } });
+
+    // Tambahkan notifikasi ringkasan jika banyak
+    if (fabOpenCount > 10) {
+      notifications.push({
+        id: "fab-summary",
+        title: "Banyak FAB Pending",
+        description: `Ada ${fabOpenCount} FAB yang masih berstatus Open dan perlu ditindaklanjuti.`,
+        href: "/workspace?view=fab",
+        severity: "warning",
+      });
+    }
+  }
 
   return notifications;
 }

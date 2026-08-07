@@ -35,8 +35,8 @@ type OntData = {
   serial_number: string;
   pelanggan: string;
   status: "TERSEDIA" | "TERPASANG" | "RUSAK";
-  id_pop: number;
-  id_odp: number;
+  id_pop: number | null;
+  id_odp: number | null;
 };
 
 const statusLabel: Record<string, string> = {
@@ -66,6 +66,14 @@ export const OntFormDialog = ({
   const [odpValue, setOdpValue] = useState(
     data?.id_odp ? String(data.id_odp) : ""
   );
+
+  const handlePopChange = (value: string | null) => {
+    setPopValue(value || "");
+  };
+
+  const handleOdpChange = (value: string | null) => {
+    setOdpValue(value || "");
+  };
 
   const [serialNumber, setSerialNumber] = useState(data?.serial_number ?? "");
   const [pelanggan, setPelanggan] = useState(data?.pelanggan ?? "");
@@ -134,7 +142,7 @@ export const OntFormDialog = ({
                 POP
               </label>
 
-              <Select value={popValue} onValueChange={setPopValue}>
+              <Select value={popValue} onValueChange={handlePopChange}>
                 <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
                   <SelectValue placeholder="Pilih POP">
                     {(value: string) =>
@@ -165,7 +173,7 @@ export const OntFormDialog = ({
                 ODP
               </label>
 
-              <Select value={odpValue} onValueChange={setOdpValue}>
+              <Select value={odpValue} onValueChange={handleOdpChange}>
                 <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
                   <SelectValue placeholder="Pilih ODP">
                     {(value: string) =>

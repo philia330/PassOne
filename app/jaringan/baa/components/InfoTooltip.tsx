@@ -13,18 +13,19 @@ export function InfoTooltip({ text }: { text: string }) {
         onClick={() => setOpen((o) => !o)}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
-        className="flex h-3.5 w-3.5 items-center justify-center text-slate-400 transition-colors hover:text-purple-500"
+        className="flex h-5 w-5 items-center justify-center text-slate-400 transition-colors hover:text-purple-500 cursor-help"
+        aria-label="Informasi"
       >
-        <HelpCircle size={12} />
+        <HelpCircle size={16} />
       </button>
 
       {open && (
         <span
           role="tooltip"
-          className="absolute left-1/2 top-full z-50 mt-1.5 w-48 -translate-x-1/2 rounded-lg bg-slate-900 px-2.5 py-1.5 text-[11px] font-normal normal-case leading-snug text-white shadow-lg"
+          className="absolute left-1/2 top-full z-50 mt-2 w-64 -translate-x-1/2 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-xs font-normal normal-case leading-relaxed text-slate-200 shadow-xl"
         >
           {text}
-          <span className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-900" />
+          <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-l border-t border-slate-700 bg-slate-800" />
         </span>
       )}
     </span>

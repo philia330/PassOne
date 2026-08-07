@@ -52,55 +52,55 @@ export const navigation: NavigationGroup[] = [
     items: [
       {
         title: "Area",
-        href: "/masterdata/area",
+        href: "/workspace?view=area",
         icon: MapPinned,
         roles: [Role.ADMIN],
       },
       {
         title: "POP",
-        href: "/masterdata/pop",
+        href: "/workspace?view=pop",
         icon: Network,
         roles: [Role.ADMIN],
       },
       {
         title: "OLT",
-        href: "/masterdata/olt",
+        href: "/workspace?view=olt",
         icon: Router,
         roles: [Role.ADMIN],
       },
       {
         title: "ODP",
-        href: "/masterdata/odp",
+        href: "/workspace?view=odp",
         icon: Boxes,
         roles: [Role.ADMIN, Role.LEADER],
       },
       {
         title: "ONT",
-        href: "/masterdata/ont",
+        href: "/workspace?view=ont",
         icon: Boxes,
         roles: [Role.ADMIN, Role.LOGISTIK, Role.TEKNISI],
       },
       {
         title: "Port PON",
-        href: "/masterdata/port-pon",
+        href: "/workspace?view=portpon",
         icon: Cable,
         roles: [Role.ADMIN, Role.TEKNISI],
       },
       {
         title: "Material",
-        href: "/masterdata/material",
+        href: "/workspace?view=material",
         icon: Package,
         roles: [Role.ADMIN, Role.LOGISTIK, Role.TEKNISI],
       },
       {
         title: "Paket",
-        href: "/masterdata/paket",
+        href: "/workspace?view=paket",
         icon: PackageOpen,
         roles: [Role.ADMIN, Role.LOGISTIK],
       },
       {
         title: "User",
-        href: "/masterdata/user",
+        href: "/workspace?view=user",
         icon: Users,
         roles: [Role.ADMIN],
       },
@@ -112,13 +112,13 @@ export const navigation: NavigationGroup[] = [
     items: [
       {
         title: "FAB",
-        href: "/jaringan/fab", // ✅ tambah leading slash
+        href: "/workspace?view=fab", // ✅ tambah leading slash
         icon: FileText,
         roles: [Role.ADMIN, Role.LEADER, Role.SALES, Role.TEKNISI],
       },
       {
         title: "BAA",
-        href: "/jaringan/baa", // ✅ tambah leading slash
+        href: "/workspace?view=baa", // ✅ tambah leading slash
         icon: FileText,
         roles: [Role.ADMIN, Role.LEADER, Role.TEKNISI, Role.SALES],
       },
@@ -130,7 +130,7 @@ export const navigation: NavigationGroup[] = [
     items: [
       {
         title: "Settings",
-        href: "/settings",
+        href: "/workspace?view=settings",
         icon: Settings,
         roles: [Role.ADMIN],
       },

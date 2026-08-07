@@ -96,11 +96,11 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl">
-      <div className="overflow-hidden rounded-3xl border-2 border-slate-200 bg-white shadow-xl shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+    <div className="mx-auto w-full max-w-4xl p-4 sm:p-6">
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
 
-        {/* HEADER BANNER — gradient sudah gelap, tidak perlu diubah */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-500 px-8 py-10 text-center text-white">
+        {/* HEADER */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-500 px-6 py-8 text-center sm:px-8 sm:py-10 text-white">
           <div className="absolute -left-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
           <div className="absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
 
@@ -109,16 +109,16 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
             Pengaturan Tampilan
           </div>
 
-          <h2 className="relative mt-4 text-2xl font-extrabold">
-            Sesuaikan Identitas Aplikasi Kamu
+          <h2 className="relative mt-4 text-xl font-bold sm:text-2xl">
+            Sesuaikan Identitas Aplikasi
           </h2>
           <p className="relative mt-1 text-sm text-indigo-100">
-            Ubah logo dan teks yang tampil di dashboard & halaman login
+            Ubah logo, teks, dan tampilan aplikasi
           </p>
         </div>
 
         {/* TAB NAVIGATION */}
-        <div className="flex border-b-2 border-slate-100 px-4 dark:border-slate-800">
+        <div className="flex border-b border-slate-100 dark:border-slate-800">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -128,7 +128,7 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-4 text-sm font-semibold transition ${
+                className={`flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-3.5 text-sm font-semibold transition ${
                   active
                     ? tab.color === "indigo"
                       ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
@@ -145,14 +145,14 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
           })}
         </div>
 
-        <form action={handleSubmit} className="px-8 py-8">
+        <form action={handleSubmit} className="p-6 sm:p-8">
 
           {/* TAB 1: Identitas Aplikasi */}
           <section className={activeTab === "identitas" ? "block" : "hidden"}>
-            <div className="rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-6 dark:border-slate-800 dark:bg-slate-800/30">
-
+            <div className="space-y-6">
+              {/* Logo Section */}
               <div className="flex flex-col items-center">
-                <div className="group relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-indigo-100 to-purple-100 shadow-lg ring-4 ring-indigo-500/10 transition-all duration-300 hover:ring-indigo-500/30 dark:border-slate-900 dark:from-indigo-900/40 dark:to-purple-900/40">
+                <div className="group relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-indigo-100 to-purple-100 shadow-lg ring-4 ring-indigo-500/10 transition-all duration-300 hover:ring-indigo-500/30 dark:border-slate-800 dark:from-indigo-900/40 dark:to-purple-900/40 sm:h-28 sm:w-28">
                   {preview ? (
                     <>
                       <Image
@@ -172,7 +172,7 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
                       </button>
                     </>
                   ) : (
-                    <ImageIcon className="text-indigo-300 dark:text-indigo-600" size={32} />
+                    <ImageIcon className="text-indigo-300 dark:text-indigo-600" size={28} />
                   )}
                 </div>
 
@@ -198,26 +198,27 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
                 </p>
               </div>
 
-              <div className="mt-7 grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              {/* Text Fields */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                     Nama Aplikasi
                   </label>
                   <input
                     name="app_name"
                     defaultValue={initialSettings.app_name}
-                    className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm text-center transition focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-indigo-500/20 sm:text-left"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
                   />
                 </div>
 
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                     Subtitle Aplikasi
                   </label>
                   <input
                     name="app_subtitle"
                     defaultValue={initialSettings.app_subtitle}
-                    className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm text-center transition focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-indigo-500/20 sm:text-left"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
                   />
                 </div>
               </div>
@@ -226,28 +227,28 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
 
           {/* TAB 2: Halaman Login */}
           <section className={activeTab === "login" ? "block" : "hidden"}>
-            <div className="space-y-4 rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-6 dark:border-slate-800 dark:bg-slate-800/30">
-              <div>
-                <label className="mb-1.5 flex items-center justify-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
                   <Type size={14} className="text-fuchsia-500" />
-                  Judul
+                  Judul Login
                 </label>
                 <input
                   name="login_title"
                   defaultValue={initialSettings.login_title}
-                  className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-center text-sm transition focus:border-fuchsia-500 focus:outline-none focus:ring-4 focus:ring-fuchsia-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-fuchsia-500/20"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm transition focus:border-fuchsia-500 focus:outline-none focus:ring-2 focus:ring-fuchsia-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-fuchsia-500 dark:focus:ring-fuchsia-500/20"
                 />
               </div>
 
-              <div>
-                <label className="mb-1.5 block text-center text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Subtitle
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Subtitle Login
                 </label>
                 <textarea
                   name="login_subtitle"
                   defaultValue={initialSettings.login_subtitle}
                   rows={2}
-                  className="w-full resize-none rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-center text-sm transition focus:border-fuchsia-500 focus:outline-none focus:ring-4 focus:ring-fuchsia-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-fuchsia-500/20"
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm transition focus:border-fuchsia-500 focus:outline-none focus:ring-2 focus:ring-fuchsia-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-fuchsia-500 dark:focus:ring-fuchsia-500/20"
                 />
               </div>
             </div>
@@ -255,10 +256,9 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
 
           {/* TAB 3: Tipografi */}
           <section className={activeTab === "tipografi" ? "block" : "hidden"}>
-            <div className="space-y-5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-6 dark:border-slate-800 dark:bg-slate-800/30">
-
-              <div>
-                <label className="mb-2.5 flex items-center justify-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
                   <TextCursorInput size={14} className="text-emerald-500" />
                   Jenis Font
                 </label>
@@ -272,10 +272,10 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
                       type="button"
                       onClick={() => setSelectedFont(font.value)}
                       style={{ fontFamily: `var(--font-${font.value})` }}
-                      className={`rounded-xl border-2 px-3 py-3 text-left transition ${
+                      className={`rounded-xl border px-3 py-3 text-left transition ${
                         selectedFont === font.value
                           ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10"
-                          : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
+                          : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600"
                       }`}
                     >
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{font.label}</p>
@@ -285,8 +285,8 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
                 </div>
               </div>
 
-              <div>
-                <label className="mb-2.5 flex items-center justify-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+              <div className="space-y-3">
+                <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
                   Ukuran Teks — <span className="font-bold text-emerald-600 dark:text-emerald-400">{fontSize}px</span>
                 </label>
 
@@ -301,18 +301,17 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
                   className="w-full accent-emerald-600"
                 />
 
-                <div className="mt-1 flex justify-between text-xs text-slate-400 dark:text-slate-500">
+                <div className="flex justify-between text-xs text-slate-400 dark:text-slate-500">
                   <span>Kecil (14px)</span>
                   <span>Sedang (16px)</span>
                   <span>Besar (20px)</span>
                 </div>
               </div>
-
             </div>
           </section>
 
           {/* ACTION BAR */}
-          <div className="mt-8 flex justify-center border-t-2 border-slate-100 pt-7 dark:border-slate-800">
+          <div className="mt-8 flex justify-center border-t border-slate-100 pt-6 dark:border-slate-800">
             <button
               type="submit"
               disabled={isPending}

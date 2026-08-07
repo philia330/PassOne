@@ -13,6 +13,7 @@ import AuthProvider from "@/components/providers/session-provider";
 import { Toaster } from "sonner";
 import { getSettings } from "@/lib/settings";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { auth } from "@/lib/auth";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" });
@@ -27,6 +28,9 @@ export const metadata: Metadata = {
     template: "%s | PASSNET",
   },
   description: "Sistem Informasi Instalasi dan Monitoring ISP PASSNET",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default async function RootLayout({
@@ -34,7 +38,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const settings = await getSettings();
+  const [settings, session] = await Promise.all([
+    getSettings(),
+    auth(),
+  ]);
+
+  const initialTheme = session?.user?.theme_preference ?? "SYSTEM";
 
   return (
     <html
@@ -44,7 +53,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
     <body className="antialiased" style={{ fontFamily: `var(--font-${settings.app_font})` }}>
-      <ThemeProvider>
+      <ThemeProvider initialTheme={initialTheme}>
         <AuthProvider>
           {children}
           <Toaster position="top-right" richColors closeButton />

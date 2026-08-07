@@ -2,15 +2,55 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-// import { requireRole, requireAuth } from "@/lib/auth/guards"; // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge dari Project Lead
-// import { logActivity } from "@/lib/activity-log"; // TODO: aktifkan lagi setelah lib/activity-log.ts & auth.ts di-merge dari Project Lead
+import { auth } from "@/lib/auth";
+import { Role } from "@/lib/auth/roles";
 
 const PAGE_SIZE = 10;
 
-// ======================================================
-// Generate kode_area otomatis, mengisi celah nomor kosong
-// Format: AREA-001, AREA-002, dst
-// ======================================================
+/**
+ * ======================================
+ * HELPER: Audit Log
+ * ======================================
+ */
+async function logActivity(type: string, description: string) {
+  const session = await auth();
+  try {
+    await prisma.activityLog.create({
+      data: {
+        type: type as any,
+        description,
+        id_user: session?.user?.id_user as number,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to log activity:", error);
+  }
+}
+
+/**
+ * ======================================
+ * HELPER: Cek hak akses
+ * ======================================
+ */
+async function requireAccess() {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  const role = session.user.role;
+  if (role !== Role.ADMIN) {
+    throw new Error("Anda tidak memiliki akses untuk mengelola Area.");
+  }
+
+  return session;
+}
+
+/**
+ * ======================================
+ * Generate kode Area otomatis
+ * ======================================
+ */
 const generateKodeArea = async (): Promise<string> => {
   const areas = await prisma.area.findMany({
     select: { kode_area: true },
@@ -33,12 +73,12 @@ const generateKodeArea = async (): Promise<string> => {
   return `AREA-${String(next).padStart(3, "0")}`;
 };
 
-// ======================================================
-// Ambil data Area dengan search & pagination
-// ======================================================
+/**
+ * ======================================
+ * GET DATA
+ * ======================================
+ */
 export const getAreas = async (search: string = "", page: number = 1) => {
-  // await requireAuth(); // TODO: aktifkan setelah auth.ts di-merge — modul baca data minimal wajib login
-
   const where = search
     ? {
         OR: [
@@ -59,62 +99,131 @@ export const getAreas = async (search: string = "", page: number = 1) => {
     prisma.area.count({ where }),
   ]);
 
-  return {
-    data,
-    total,
-    totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
-  };
+  return { data, total, totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
 };
 
-// ======================================================
-// Tambah Area
-// ======================================================
+/**
+ * ======================================
+ * CREATE AREA
+ * ======================================
+ */
 export const createArea = async (formData: FormData) => {
-  // await requireRole(["ADMIN"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+  const session = await requireAccess();
 
-  const kode_area = await generateKodeArea();
-  const nama_area = formData.get("nama_area") as string;
+  const nama_area = (formData.get("nama_area") as string)?.trim();
   const keteranganRaw = formData.get("keterangan") as string;
-  const keterangan = keteranganRaw.trim() ? keteranganRaw : null;
+  const keterangan = keteranganRaw?.trim() || null;
 
-  const area = await prisma.area.create({
-    data: { kode_area, nama_area, keterangan },
+  if (!nama_area) {
+    throw new Error("Nama Area wajib diisi.");
+  }
+
+  // Cek duplikat nama area
+  const existing = await prisma.area.findFirst({
+    where: {
+      nama_area: nama_area,
+    },
   });
 
-  // await logActivity("AREA_CREATED", `Area ${area.nama_area} dibuat.`);
+  if (existing) {
+    throw new Error(`Area "${nama_area}" sudah ada. Gunakan nama yang berbeda.`);
+  }
 
+  const kode_area = await generateKodeArea();
+
+  await prisma.$transaction(async (tx) => {
+    const existingInTx = await tx.area.findFirst({
+      where: {
+        nama_area: nama_area,
+      },
+    });
+
+    if (existingInTx) {
+      throw new Error(`Area "${nama_area}" sudah ada.`);
+    }
+
+    await tx.area.create({
+      data: { kode_area, nama_area, keterangan },
+    });
+  });
+
+  await logActivity("AREA_CREATED", `Area "${nama_area}" dibuat oleh ${session.user.nama}`);
   revalidatePath("/masterdata/area");
+  revalidatePath("/workspace");
 };
 
-// ======================================================
-// Update Area
-// ======================================================
+/**
+ * ======================================
+ * UPDATE AREA
+ * ======================================
+ */
 export const updateArea = async (id: number, formData: FormData) => {
-  // await requireRole(["ADMIN"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+  const session = await requireAccess();
 
-  const nama_area = formData.get("nama_area") as string;
+  const existing = await prisma.area.findUnique({ where: { id_area: id } });
+  if (!existing) {
+    throw new Error("Area tidak ditemukan.");
+  }
+
+  const nama_area = (formData.get("nama_area") as string)?.trim();
   const keteranganRaw = formData.get("keterangan") as string;
-  const keterangan = keteranganRaw.trim() ? keteranganRaw : null;
+  const keterangan = keteranganRaw?.trim() || null;
 
-  const area = await prisma.area.update({
+  if (!nama_area) {
+    throw new Error("Nama Area wajib diisi.");
+  }
+
+  // Cek duplikat jika nama berubah
+  if (nama_area.toLowerCase() !== existing.nama_area.toLowerCase()) {
+    const duplicate = await prisma.area.findFirst({
+      where: {
+        nama_area: nama_area,
+        id_area: { not: id },
+      },
+    });
+
+    if (duplicate) {
+      throw new Error(`Area "${nama_area}" sudah ada.`);
+    }
+  }
+
+  await prisma.area.update({
     where: { id_area: id },
     data: { nama_area, keterangan },
   });
 
-  // await logActivity("AREA_UPDATED", `Area ${area.nama_area} diperbarui.`);
-
+  await logActivity("AREA_UPDATED", `Area "${nama_area}" diupdate oleh ${session.user.nama}`);
   revalidatePath("/masterdata/area");
+  revalidatePath("/workspace");
 };
 
-// ======================================================
-// Hapus Area
-// ======================================================
+/**
+ * ======================================
+ * DELETE AREA
+ * ======================================
+ */
 export const deleteArea = async (id: number) => {
-  // await requireRole(["ADMIN"]); // TODO: aktifkan setelah lib/auth/guards.ts & auth.ts di-merge
+  const session = await requireAccess();
 
-  const area = await prisma.area.delete({ where: { id_area: id } });
+  const area = await prisma.area.findUnique({
+    where: { id_area: id },
+    include: { _count: { select: { fab: true, pop: true } } },
+  });
 
-  // await logActivity("AREA_DELETED", `Area ${area.nama_area} dihapus.`);
+  if (!area) {
+    throw new Error("Area tidak ditemukan.");
+  }
 
+  // Cek apakah Area dipakai
+  if (area._count.fab > 0 || area._count.pop > 0) {
+    throw new Error(
+      `Area "${area.nama_area}" tidak bisa dihapus karena masih dipakai oleh ${area._count.pop} POP dan ${area._count.fab} FAB.`
+    );
+  }
+
+  await prisma.area.delete({ where: { id_area: id } });
+
+  await logActivity("AREA_DELETED", `Area "${area.nama_area}" dihapus oleh ${session.user.nama}`);
   revalidatePath("/masterdata/area");
+  revalidatePath("/workspace");
 };

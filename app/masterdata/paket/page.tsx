@@ -1,58 +1,56 @@
-import { Router } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/card";
-import { PaketDialog } from "@/app/masterdata/paket/components/PaketDialog";
-import { PaketTable } from "@/app/masterdata/paket/components/PaketTable";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Card, CardContent } from "@/components/ui/card";
+import { Package } from "lucide-react";
+import { getPakets, getPaketTotal } from "./actions";
+import { PaketSortableTable } from "./components/PaketSortableTable";
 import { requirePageAccess } from "@/lib/auth/guards";
 
-export default async function PaketPage() {
+export default async function PaketPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    search?: string;
+    page?: string;
+  }>;
+}) {
   const session = await requirePageAccess(["ADMIN", "LOGISTIK"]);
 
-  const rawPaket = await prisma.paket.findMany({ orderBy: { createdAt: "desc" } });
+  const params = (await searchParams) ?? {};
+  const search = params.search ?? "";
+  const page = Number(params.page ?? 1);
 
-  const paket = rawPaket.map((item) => ({
-    ...item,
-    harga: Number(item.harga),
-  }));
+  const [{ data: paket, total, totalPages }, totalAll] = await Promise.all([
+    getPakets(search, page),
+    getPaketTotal(),
+  ]);
 
-  const kodeOtomatis = `PKT${String(paket.length + 1).padStart(3, "0")}`;
+  const kodeOtomatis = `PKT${String(totalAll + 1).padStart(3, "0")}`;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans antialiased relative overflow-hidden">
-      {/* Dekorasi blur gradient di background — subtle depth, tetap dalam palet purple/fuchsia/sky */}
-      <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-purple-200/40 blur-3xl" />
-      <div className="pointer-events-none absolute top-40 -right-24 h-80 w-80 rounded-full bg-sky-200/40 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-fuchsia-200/30 blur-3xl" />
+    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+      <PageHeader
+        title="Data Paket Internet"
+        description="Kelola seluruh data paket internet PASSNET"
+      />
 
-      <div className="relative p-6 space-y-6 max-w-7xl mx-auto">
-
-        {/* Header — dipaksa flex-row karena Card default-nya flex-col */}
-        <Card className="flex-row relative overflow-hidden rounded-3xl shadow-xl border bg-white p-6 flex items-center justify-between">
-          {/* Aksen strip gradient di tepi atas card */}
-          <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500" />
-
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-200">
-              <Router className="text-white" size={22} />
-            </div>
+      {/* Statistik */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="rounded-3xl border-0 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-lg">
+          <CardContent className="flex items-center justify-between p-6">
             <div>
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight">Data Paket Internet</h1>
-              <p className="text-sm text-slate-500 font-medium">Kelola seluruh data paket internet PASSNET</p>
+              <p className="text-sm text-white/80">Total Paket</p>
+              <h2 className="mt-2 text-5xl font-bold">{total}</h2>
+              <p className="mt-1 text-sm text-white/80">Paket Terdaftar</p>
             </div>
-          </div>
 
-          <PaketDialog mode="create" kodeOtomatis={kodeOtomatis} />
+            <div className="rounded-2xl bg-white/20 p-4">
+              <Package className="h-8 w-8" />
+            </div>
+          </CardContent>
         </Card>
-
-        {/* Kartu statistik (Paket Aktif & Terakhir Update) dihapus.
-            Total Paket sekarang ditampilkan di PaketTable, nempel di sebelah pagination. */}
-
-        <PaketTable data={paket} />
-
-        <p className="text-center text-xs text-slate-400 pt-2">
-          © 2025 PASSNET • Sistem Manajemen Paket Internet
-        </p>
       </div>
+
+      <PaketSortableTable initialData={paket} kodeOtomatis={kodeOtomatis} defaultValue={search} />
     </div>
   );
 }

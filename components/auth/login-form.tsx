@@ -203,6 +203,7 @@ export default function LoginForm({ settings }: { settings: Settings }) {
               to-sky-500
               text-lg
               font-semibold
+              text-white
               disabled:opacity-70
             "
           >

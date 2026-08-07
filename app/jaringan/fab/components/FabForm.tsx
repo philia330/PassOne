@@ -19,6 +19,7 @@ import {
   Loader2,
   Search,
   ImageIcon,
+  Navigation,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,7 +45,7 @@ import type {
 const LocationPickerMap = dynamic(() => import("@/components/shared/LocationPickerMap"), {
   ssr: false,
   loading: () => (
-    <div className="h-[220px] w-full rounded-2xl bg-slate-100 animate-pulse flex items-center justify-center text-xs text-slate-400">
+    <div className="h-[220px] w-full rounded-2xl bg-slate-100 animate-pulse flex items-center justify-center text-xs text-slate-400 dark:bg-slate-800 dark:text-slate-500">
       Memuat peta...
     </div>
   ),
@@ -104,13 +105,17 @@ export const FabForm = ({
   // ==========================================================
   const [alamat, setAlamat] = useState(defaultValues?.alamat ?? "");
   const [fotoPreview, setFotoPreview] = useState<string | null>(defaultValues?.foto ?? null);
+  const [fotoFileName, setFotoFileName] = useState<string | null>(null);
+  const fotoInputRef = useRef<HTMLInputElement>(null);
 
-    function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-      const file = e.target.files?.[0];
-      if (file) {
-        setFotoPreview(URL.createObjectURL(file));
-      }
+  function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFotoPreview(URL.createObjectURL(file));
+      setFotoFileName(file.name);
     }
+  }
+
   const [latitude, setLatitude] = useState(
     defaultValues?.latitude !== undefined ? String(defaultValues.latitude) : ""
   );
@@ -120,6 +125,8 @@ export const FabForm = ({
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
   const [mapExpanded, setMapExpanded] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
 
   // Kolom pencarian TERPISAH khusus di section "Lokasi Map" -- tidak
   // menimpa isi field Alamat Lengkap, cuma menggeser peta + lat/long.
@@ -236,6 +243,48 @@ export const FabForm = ({
     return sales?.nama || "Pilih sales";
   };
 
+  // Fungsi untuk mendapatkan lokasi GPS saat ini
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setGpsError("Geolocation tidak didukung browser ini.");
+      return;
+    }
+
+    setGpsLoading(true);
+    setGpsError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setLatitude(latitude.toFixed(6));
+        setLongitude(longitude.toFixed(6));
+        setGpsLoading(false);
+        setGeocodeError(null);
+      },
+      (error) => {
+        setGpsLoading(false);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setGpsError("Izin lokasi ditolak. Aktifkan di pengaturan browser.");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setGpsError("Lokasi tidak tersedia.");
+            break;
+          case error.TIMEOUT:
+            setGpsError("Waktu habis mencari lokasi.");
+            break;
+          default:
+            setGpsError("Gagal mendapatkan lokasi.");
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
+
   return (
     // FIX: scroll HANYA di DialogContent (components/ui/dialog.tsx), tidak
     // lagi di sini -- sebelumnya dua-duanya punya overflow-y-auto sendiri,
@@ -243,51 +292,89 @@ export const FabForm = ({
     // dipakai supaya ring fokus ungu tidak kepotong.
     <div className="grid grid-cols-2 gap-5 p-1.5 -m-1.5">
       <div className="col-span-2 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <Tag size={13} className="text-purple-500" /> Kode FAB
         </Label>
         <div className="relative">
           <Input
             value={defaultValues?.kode_fab ?? kodeOtomatis ?? ""}
             readOnly
-            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-mono font-semibold text-slate-500 cursor-not-allowed pr-10"
+            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-mono font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
           />
-          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
         </div>
-        <p className="text-xs text-slate-400">Dibuat otomatis, tidak bisa diubah manual</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500">Dibuat otomatis, tidak bisa diubah manual</p>
       </div>
 
+      {/* ================================================ */}
+      {/* FOTO DEPAN RUMAH -- dropzone custom, ganti input file bawaan browser */}
+      {/* ================================================ */}
       <div className="col-span-2 space-y-2">
-  <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-    <ImageIcon size={13} className="text-purple-500" /> Foto Depan Rumah
-  </Label>
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <ImageIcon size={13} className="text-purple-500" /> Foto Depan Rumah
+        </Label>
 
-  {fotoPreview && (
-    <img
-      src={fotoPreview}
-      alt="Preview foto depan rumah"
-      className="mb-2 h-32 w-full rounded-2xl border border-slate-200 object-cover"
-    />
-  )}
+        {/* Input asli disembunyikan -- semua interaksi lewat dropzone custom di bawah */}
+        <input
+          ref={fotoInputRef}
+          name="foto"
+          type="file"
+          accept="image/*"
+          onChange={handleFotoChange}
+          required={!defaultValues?.foto}
+          className="sr-only"
+        />
 
-  <Input
-    name="foto"
-    type="file"
-    accept="image/*"
-    onChange={handleFotoChange}
-    required={!defaultValues?.foto}
-    className="h-12 rounded-2xl border-slate-200 bg-white file:mr-3 file:h-full file:rounded-xl file:border-0 file:bg-slate-100 file:px-3 file:text-sm file:font-medium focus-visible:ring-purple-500"
-  />
+        <button
+          type="button"
+          onClick={() => fotoInputRef.current?.click()}
+          className="group relative w-full overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-purple-300 hover:bg-purple-50/50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-purple-700 dark:hover:bg-purple-500/10"
+        >
+          {fotoPreview ? (
+            <div className="relative">
+              <img
+                src={fotoPreview}
+                alt="Preview foto depan rumah"
+                className="h-40 w-full object-cover"
+              />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100">
+                <span className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                  Ganti Foto
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-2 px-4 py-8">
+              <div className="rounded-full bg-purple-100 p-3 dark:bg-purple-500/20">
+                <ImageIcon size={20} className="text-purple-600 dark:text-purple-400" />
+              </div>
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                Klik untuk pilih foto
+              </p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                JPG, PNG — maks. 5MB
+              </p>
+            </div>
+          )}
+        </button>
 
-  {defaultValues?.foto && (
-    <p className="text-xs text-slate-400">Kosongkan kalau tidak ingin mengganti foto.</p>
-  )}
-</div>
+        {fotoFileName && (
+          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+            File dipilih: <span className="font-medium">{fotoFileName}</span>
+          </p>
+        )}
+
+        {defaultValues?.foto && !fotoFileName && (
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            Kosongkan kalau tidak ingin mengganti foto.
+          </p>
+        )}
+      </div>
 
       <div className="col-span-2 space-y-2">
         <Label
           htmlFor="nama_pelanggan"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <User size={13} className="text-purple-500" /> Nama Pelanggan
         </Label>
@@ -296,7 +383,7 @@ export const FabForm = ({
           name="nama_pelanggan"
           placeholder="Masukkan nama pelanggan"
           defaultValue={defaultValues?.nama_pelanggan}
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           required
         />
       </div>
@@ -304,7 +391,7 @@ export const FabForm = ({
       <div className="space-y-2">
         <Label
           htmlFor="nik"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <IdCard size={13} className="text-purple-500" /> NIK
         </Label>
@@ -314,7 +401,7 @@ export const FabForm = ({
           placeholder="Masukkan 16 digit NIK"
           maxLength={16}
           defaultValue={defaultValues?.nik}
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           required
         />
       </div>
@@ -322,7 +409,7 @@ export const FabForm = ({
       <div className="space-y-2">
         <Label
           htmlFor="no_hp"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <Phone size={13} className="text-purple-500" /> No. HP
         </Label>
@@ -331,7 +418,7 @@ export const FabForm = ({
           name="no_hp"
           placeholder="08xxxxxxxxxx"
           defaultValue={defaultValues?.no_hp}
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           required
         />
       </div>
@@ -339,7 +426,7 @@ export const FabForm = ({
       <div className="col-span-2 space-y-2">
         <Label
           htmlFor="alamat"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <MapPin size={13} className="text-purple-500" /> Alamat Lengkap
         </Label>
@@ -350,17 +437,17 @@ export const FabForm = ({
           placeholder="Masukkan alamat lengkap pelanggan"
           value={alamat}
           onChange={(e) => setAlamat(e.target.value)}
-          className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 resize-none"
+          className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 resize-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           required
         />
         {geocoding && (
-          <p className="flex items-center gap-1.5 text-xs text-purple-600">
+          <p className="flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400">
             <Loader2 size={12} className="animate-spin" /> Mencari lokasi dari alamat...
           </p>
         )}
         {/* ✅ Perbaikan: Tampilkan error hanya jika ada dan alamat cukup panjang */}
         {!geocoding && geocodeError && alamat.trim().length >= 8 && (
-          <p className="text-xs text-amber-600">{geocodeError}</p>
+          <p className="text-xs text-amber-600 dark:text-amber-400">{geocodeError}</p>
         )}
       </div>
 
@@ -369,11 +456,11 @@ export const FabForm = ({
       {/* ke sini, persis sesudah Alamat Lengkap             */}
       {/* ================================================ */}
       <div className="space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <Building2 size={13} className="text-purple-500" /> Area
         </Label>
         <Select value={idArea} onValueChange={(v) => setIdArea(v ?? "")}>
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
+          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
             <SelectValue placeholder="Pilih area">
               {idArea ? getAreaName(idArea) : "Pilih area"}
             </SelectValue>
@@ -390,11 +477,11 @@ export const FabForm = ({
       </div>
 
       <div className="space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <Package size={13} className="text-purple-500" /> Paket Internet
         </Label>
         <Select value={idPaket} onValueChange={(v) => setIdPaket(v ?? "")}>
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
+          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
             <SelectValue placeholder="Pilih paket">
               {idPaket ? getPaketName(idPaket) : "Pilih paket"}
             </SelectValue>
@@ -414,13 +501,13 @@ export const FabForm = ({
           - TEKNISI: field jadi "Referral", tetap dropdown pilih sales
           - selain itu (Sales/Admin/Leader/Logistik): dikunci ke nama sendiri */}
       <div className="space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <UserCog size={13} className="text-purple-500" /> {isTeknisi ? "Referral" : "Sales"}
         </Label>
 
         {isTeknisi ? (
           <Select value={idUser} onValueChange={(v) => setIdUser(v ?? "")}>
-            <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full">
+            <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
               <SelectValue placeholder="Pilih sales referral">
                 {idUser ? getSalesName(idUser) : "Pilih sales referral"}
               </SelectValue>
@@ -438,82 +525,107 @@ export const FabForm = ({
             <Input
               value={currentUser.nama}
               readOnly
-              className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10"
+              className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
             />
-            <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
           </div>
         )}
-        
+
         {isTeknisi && (
-  <div className="col-span-2 space-y-2">
-    <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-      <User size={13} className="text-purple-500" /> Nama Teknisi (Penginput)
-    </Label>
-    <div className="relative">
-      <Input
-        value={currentUser.nama}
-        readOnly
-        className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10"
-      />
-      <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
-    </div>
-    <p className="text-xs text-slate-400">Tercatat otomatis sebagai yang menginput data ini.</p>
-  </div>
-)}
+          <div className="col-span-2 space-y-2">
+            <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <User size={13} className="text-purple-500" /> Nama Teknisi (Penginput)
+            </Label>
+            <div className="relative">
+              <Input
+                value={currentUser.nama}
+                readOnly
+                className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+              />
+              <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+            </div>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Tercatat otomatis sebagai yang menginput data ini.</p>
+          </div>
+        )}
 
         <input type="hidden" name="id_user" value={idUser} required />
       </div>
 
-        <div className="space-y-2">
-          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-            <Activity size={13} className="text-purple-500" /> Status
-          </Label>
-          <div className="relative">
-            <Input
-              value={STATUS_LABEL[status]}
-              readOnly
-              className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10"
-            />
-            <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
-          </div>
-          <p className="text-xs text-slate-400">
-            Otomatis berubah jadi Aktif setelah BAA instalasi diselesaikan
-          </p>
-          <input type="hidden" name="status" value={status} />
+      <div className="space-y-2">
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <Activity size={13} className="text-purple-500" /> Status
+        </Label>
+        <div className="relative">
+          <Input
+            value={STATUS_LABEL[status]}
+            readOnly
+            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+          />
+          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
         </div>
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          Otomatis berubah jadi Aktif setelah BAA instalasi diselesaikan
+        </p>
+        <input type="hidden" name="status" value={status} />
+      </div>
 
       {/* ================================================ */}
       {/* LOKASI MAP -- label section, di atas peta */}
       {/* ================================================ */}
       <div className="col-span-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-          <MapPin size={13} className="text-purple-500" /> Lokasi Map
-        </Label>
-        <p className="text-xs text-slate-400 mt-1 mb-2">
+        <div className="flex items-center justify-between">
+          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <MapPin size={13} className="text-purple-500" /> Lokasi Map
+          </Label>
+          {/* Tombol GPS untuk auto-detect lokasi */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={getCurrentLocation}
+            disabled={gpsLoading}
+            className="rounded-xl h-8 text-xs border-cyan-200 text-cyan-700 hover:bg-cyan-50 gap-1.5 dark:border-cyan-800 dark:text-cyan-400 dark:hover:bg-cyan-500/10"
+          >
+            {gpsLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Navigation className="h-3.5 w-3.5" />
+            )}
+            {gpsLoading ? "Mencari..." : "GPS Saya"}
+          </Button>
+        </div>
+        <p className="text-xs text-slate-400 mt-1 mb-2 dark:text-slate-500">
           Terisi otomatis dari Alamat Lengkap. Atau ketik nama daerah/alamat di kolom ini khusus
-          buat geser peta, bisa juga digeser/klik langsung di peta di bawah, atau diubah manual
-          lewat kolom Latitude/Longitude.
+          buat geser peta, bisa juga digeser/klik langsung di peta di bawah, atau gunakan tombol GPS di atas.
         </p>
-        <div className="relative">
-          <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+        {(gpsError || gpsLoading === false && hasValidCoords && latitude && longitude) && !geocodeError && (
+          <p className={`text-xs mt-1 ${gpsError ? "text-red-500 dark:text-red-400" : "text-emerald-500 dark:text-emerald-400"}`}>
+            {gpsError || `Lokasi tersimpan: ${latitude}, ${longitude}`}
+          </p>
+        )}
+        {gpsError && (
+          <p className="text-xs text-red-500 mt-1 dark:text-red-400">{gpsError}</p>
+        )}
+        <div className="relative mt-2">
+          <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
           <Input
             value={mapSearchQuery}
             onChange={(e) => setMapSearchQuery(e.target.value)}
             placeholder="Cari daerah atau alamat untuk menggeser peta"
-            className="rounded-2xl h-11 pl-10 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+            className="rounded-2xl h-11 pl-10 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           />
           {mapSearching && (
             <Loader2
               size={14}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-purple-500 animate-spin"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-purple-500 animate-spin dark:text-purple-400"
             />
           )}
         </div>
         {/* ✅ Perbaikan: Conditional rendering untuk error map search */}
         {shouldShowMapError ? (
-          <p className="text-xs text-yellow-600 mt-1">Minimal 3 karakter untuk mencari lokasi</p>
+          <p className="text-xs text-yellow-600 mt-1 dark:text-yellow-400">Minimal 3 karakter untuk mencari lokasi</p>
         ) : mapSearchError && mapSearchQuery.trim().length >= 3 ? (
-          <p className="text-xs text-amber-600 mt-1">{mapSearchError}</p>
+          <p className="text-xs text-amber-600 mt-1 dark:text-amber-400">{mapSearchError}</p>
         ) : null}
       </div>
 
@@ -522,7 +634,7 @@ export const FabForm = ({
           BAWAH peta ini (bukan di atas lagi). */}
       <div className="col-span-2 space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 dark:text-slate-500">
             {hasValidCoords
               ? "Klik atau geser pin untuk ubah titik lokasi"
               : "Klik atau geser pin di peta untuk pilih lokasi pelanggan"}
@@ -532,7 +644,7 @@ export const FabForm = ({
             variant="outline"
             size="sm"
             onClick={() => setMapExpanded((v) => !v)}
-            className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+            className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
           >
             {mapExpanded ? (
               <>
@@ -563,7 +675,7 @@ export const FabForm = ({
       <div className="space-y-2">
         <Label
           htmlFor="latitude"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <Locate size={13} className="text-purple-500" /> Latitude
         </Label>
@@ -575,7 +687,7 @@ export const FabForm = ({
           placeholder="Terisi otomatis dari alamat/peta"
           value={latitude}
           onChange={(e) => setLatitude(e.target.value)}
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           required
         />
       </div>
@@ -583,7 +695,7 @@ export const FabForm = ({
       <div className="space-y-2">
         <Label
           htmlFor="longitude"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
         >
           <Locate size={13} className="text-purple-500" /> Longitude
         </Label>
@@ -595,7 +707,7 @@ export const FabForm = ({
           placeholder="Terisi otomatis dari alamat/peta"
           value={longitude}
           onChange={(e) => setLongitude(e.target.value)}
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
+          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           required
         />
       </div>

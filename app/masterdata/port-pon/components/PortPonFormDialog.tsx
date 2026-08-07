@@ -77,6 +77,14 @@ export const PortPonFormDialog = ({
     }
   }, [open, mode, data]);
 
+  const handleOltChange = (value: string | null) => {
+    setOltValue(value || "");
+  };
+
+  const handleOdpChange = (value: string | null) => {
+    setOdpValue(value || "");
+  };
+
   const handleSubmit = async (formData: FormData) => {
     setIsSubmitting(true);
 
@@ -141,7 +149,7 @@ export const PortPonFormDialog = ({
                 OLT
               </label>
 
-              <Select value={oltValue} onValueChange={setOltValue}>
+              <Select value={oltValue} onValueChange={handleOltChange}>
                 <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
                   <SelectValue placeholder="Pilih OLT">
                     {(value: string) =>
@@ -175,7 +183,7 @@ export const PortPonFormDialog = ({
                 </span>
               </label>
 
-              <Select value={odpValue} onValueChange={setOdpValue}>
+              <Select value={odpValue} onValueChange={handleOdpChange}>
                 <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
                   <SelectValue placeholder="Pilih ODP (opsional)">
                     {(value: string) =>

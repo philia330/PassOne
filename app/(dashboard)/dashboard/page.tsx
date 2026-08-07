@@ -2,11 +2,15 @@ import Link from "next/link";
 import NetworkMapLoader from "@/components/dashboard/network-map-loader";
 import {
   Users,
- FileText,
+  FileText,
   ClipboardCheck,
   Package,
   ArrowUpRight,
   Sparkles,
+  Boxes,
+  Router,
+  PackageOpen,
+  Wifi,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -26,12 +30,17 @@ import SlaAlertPanel from "@/components/dashboard/sla-alert-panel";
 export default async function DashboardPage() {
   const session = await auth();
   const isAdmin = session?.user?.role === "ADMIN";
+  const role = session?.user?.role;
 
   const [
     totalUser,
     totalFab,
     totalBaa,
     totalMaterial,
+    totalOdp,
+    totalOlt,
+    totalOnt,
+    totalPaket,
     recentActivities,
     monthlyTrend,
     statusBreakdown,
@@ -43,6 +52,10 @@ export default async function DashboardPage() {
     prisma.fab.count(),
     prisma.baa.count(),
     prisma.material.count(),
+    prisma.odp.count(),
+    prisma.olt.count(),
+    prisma.ont.count(),
+    prisma.paket.count(),
     prisma.activityLog.findMany({
       orderBy: { createdAt: "desc" },
       take: 5,
@@ -54,52 +67,88 @@ export default async function DashboardPage() {
     getPeriodComparison(),
   ]);
 
+  // Tentukan card apa saja yang muncul berdasarkan role
+  const canSeeAll = isAdmin;
+  const canSeeSales = isAdmin || role === "SALES" || role === "LEADER" || role === "TEKNISI";
+  const canSeeTeknisi = isAdmin || role === "TEKNISI" || role === "LEADER";
+  const canSeeMasterData = isAdmin || role === "LEADER";
+
   const statistics = [
-    {
+    // Admin & Leader bisa lihat semua statistik
+    canSeeAll && {
       title: "Total User",
       value: totalUser,
       icon: Users,
       color: "bg-blue-500",
     },
-    {
+    canSeeSales && {
       title: "Total FAB",
       value: totalFab,
       icon: FileText,
       color: "bg-emerald-500",
     },
-    {
+    canSeeTeknisi && {
       title: "Total BAA",
       value: totalBaa,
       icon: ClipboardCheck,
       color: "bg-amber-500",
     },
-    {
+    canSeeMasterData && {
       title: "Material",
       value: totalMaterial,
       icon: Package,
       color: "bg-purple-500",
     },
-  ];
+    canSeeMasterData && {
+      title: "Total ODP",
+      value: totalOdp,
+      icon: Boxes,
+      color: "bg-orange-500",
+    },
+    canSeeMasterData && {
+      title: "Total OLT",
+      value: totalOlt,
+      icon: Router,
+      color: "bg-cyan-500",
+    },
+    canSeeMasterData && {
+      title: "Total ONT",
+      value: totalOnt,
+      icon: Wifi,
+      color: "bg-pink-500",
+    },
+    canSeeMasterData && {
+      title: "Total Paket",
+      value: totalPaket,
+      icon: PackageOpen,
+      color: "bg-indigo-500",
+    },
+  ].filter(Boolean) as {
+    title: string;
+    value: number;
+    icon: React.ComponentType<{ className?: string }>;
+    color: string;
+  }[];
 
   return (
     <div className="space-y-6 lg:space-y-8">
       {/* Statistik */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:gap-6 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
         {statistics.map((item) => {
           const Icon = item.icon;
 
           return (
             <div
               key={item.title}
-              className="rounded-2xl bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:bg-slate-900 dark:shadow-none sm:p-6"
+              className="rounded-2xl bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:bg-slate-900 dark:shadow-none sm:p-4"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
                     {item.title}
                   </p>
 
-                  <h2 className="mt-1 text-2xl font-bold dark:text-white sm:mt-2 sm:text-4xl">
+                  <h2 className="mt-1 text-xl font-bold dark:text-white sm:text-2xl lg:text-3xl">
                     {item.value}
                   </h2>
                 </div>

@@ -2,8 +2,8 @@ import L from "leaflet";
 import type { NetworkPoint } from "@/lib/network-points";
 
 export const FAB_STATUS_COLORS: Record<string, string> = {
-  OPEN:  "#6ad2ff",   // merah — urgensi, perlu perhatian
-  AKTIF: "#09ff01",   // hijau — sukses, selesai
+  OPEN:  "#f97316",   // oranye — masih perlu ditindaklanjuti
+  AKTIF: "#10b981",   // hijau — sudah aktif/selesai
 };
 
 export const CABLE_COLOR: Record<string, string> = {
@@ -18,8 +18,6 @@ export const TYPE_COLOR: Record<NetworkPoint["type"], string> = {
   ODP: "#f59e0b",
   FAB: "#10b981",
 };
-
-// ...sisanya (TYPE_ICON_SVG, createMarkerIcon) tetap sama, tidak perlu diubah
 
 // SVG path sederhana per tipe — bentuk beda-beda biar gampang dibedakan sekilas
 const TYPE_ICON_SVG: Record<NetworkPoint["type"], string> = {

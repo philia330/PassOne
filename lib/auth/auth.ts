@@ -51,6 +51,8 @@ export const {
 
         token.foto = user.foto;
 
+        token.theme_preference = user.theme_preference ?? "SYSTEM";
+
         // Set expiry manual berdasarkan rememberMe
         const rememberMe = (user as { rememberMe?: boolean }).rememberMe ?? false;
 
@@ -77,6 +79,8 @@ export const {
         session.user.role = token.role as Role;
 
         session.user.foto = token.foto as string | null;
+
+        session.user.theme_preference = token.theme_preference as string ?? "SYSTEM";
 
       }
 

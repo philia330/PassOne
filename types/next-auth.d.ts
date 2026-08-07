@@ -14,6 +14,7 @@ declare module "next-auth" {
         | "TEKNISI"
         | "LOGISTIK";
       foto?: string | null;
+      theme_preference?: string;
     } & DefaultSession["user"];
   }
 
@@ -29,7 +30,8 @@ declare module "next-auth" {
       | "TEKNISI"
       | "LOGISTIK";
     foto?: string | null;
-    rememberMe?: boolean; // ⬅️ ditambahkan
+    theme_preference?: string;
+    rememberMe?: boolean;
   }
 }
 
@@ -46,6 +48,7 @@ declare module "next-auth/jwt" {
       | "TEKNISI"
       | "LOGISTIK";
     foto?: string | null;
-    exp?: number; // ⬅️ ditambahkan, supaya token.exp = ... di callback jwt tidak error
+    theme_preference?: string;
+    exp?: number;
   }
 }

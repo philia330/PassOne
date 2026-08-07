@@ -57,7 +57,7 @@ export interface BaaData {
   id_user: number;           // Teknisi Utama
   id_olt: number;
   id_odp: number;
-  id_ont: number;
+  id_ont: number | null;
   
   port_olt: number | null;
   port_odp: number | null;
@@ -92,7 +92,7 @@ export interface BaaData {
   ont?: {
     id_ont: number;
     serial_number: string;
-  };
+  } | null;
   
   // ================================================================
   // TEKNISI TAMBAHAN

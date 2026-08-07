@@ -39,7 +39,7 @@ export const PaketDialog = ({ mode, paket, kodeOtomatis }: PaketDialogProps) => 
         }
         setOpen(false);
         router.refresh();
-        router.push("/masterdata/paket");
+        router.push("/workspace?view=paket");
       } catch (err: unknown) {
         const error = err as Error;
         setErrorMsg(error.message ?? "Terjadi kesalahan, coba lagi.");
@@ -55,8 +55,8 @@ export const PaketDialog = ({ mode, paket, kodeOtomatis }: PaketDialogProps) => 
             <Plus className="mr-2 h-4 w-4" /> Tambah Paket
           </Button>
         ) : (
-          <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto">
-            <Pencil className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="cursor-pointer rounded-xl">
+            <Pencil className="h-4 w-4 text-slate-500 dark:text-slate-400" />
           </Button>
         )}
       </DialogTrigger>
@@ -82,13 +82,13 @@ export const PaketDialog = ({ mode, paket, kodeOtomatis }: PaketDialogProps) => 
             <PaketForm defaultValues={paket} kodeOtomatis={kodeOtomatis} />
 
             {errorMsg && (
-              <p className="mt-3 text-sm font-medium text-red-600 bg-red-50 rounded-xl px-3 py-2">
+              <p className="mt-3 text-sm font-medium text-red-600 bg-red-50 rounded-xl px-3 py-2 dark:text-red-400 dark:bg-red-500/10">
                 {errorMsg}
               </p>
             )}
           </div>
 
-          <DialogFooter className="flex-shrink-0 border-t border-slate-100 pt-4 pb-4 sm:pb-0 sm:border-t-0 sm:pt-6">
+          <DialogFooter className="flex-shrink-0 border-t border-slate-100 pt-4 pb-4 sm:pb-0 sm:border-t-0 sm:pt-6 dark:border-slate-800">
             <Button
               type="button"
               variant="outline"
