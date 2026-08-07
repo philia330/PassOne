@@ -24,13 +24,10 @@ const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
   title: {
-    default: "PASSNET",
-    template: "%s | PASSNET",
+    default: "PASSONE",
+    template: "%s | PASSONE",
   },
-  description: "Sistem Informasi Instalasi dan Monitoring ISP PASSNET",
-  icons: {
-    icon: "/favicon.svg",
-  },
+  description: "Sistem Informasi Instalasi dan Monitoring ISP PASSONE",
 };
 
 export default async function RootLayout({
