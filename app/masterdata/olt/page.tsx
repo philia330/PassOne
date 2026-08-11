@@ -25,6 +25,8 @@ export default async function OltPage({
     getPops(),
   ]);
 
+  const currentRole = session.user.role;
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
       <PageHeader
@@ -47,7 +49,12 @@ export default async function OltPage({
         </Card>
       </div>
 
-      <OltSortableTable initialData={olts} pops={pops} defaultValue={search} />
+      <OltSortableTable
+        initialData={olts}
+        pops={pops}
+        defaultValue={search}
+        currentRole={currentRole}
+      />
     </div>
   );
 }

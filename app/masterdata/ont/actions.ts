@@ -67,7 +67,13 @@ export const getOnts = async (search: string = "", page: number = 1) => {
   const [data, total] = await Promise.all([
     prisma.ont.findMany({
       where,
-      include: { pop: true, odp: true },
+      // Batasi field relasi yang diambil -- pop & odp punya kolom Decimal
+      // (latitude/longitude) yang tidak boleh dioper langsung ke Client
+      // Component. Karena di sini cuma butuh nama-nya, select seperlunya saja.
+      include: {
+        pop: { select: { id_pop: true, nama_pop: true } },
+        odp: { select: { id_odp: true, nama_odp: true } },
+      },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,

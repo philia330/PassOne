@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -42,7 +42,11 @@ const ClickHandler = ({
 
 const FlyTo = ({ lat, lng }: { lat: number; lng: number }) => {
   const map = useMap();
-  map.flyTo([lat, lng], 16);
+
+  React.useEffect(() => {
+    map.flyTo([lat, lng], 16);
+  }, [lat, lng, map]);
+
   return null;
 };
 

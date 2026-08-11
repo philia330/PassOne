@@ -19,12 +19,19 @@ import { deleteFab } from "@/app/jaringan/fab/actions";
 interface FabDeleteDialogProps {
   id: number;
   namaPelanggan: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const FabDeleteDialog = ({ id, namaPelanggan }: FabDeleteDialogProps) => {
-  const [open, setOpen] = useState(false);
+export const FabDeleteDialog = ({ id, namaPelanggan, open: openProp, onOpenChange }: FabDeleteDialogProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Controlled vs uncontrolled
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
+  const setOpen = isControlled ? (onOpenChange ?? (() => {})) : setInternalOpen;
 
   const handleConfirm = () => {
     setErrorMsg(null);
@@ -47,17 +54,6 @@ export const FabDeleteDialog = ({ id, namaPelanggan }: FabDeleteDialogProps) => 
         if (!isOpen) setErrorMsg(null);
       }}
     >
-      <AlertDialogTrigger
-        render={
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors w-full sm:w-auto"
-          />
-        }
-      >
-        <Trash2 className="h-4 w-4" />
-      </AlertDialogTrigger>
 
       <AlertDialogContent
         className="

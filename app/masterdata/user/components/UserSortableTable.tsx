@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUp, ArrowDown, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -110,6 +111,7 @@ export function UserSortableTable({
                 <TableHead className="dark:text-slate-400">Nama</TableHead>
                 <TableHead className="dark:text-slate-400">Username</TableHead>
                 <TableHead className="dark:text-slate-400">Email</TableHead>
+                <TableHead className="dark:text-slate-400">No. HP</TableHead>
                 <TableHead className="dark:text-slate-400">Role</TableHead>
                 <TableHead className="dark:text-slate-400">Status</TableHead>
                 <TableHead className="text-center dark:text-slate-400">Aksi</TableHead>
@@ -119,7 +121,7 @@ export function UserSortableTable({
             <TableBody>
               {paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-slate-400 dark:text-slate-500">
+                  <TableCell colSpan={9} className="py-10 text-center text-slate-400 dark:text-slate-500">
                     {search ? "Tidak ada user yang cocok" : "Belum ada user"}
                   </TableCell>
                 </TableRow>
@@ -141,6 +143,28 @@ export function UserSortableTable({
                     <TableCell className="dark:text-slate-300">{user.nama}</TableCell>
                     <TableCell className="dark:text-slate-300">{user.username}</TableCell>
                     <TableCell className="dark:text-slate-300">{user.email ?? "-"}</TableCell>
+                    <TableCell className="dark:text-slate-300">
+                      <div className="flex items-center gap-1">
+                        {user.no_hp ?? "-"}
+                        {user.no_hp && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 rounded-lg cursor-pointer hover:bg-green-50 dark:hover:bg-green-500/20"
+                            onClick={() => {
+                              let cleanNumber = user.no_hp!.replace(/\D/g, "");
+                              if (cleanNumber.startsWith("0")) {
+                                cleanNumber = "62" + cleanNumber.substring(1);
+                              }
+                              window.open(`https://wa.me/${cleanNumber}`, "_blank", "noopener,noreferrer");
+                            }}
+                            title={`Hubungi ${user.nama} via WhatsApp`}
+                          >
+                            <MessageCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <span className={`rounded-full px-3 py-1 text-xs font-semibold ${ROLE_BADGE_STYLES[user.role] ?? DEFAULT_ROLE_STYLE}`}>{user.role}</span>
                     </TableCell>
@@ -188,6 +212,23 @@ export function UserSortableTable({
                     </div>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
+                    {user.no_hp && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 rounded-lg cursor-pointer hover:bg-green-50 dark:hover:bg-green-500/20"
+                        onClick={() => {
+                          let cleanNumber = user.no_hp!.replace(/\D/g, "");
+                          if (cleanNumber.startsWith("0")) {
+                            cleanNumber = "62" + cleanNumber.substring(1);
+                          }
+                          window.open(`https://wa.me/${cleanNumber}`, "_blank", "noopener,noreferrer");
+                        }}
+                        title={`Hubungi ${user.nama} via WhatsApp`}
+                      >
+                        <MessageCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                      </Button>
+                    )}
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${ROLE_BADGE_STYLES[user.role] ?? DEFAULT_ROLE_STYLE}`}>{user.role}</span>
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${user.status ? "bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400"}`}>
                       {user.status ? "Aktif" : "Nonaktif"}

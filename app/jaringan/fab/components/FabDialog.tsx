@@ -23,6 +23,8 @@ interface FabDialogProps {
   paketOptions: PaketOption[];
   salesOptions: UserOption[];
   currentUser: CurrentUser;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export const FabDialog = ({
@@ -32,11 +34,18 @@ export const FabDialog = ({
   areaOptions,
   paketOptions,
   salesOptions,
-  currentUser
+  currentUser,
+  open: openProp,
+  onOpenChange,
 }: FabDialogProps) => {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Controlled vs uncontrolled
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
+  const setOpen = isControlled ? (onOpenChange ?? (() => {})) : setInternalOpen;
 
   const handleSubmit = (formData: FormData) => {
     setErrorMsg(null);
@@ -57,17 +66,23 @@ export const FabDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {mode === "create" ? (
-          <Button className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" /> Tambah FAB
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto">
-            <Pencil className="h-4 w-4" />
-          </Button>
-        )}
-      </DialogTrigger>
+      {/* Trigger CUMA muncul kalau dipakai standalone (uncontrolled). Kalau
+          dipakai controlled -- misal dari FabActionsDropdown yang sudah punya
+          tombol titik tiga sendiri -- trigger ini disembunyikan supaya tidak
+          dobel dengan menu "Edit FAB" / "Tambah FAB" yang manapun manggilnya. */}
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {mode === "create" ? (
+            <Button className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" /> Tambah FAB
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto">
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
 
       <DialogContent
         className="

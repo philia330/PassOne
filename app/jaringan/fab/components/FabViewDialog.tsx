@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useState } from "react";
 import { Eye, MapPin } from "lucide-react";
 import {
   Dialog,
@@ -23,20 +24,34 @@ const LocationPickerMap = dynamic(() => import("@/components/shared/LocationPick
 
 interface FabViewDialogProps {
   fab: FabData;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const FabViewDialog = ({ fab }: FabViewDialogProps) => {
+export const FabViewDialog = ({ fab, open: openProp, onOpenChange }: FabViewDialogProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
   const lat = Number(fab.latitude);
   const lng = Number(fab.longitude);
   const hasValidCoords = !Number.isNaN(lat) && !Number.isNaN(lng);
 
+  // Controlled vs uncontrolled
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
+  const setOpen = isControlled ? (onOpenChange ?? (() => {})) : setInternalOpen;
+
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto">
-          <Eye className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={setOpen}>
+      {/* Trigger (ikon mata) CUMA muncul kalau dipakai standalone (uncontrolled).
+          Kalau dipakai controlled -- misal dari FabActionsDropdown yang sudah
+          punya tombol titik tiga sendiri -- trigger ini disembunyikan supaya
+          tidak dobel dengan menu "Lihat Detail" di dropdown. */}
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto">
+            <Eye className="h-4 w-4" />
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent
         className="

@@ -1,8 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useEffect } from "react";
-import { Pencil, Plus, Loader2, Navigation } from "lucide-react";
+import { useRef, useState, useMemo } from "react";
+import Image from "next/image";
+import { Pencil, Plus, Loader2, Navigation, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,10 +83,26 @@ export const OltFormDialog = ({
     data?.longitude ? Number(data.longitude) : 0
   );
 
-  const [lokasi, setLokasi] = useState<string>(data?.lokasi ?? "");
-
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+
+  // ================================================================
+  // FOTO OLT -- dropzone custom dengan preview + bisa langsung kamera
+  // ================================================================
+  const [fotoPreview, setFotoPreview] = useState<string | null>(
+    data?.foto_olt ?? null
+  );
+  const [fotoFileName, setFotoFileName] = useState<string | null>(null);
+  const fotoInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFotoPreview(URL.createObjectURL(file));
+      setFotoFileName(file.name);
+    }
+  }
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -127,12 +144,10 @@ export const OltFormDialog = ({
     );
   };
 
-  useEffect(() => {
+  const lokasi = useMemo(() => {
     const selectedPop = pops.find((p) => String(p.id_pop) === popValue);
-    if (selectedPop) {
-      setLokasi(selectedPop.alamat);
-    }
-  }, [popValue, pops]);
+    return selectedPop ? selectedPop.alamat : (data?.lokasi ?? "");
+  }, [popValue, pops, data?.lokasi]);
 
   const handlePick = (pickedLat: number, pickedLng: number) => {
     setLat(pickedLat);
@@ -244,14 +259,12 @@ export const OltFormDialog = ({
 
           {/* IP Address */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">
-              IP Address{" "}
-              <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
-            </label>
+            <label className="text-sm font-medium">IP Address</label>
             <Input
               name="ip_olt"
               defaultValue={data?.ip_olt ?? ""}
               placeholder="Contoh: 192.168.1.1"
+              required
               className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
@@ -259,53 +272,118 @@ export const OltFormDialog = ({
           {/* Username & Password */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Username{" "}
-                <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
-              </label>
+              <label className="text-sm font-medium">Username</label>
               <Input
                 name="username_olt"
                 defaultValue={data?.username_olt ?? ""}
                 placeholder="admin"
+                required
                 className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Password{" "}
-                <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
-              </label>
+              <label className="text-sm font-medium">Password</label>
               <PasswordInput
                 name="password_olt"
                 defaultValue={data?.password_olt ?? ""}
                 placeholder="••••••••"
+                required
                 className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </div>
           </div>
 
-          {/* Foto OLT */}
+          {/* ================================================ */}
+          {/* FOTO OLT -- dropzone custom, preview + bisa kamera */}
+          {/* ================================================ */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Foto OLT{" "}
-              <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
-            </label>
-            {data?.foto_olt && (
-              <img
-                src={data.foto_olt}
-                alt="Foto OLT saat ini"
-                className="mb-2 h-32 w-full rounded-2xl border border-slate-200 object-cover dark:border-slate-700"
-              />
-            )}
-            <Input
+            <label className="text-sm font-medium">Foto OLT</label>
+
+            {/* Input file biasa (galeri) -- disembunyikan */}
+            <input
+              ref={fotoInputRef}
               name="foto_olt"
               type="file"
               accept="image/*"
-              className="h-12 rounded-2xl border-slate-200 bg-white file:mr-3 file:h-full file:rounded-xl file:border-0 file:bg-slate-100 file:px-3 file:text-sm file:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:file:bg-slate-700 dark:file:text-slate-200"
+              onChange={handleFotoChange}
+              required={!data?.foto_olt}
+              className="sr-only"
             />
-            {data?.foto_olt && (
+
+            {/* Input khusus kamera -- atribut capture memicu buka kamera langsung di HP */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => {
+                handleFotoChange(e);
+                // Sinkronkan file yang dipilih dari kamera ke input utama supaya ikut ke-submit
+                if (fotoInputRef.current && e.target.files?.[0]) {
+                  const dt = new DataTransfer();
+                  dt.items.add(e.target.files[0]);
+                  fotoInputRef.current.files = dt.files;
+                }
+              }}
+              className="sr-only"
+            />
+
+            <button
+              type="button"
+              onClick={() => fotoInputRef.current?.click()}
+              className="group relative w-full overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-purple-300 hover:bg-purple-50/50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-purple-700 dark:hover:bg-purple-500/10"
+            >
+              {fotoPreview ? (
+                <div className="relative">
+                  <Image
+                    src={fotoPreview}
+                    alt="Preview foto OLT"
+                    width={400}
+                    height={160}
+                    unoptimized
+                    className="h-40 w-full object-cover"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100">
+                    <span className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                      Ganti Foto
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-2 px-4 py-8">
+                  <div className="rounded-full bg-purple-100 p-3 dark:bg-purple-500/20">
+                    <ImageIcon size={20} className="text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                    Klik untuk pilih foto dari galeri
+                  </p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    JPG, PNG — maks. 5MB
+                  </p>
+                </div>
+              )}
+            </button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => cameraInputRef.current?.click()}
+              className="w-full rounded-xl h-10 text-sm border-purple-200 text-purple-700 hover:bg-purple-50 gap-1.5 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
+            >
+              <ImageIcon className="h-4 w-4" />
+              Ambil Foto dengan Kamera
+            </Button>
+
+            {fotoFileName && (
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                File dipilih: <span className="font-medium">{fotoFileName}</span>
+              </p>
+            )}
+
+            {data?.foto_olt && !fotoFileName && (
               <p className="text-xs text-slate-400 dark:text-slate-500">
-                Kosongkan kalau tidak ingin mengganti foto.
+                Foto saat ini ditampilkan di atas. Pilih foto baru kalau mau menggantinya.
               </p>
             )}
           </div>

@@ -75,7 +75,7 @@ export default function Sidebar({
       </div>
 
       {/* Menu */}
-      <nav className="no-scrollbar flex-1 overflow-y-auto px-4 py-6">
+      <nav className="sidebar-scroll flex-1 overflow-y-auto px-4 py-6">
         {navigation.map((group) => {
           const visibleItems = role
             ? group.items.filter((item) => item.roles.includes(role as Role))

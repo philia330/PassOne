@@ -18,10 +18,20 @@ export default async function PopPage({
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
 
-  const [{ data: pops, total, totalPages }, areas] = await Promise.all([
-    getPops(search, page),
-    getAreas(),
-  ]);
+  const [{ data: rawPops, total, totalPages }, areas] = await Promise.all([
+  getPops(search, page),
+  getAreas(),
+]);
+
+  const currentRole = session.user.role;
+  // Hanya Admin yang bisa delete POP
+  const canDelete = currentRole === "ADMIN";
+
+const pops = rawPops.map((pop) => ({
+  ...pop,
+  latitude: Number(pop.latitude),
+  longitude: Number(pop.longitude),
+}));
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
@@ -46,7 +56,7 @@ export default async function PopPage({
         </Card>
       </div>
 
-      <PopSortableTable initialData={pops} areas={areas} defaultValue={search} />
+      <PopSortableTable initialData={pops} areas={areas} defaultValue={search} canDelete={canDelete} />
     </div>
   );
 }

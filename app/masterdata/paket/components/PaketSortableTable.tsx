@@ -40,10 +40,12 @@ export function PaketSortableTable({
   initialData,
   kodeOtomatis,
   defaultValue,
+  canDelete = false,
 }: {
   initialData: Paket[];
   kodeOtomatis: string;
   defaultValue: string;
+  canDelete?: boolean;
 }) {
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
@@ -127,7 +129,7 @@ export function PaketSortableTable({
                     <TableCell className="text-center">
                       <div className="flex justify-center gap-1">
                         <PaketDialog mode="edit" paket={item} />
-                        <PaketDeleteDialog id={item.id_paket} namaPaket={item.nama_paket} />
+                        {canDelete && <PaketDeleteDialog id={item.id_paket} namaPaket={item.nama_paket} />}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -148,7 +150,7 @@ export function PaketSortableTable({
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <PaketDialog mode="edit" paket={item} />
-                  <PaketDeleteDialog id={item.id_paket} namaPaket={item.nama_paket} />
+                  {canDelete && <PaketDeleteDialog id={item.id_paket} namaPaket={item.nama_paket} />}
                 </div>
               </div>
               <p className="text-sm dark:text-slate-300">Kecepatan: {item.kecepatan}</p>

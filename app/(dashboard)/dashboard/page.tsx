@@ -1,19 +1,10 @@
-import Link from "next/link";
 import NetworkMapLoader from "@/components/dashboard/network-map-loader";
 import {
   Users,
   FileText,
   ClipboardCheck,
   Package,
-  ArrowUpRight,
-  Sparkles,
-  Boxes,
-  Router,
-  PackageOpen,
-  Wifi,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { id as localeId } from "date-fns/locale";
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
@@ -26,6 +17,7 @@ import {
 import { getNetworkPoints } from "@/lib/network-points";
 import FabBaaChart from "@/components/dashboard/fab-baa-chart";
 import SlaAlertPanel from "@/components/dashboard/sla-alert-panel";
+import { RecentActivities } from "@/components/dashboard/RecentActivities";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -37,10 +29,6 @@ export default async function DashboardPage() {
     totalFab,
     totalBaa,
     totalMaterial,
-    totalOdp,
-    totalOlt,
-    totalOnt,
-    totalPaket,
     recentActivities,
     monthlyTrend,
     statusBreakdown,
@@ -52,10 +40,6 @@ export default async function DashboardPage() {
     prisma.fab.count(),
     prisma.baa.count(),
     prisma.material.count(),
-    prisma.odp.count(),
-    prisma.olt.count(),
-    prisma.ont.count(),
-    prisma.paket.count(),
     prisma.activityLog.findMany({
       orderBy: { createdAt: "desc" },
       take: 5,
@@ -74,7 +58,6 @@ export default async function DashboardPage() {
   const canSeeMasterData = isAdmin || role === "LEADER";
 
   const statistics = [
-    // Admin & Leader bisa lihat semua statistik
     canSeeAll && {
       title: "Total User",
       value: totalUser,
@@ -99,30 +82,6 @@ export default async function DashboardPage() {
       icon: Package,
       color: "bg-purple-500",
     },
-    canSeeMasterData && {
-      title: "Total ODP",
-      value: totalOdp,
-      icon: Boxes,
-      color: "bg-orange-500",
-    },
-    canSeeMasterData && {
-      title: "Total OLT",
-      value: totalOlt,
-      icon: Router,
-      color: "bg-cyan-500",
-    },
-    canSeeMasterData && {
-      title: "Total ONT",
-      value: totalOnt,
-      icon: Wifi,
-      color: "bg-pink-500",
-    },
-    canSeeMasterData && {
-      title: "Total Paket",
-      value: totalPaket,
-      icon: PackageOpen,
-      color: "bg-indigo-500",
-    },
   ].filter(Boolean) as {
     title: string;
     value: number;
@@ -133,7 +92,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6 lg:space-y-8">
       {/* Statistik */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {statistics.map((item) => {
           const Icon = item.icon;
 
@@ -192,51 +151,7 @@ export default async function DashboardPage() {
             Aktivitas Terbaru
           </h2>
 
-          <div className="space-y-4">
-            {recentActivities.length === 0 && (
-              <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-100 p-4 transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-500/10">
-                  <Sparkles
-                    className="text-indigo-400"
-                    size={28}
-                  />
-                </div>
-
-                <p className="font-medium text-slate-600 dark:text-slate-300">
-                  Belum ada aktivitas
-                </p>
-
-                <p className="mt-1 max-w-xs text-sm text-slate-400 dark:text-slate-500">
-                  Aktivitas seperti penambahan user, FAB, atau BAA akan muncul
-                  di sini secara otomatis.
-                </p>
-              </div>
-            )}
-
-            {recentActivities.map((activity) => (
-              <div
-                key={activity.id_log}
-                className="flex flex-col gap-3 rounded-xl border border-slate-100 p-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium dark:text-slate-100">
-                    {activity.description}
-                  </p>
-
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    {formatDistanceToNow(activity.createdAt, {
-                      addSuffix: true,
-                      locale: localeId,
-                    })}
-                  </p>
-                </div>
-
-                <ArrowUpRight
-                  className="mt-1 h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-600"
-                />
-              </div>
-            ))}
-          </div>
+          <RecentActivities activities={recentActivities} />
         </div>
 
         {/* SLA */}

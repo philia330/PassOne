@@ -1,7 +1,8 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Loader2, Navigation } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,18 @@ import {
 
 import { createPop, updatePop } from "../actions";
 
+const PopMapPicker = dynamic(
+  () => import("./PopMapPicker").then((mod) => mod.PopMapPicker),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[220px] items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+        Memuat peta...
+      </div>
+    ),
+  }
+);
+
 type Area = { id_area: number; nama_area: string };
 
 type PopData = {
@@ -34,6 +47,8 @@ type PopData = {
   nama_pop: string;
   alamat: string;
   id_area: number;
+  latitude?: number | string;
+  longitude?: number | string;
 };
 
 export const PopFormDialog = ({
@@ -52,8 +67,63 @@ export const PopFormDialog = ({
     data?.id_area ? String(data.id_area) : ""
   );
 
+  const [lat, setLat] = useState<number>(
+    data?.latitude ? Number(data.latitude) : 0
+  );
+  const [lng, setLng] = useState<number>(
+    data?.longitude ? Number(data.longitude) : 0
+  );
+
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setGpsError("Geolocation tidak didukung browser ini.");
+      return;
+    }
+
+    setGpsLoading(true);
+    setGpsError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setLat(parseFloat(latitude.toFixed(6)));
+        setLng(parseFloat(longitude.toFixed(6)));
+        setGpsLoading(false);
+      },
+      (error) => {
+        setGpsLoading(false);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setGpsError("Izin lokasi ditolak. Aktifkan di pengaturan browser.");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setGpsError("Lokasi tidak tersedia.");
+            break;
+          case error.TIMEOUT:
+            setGpsError("Waktu habis mencari lokasi.");
+            break;
+          default:
+            setGpsError("Gagal mendapatkan lokasi.");
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
+
   const handleAreaChange = (value: string | null) => {
     setAreaValue(value || "");
+  };
+
+  const handlePick = (pickedLat: number, pickedLng: number) => {
+    setLat(pickedLat);
+    setLng(pickedLng);
   };
 
   const handleSubmit = async (formData: FormData) => {
@@ -154,6 +224,67 @@ export const PopFormDialog = ({
               required
               className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             />
+          </div>
+
+          {/* Peta pilih lokasi GPS */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Lokasi di Peta</label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={getCurrentLocation}
+                disabled={gpsLoading}
+                className="rounded-xl h-8 text-xs border-cyan-200 text-cyan-700 hover:bg-cyan-50 gap-1.5 dark:border-cyan-800 dark:text-cyan-400 dark:hover:bg-cyan-500/10"
+              >
+                {gpsLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Navigation className="h-3.5 w-3.5" />
+                )}
+                {gpsLoading ? "Mencari..." : "GPS Saya"}
+              </Button>
+            </div>
+            {gpsError && (
+              <p className="text-xs text-red-500 dark:text-red-400">{gpsError}</p>
+            )}
+            {lat !== 0 && lng !== 0 && !gpsError && (
+              <p className="text-xs text-emerald-500 dark:text-emerald-400">
+                Lokasi tersimpan: {lat}, {lng}
+              </p>
+            )}
+            <PopMapPicker lat={lat} lng={lng} onPick={handlePick} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Latitude</label>
+              <Input
+                name="latitude"
+                type="number"
+                step="any"
+                value={lat === 0 ? "" : lat}
+                onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
+                placeholder="-6.178306"
+                required
+                className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Longitude</label>
+              <Input
+                name="longitude"
+                type="number"
+                step="any"
+                value={lng === 0 ? "" : lng}
+                onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
+                placeholder="106.631889"
+                required
+                className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
           </div>
 
           <DialogFooter>

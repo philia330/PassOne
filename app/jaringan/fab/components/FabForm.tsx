@@ -19,6 +19,7 @@ import {
   Loader2,
   Search,
   ImageIcon,
+  Camera,
   Navigation,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -65,6 +66,11 @@ const STATUS_LABEL: Record<StatusFab, string> = {
   AKTIF: "Aktif",
 };
 
+// Batas panjang -- NIK Indonesia selalu 16 digit pas, No. HP dibatasi
+// maksimal 14 digit (cukup untuk format 08xx / +62xx terpanjang).
+const NIK_LENGTH = 16;
+const NO_HP_MAX_LENGTH = 14;
+
 // Titik tengah default peta kalau user belum isi alamat/koordinat sama
 // sekali -- biar peta tetap kelihatan dari awal, tidak perlu nunggu
 // alamat diisi dulu. Ini CUMA posisi tampilan peta, bukan nilai yang
@@ -101,6 +107,23 @@ export const FabForm = ({
   );
 
   // ==========================================================
+  // NIK & NO. HP -- controlled, cuma nerima digit, dibatasi panjangnya
+  // supaya user tidak asal ketik angka sepanjang apapun.
+  // ==========================================================
+  const [nik, setNik] = useState(defaultValues?.nik ?? "");
+  const [noHp, setNoHp] = useState(defaultValues?.no_hp ?? "");
+
+  const handleNikChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, NIK_LENGTH);
+    setNik(digitsOnly);
+  };
+
+  const handleNoHpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, NO_HP_MAX_LENGTH);
+    setNoHp(digitsOnly);
+  };
+
+  // ==========================================================
   // LOKASI MAP: alamat -> auto-geocode -> latitude/longitude -> peta
   // ==========================================================
   const [alamat, setAlamat] = useState(defaultValues?.alamat ?? "");
@@ -114,6 +137,21 @@ export const FabForm = ({
       setFotoPreview(URL.createObjectURL(file));
       setFotoFileName(file.name);
     }
+  }
+
+  // Input file yang sama dipakai untuk dua mode -- atribut "capture" di-set
+  // atau dilepas sesaat sebelum di-trigger. Di Android/iOS ini langsung
+  // membuka kamera (capture) atau galeri (tanpa capture). Di Windows/desktop,
+  // browser mengabaikan "capture" sepenuhnya, jadi dua-duanya sama-sama
+  // membuka File Explorer biasa -- tidak ada yang error.
+  function openCamera() {
+    fotoInputRef.current?.setAttribute("capture", "environment");
+    fotoInputRef.current?.click();
+  }
+
+  function openGallery() {
+    fotoInputRef.current?.removeAttribute("capture");
+    fotoInputRef.current?.click();
   }
 
   const [latitude, setLatitude] = useState(
@@ -307,14 +345,14 @@ export const FabForm = ({
       </div>
 
       {/* ================================================ */}
-      {/* FOTO DEPAN RUMAH -- dropzone custom, ganti input file bawaan browser */}
+      {/* FOTO DEPAN RUMAH -- dropzone custom + kamera & galeri */}
       {/* ================================================ */}
       <div className="col-span-2 space-y-2">
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <ImageIcon size={13} className="text-purple-500" /> Foto Depan Rumah
         </Label>
 
-        {/* Input asli disembunyikan -- semua interaksi lewat dropzone custom di bawah */}
+        {/* Input asli disembunyikan -- semua interaksi lewat dropzone/tombol custom di bawah */}
         <input
           ref={fotoInputRef}
           name="foto"
@@ -327,7 +365,7 @@ export const FabForm = ({
 
         <button
           type="button"
-          onClick={() => fotoInputRef.current?.click()}
+          onClick={openGallery}
           className="group relative w-full overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-purple-300 hover:bg-purple-50/50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-purple-700 dark:hover:bg-purple-500/10"
         >
           {fotoPreview ? (
@@ -357,6 +395,26 @@ export const FabForm = ({
             </div>
           )}
         </button>
+
+        {/* Ambil Foto (kamera) & Pilih dari Galeri -- input yang sama, cuma
+            atribut capture-nya beda sebelum di-trigger. Di desktop dua-duanya
+            sama-sama buka File Explorer, tidak masalah. */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={openCamera}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-purple-300 hover:text-purple-600 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-purple-700 dark:hover:text-purple-400"
+          >
+            <Camera size={14} /> Ambil Foto
+          </button>
+          <button
+            type="button"
+            onClick={openGallery}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-purple-300 hover:text-purple-600 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-purple-700 dark:hover:text-purple-400"
+          >
+            <ImageIcon size={14} /> Pilih dari Galeri
+          </button>
+        </div>
 
         {fotoFileName && (
           <p className="truncate text-xs text-slate-500 dark:text-slate-400">
@@ -388,6 +446,7 @@ export const FabForm = ({
         />
       </div>
 
+      {/* NIK -- cuma nerima digit, dikunci pas 16 digit */}
       <div className="space-y-2">
         <Label
           htmlFor="nik"
@@ -398,14 +457,23 @@ export const FabForm = ({
         <Input
           id="nik"
           name="nik"
+          inputMode="numeric"
+          pattern="\d*"
           placeholder="Masukkan 16 digit NIK"
-          maxLength={16}
-          defaultValue={defaultValues?.nik}
+          maxLength={NIK_LENGTH}
+          value={nik}
+          onChange={handleNikChange}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           required
         />
+        {nik.length > 0 && nik.length < NIK_LENGTH && (
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            {nik.length}/{NIK_LENGTH} digit -- NIK harus tepat 16 digit.
+          </p>
+        )}
       </div>
 
+      {/* No. HP -- cuma nerima digit, dibatasi maksimal 14 digit */}
       <div className="space-y-2">
         <Label
           htmlFor="no_hp"
@@ -416,8 +484,12 @@ export const FabForm = ({
         <Input
           id="no_hp"
           name="no_hp"
+          inputMode="numeric"
+          pattern="\d*"
           placeholder="08xxxxxxxxxx"
-          defaultValue={defaultValues?.no_hp}
+          maxLength={NO_HP_MAX_LENGTH}
+          value={noHp}
+          onChange={handleNoHpChange}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           required
         />
@@ -573,36 +645,13 @@ export const FabForm = ({
       {/* LOKASI MAP -- label section, di atas peta */}
       {/* ================================================ */}
       <div className="col-span-2">
-        <div className="flex items-center justify-between">
-          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            <MapPin size={13} className="text-purple-500" /> Lokasi Map
-          </Label>
-          {/* Tombol GPS untuk auto-detect lokasi */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={getCurrentLocation}
-            disabled={gpsLoading}
-            className="rounded-xl h-8 text-xs border-cyan-200 text-cyan-700 hover:bg-cyan-50 gap-1.5 dark:border-cyan-800 dark:text-cyan-400 dark:hover:bg-cyan-500/10"
-          >
-            {gpsLoading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Navigation className="h-3.5 w-3.5" />
-            )}
-            {gpsLoading ? "Mencari..." : "GPS Saya"}
-          </Button>
-        </div>
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <MapPin size={13} className="text-purple-500" /> Lokasi Map
+        </Label>
         <p className="text-xs text-slate-400 mt-1 mb-2 dark:text-slate-500">
           Terisi otomatis dari Alamat Lengkap. Atau ketik nama daerah/alamat di kolom ini khusus
-          buat geser peta, bisa juga digeser/klik langsung di peta di bawah, atau gunakan tombol GPS di atas.
+          buat geser peta, bisa juga digeser/klik langsung di peta di bawah, atau gunakan tombol GPS di atas peta.
         </p>
-        {(gpsError || gpsLoading === false && hasValidCoords && latitude && longitude) && !geocodeError && (
-          <p className={`text-xs mt-1 ${gpsError ? "text-red-500 dark:text-red-400" : "text-emerald-500 dark:text-emerald-400"}`}>
-            {gpsError || `Lokasi tersimpan: ${latitude}, ${longitude}`}
-          </p>
-        )}
         {gpsError && (
           <p className="text-xs text-red-500 mt-1 dark:text-red-400">{gpsError}</p>
         )}
@@ -630,33 +679,58 @@ export const FabForm = ({
       </div>
 
       {/* Peta -- SELALU muncul (default Bandung) supaya tidak perlu isi
-          alamat dulu buat lihat petanya. Latitude/Longitude dipindah ke
-          BAWAH peta ini (bukan di atas lagi). */}
+          alamat dulu buat lihat petanya. Tombol GPS & Perbesar/Perkecil
+          disatukan di baris yang sama, sejajar di atas peta. */}
       <div className="col-span-2 space-y-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <p className="text-xs text-slate-400 dark:text-slate-500">
             {hasValidCoords
               ? "Klik atau geser pin untuk ubah titik lokasi"
               : "Klik atau geser pin di peta untuk pilih lokasi pelanggan"}
           </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setMapExpanded((v) => !v)}
-            className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
-          >
-            {mapExpanded ? (
-              <>
-                <Minimize2 className="mr-1 h-3.5 w-3.5" /> Perkecil
-              </>
-            ) : (
-              <>
-                <Maximize2 className="mr-1 h-3.5 w-3.5" /> Perbesar
-              </>
-            )}
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={getCurrentLocation}
+              disabled={gpsLoading}
+              className="rounded-xl h-8 text-xs border-cyan-200 text-cyan-700 hover:bg-cyan-50 gap-1.5 dark:border-cyan-800 dark:text-cyan-400 dark:hover:bg-cyan-500/10"
+            >
+              {gpsLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Navigation className="h-3.5 w-3.5" />
+              )}
+              {gpsLoading ? "Mencari..." : "GPS Saya"}
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setMapExpanded((v) => !v)}
+              className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
+            >
+              {mapExpanded ? (
+                <>
+                  <Minimize2 className="mr-1 h-3.5 w-3.5" /> Perkecil
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="mr-1 h-3.5 w-3.5" /> Perbesar
+                </>
+              )}
+            </Button>
+          </div>
         </div>
+
+        {!gpsError && hasValidCoords && (
+          <p className="text-xs text-emerald-500 dark:text-emerald-400">
+            Lokasi tersimpan: {latitude}, {longitude}
+          </p>
+        )}
 
         <LocationPickerMap
           lat={displayLat}

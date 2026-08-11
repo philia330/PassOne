@@ -44,11 +44,13 @@ export function OntSortableTable({
   pops,
   odps,
   defaultValue,
+  canDelete = false,
 }: {
   initialData: Ont[];
   pops: Pop[];
   odps: Odp[];
   defaultValue: string;
+  canDelete?: boolean;
 }) {
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
@@ -139,7 +141,7 @@ export function OntSortableTable({
                     <TableCell className="text-center">
                       <div className="flex justify-center gap-1">
                         <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />
-                        <DeleteOntDialog id={ont.id_ont} name={ont.serial_number} />
+                        {canDelete && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number} />}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -160,7 +162,7 @@ export function OntSortableTable({
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />
-                  <DeleteOntDialog id={ont.id_ont} name={ont.serial_number} />
+                  {canDelete && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number} />}
                 </div>
               </div>
               <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${statusBadge[ont.status]}`}>{ont.status}</span>

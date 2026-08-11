@@ -16,6 +16,8 @@ import { PopFormDialog } from "./PopFormDialog";
 import { DeletePopDialog } from "./DeletePopDialog";
 import { PopSearch } from "./PopSearch";
 import { PopPagination } from "./PopPagination";
+import { PopMapDialog } from "./PopMapDialog";
+import { OpenGoogleMaps } from "@/components/ui/OpenGoogleMaps";
 
 type Pop = {
   id_pop: number;
@@ -23,6 +25,8 @@ type Pop = {
   nama_pop: string;
   alamat: string;
   id_area: number;
+  latitude: number;
+  longitude: number;
   area?: { nama_area: string };
   createdAt: Date;
 };
@@ -33,10 +37,12 @@ export function PopSortableTable({
   initialData,
   areas,
   defaultValue,
+  canDelete = false,
 }: {
   initialData: Pop[];
   areas: { id_area: number; nama_area: string }[];
   defaultValue: string;
+  canDelete?: boolean;
 }) {
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
@@ -129,12 +135,33 @@ export function PopSortableTable({
                         year: "numeric",
                       })}
                     </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex justify-center gap-1">
-                        <PopFormDialog mode="edit" areas={areas} data={{ id_pop: pop.id_pop, nama_pop: pop.nama_pop, alamat: pop.alamat, id_area: pop.id_area }} />
-                        <DeletePopDialog id={pop.id_pop} name={pop.nama_pop} />
-                      </div>
-                    </TableCell>
+<TableCell className="text-center">
+  <div className="flex justify-center gap-1">
+    <PopMapDialog
+      nama={pop.nama_pop}
+      lat={Number(pop.latitude)}
+      lng={Number(pop.longitude)}
+    />
+    <OpenGoogleMaps
+      lat={Number(pop.latitude)}
+      lng={Number(pop.longitude)}
+      name={pop.nama_pop}
+    />
+    <PopFormDialog
+      mode="edit"
+      areas={areas}
+      data={{
+        id_pop: pop.id_pop,
+        nama_pop: pop.nama_pop,
+        alamat: pop.alamat,
+        id_area: pop.id_area,
+        latitude: pop.latitude,
+        longitude: pop.longitude,
+      }}
+    />
+    {canDelete && <DeletePopDialog id={pop.id_pop} name={pop.nama_pop} />}
+  </div>
+</TableCell>
                   </TableRow>
                 ))
               )}
@@ -157,9 +184,30 @@ export function PopSortableTable({
                     <p className="text-sm text-slate-500 dark:text-slate-500">{pop.kode_pop}</p>
                   </div>
                   <div className="flex shrink-0 gap-1">
-                    <PopFormDialog mode="edit" areas={areas} data={{ id_pop: pop.id_pop, nama_pop: pop.nama_pop, alamat: pop.alamat, id_area: pop.id_area }} />
-                    <DeletePopDialog id={pop.id_pop} name={pop.nama_pop} />
-                  </div>
+  <PopMapDialog
+    nama={pop.nama_pop}
+    lat={Number(pop.latitude)}
+    lng={Number(pop.longitude)}
+  />
+  <OpenGoogleMaps
+    lat={Number(pop.latitude)}
+    lng={Number(pop.longitude)}
+    name={pop.nama_pop}
+  />
+  <PopFormDialog
+    mode="edit"
+    areas={areas}
+    data={{
+      id_pop: pop.id_pop,
+      nama_pop: pop.nama_pop,
+      alamat: pop.alamat,
+      id_area: pop.id_area,
+      latitude: pop.latitude,
+      longitude: pop.longitude,
+    }}
+  />
+  {canDelete && <DeletePopDialog id={pop.id_pop} name={pop.nama_pop} />}
+</div>
                 </div>
                 <p className="flex items-start gap-1 text-sm text-slate-600 dark:text-slate-300">
                   <MapPinIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" />

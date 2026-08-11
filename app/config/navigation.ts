@@ -66,7 +66,7 @@ export const navigation: NavigationGroup[] = [
         title: "OLT",
         href: "/workspace?view=olt",
         icon: Router,
-        roles: [Role.ADMIN],
+        roles: [Role.ADMIN, Role.LEADER],
       },
       {
         title: "ODP",

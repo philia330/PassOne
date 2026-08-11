@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import { Search, X } from "lucide-react";
 import "leaflet/dist/leaflet.css";
+import PointDetailDrawer from "@/components/dashboard/PointDetailDrawer";
 
 import type { NetworkPoint } from "@/lib/network-points";
 import { createMarkerIcon, TYPE_COLOR, FAB_STATUS_COLORS, CABLE_COLOR } from "@/lib/map-icons";
@@ -17,6 +18,11 @@ function MapAutoPan({ searchQuery, filteredPoints }: { searchQuery: string; filt
     if (searchQuery.trim().length > 0 && filteredPoints.length > 0) {
       // Pan langsung ke hasil pertama tanpa delay
       const first = filteredPoints[0];
+
+      // FIX: jaga-jaga kalau koordinat titik pertama rusak/NaN,
+      // jangan panggil flyTo sama sekali (Leaflet crash kalau dikasih NaN)
+      if (!Number.isFinite(first.lat) || !Number.isFinite(first.lng)) return;
+
       map.flyTo([first.lat, first.lng], 16, {
         animate: true,
         duration: 0.5
@@ -70,6 +76,18 @@ export default function NetworkMap({ points }: { points: NetworkPoint[] }) {
   const [fabStatusFilter, setFabStatusFilter] = useState<string | "ALL">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Key unik & stabil per-mount komponen ini -- dibuat sekali lewat lazy
+  // initializer useState, BUKAN Date.now() langsung di body (itu bikin key
+  // beda tiap render, malah trigger remount terus-menerus). Ini memaksa
+  // React selalu bikin elemen DOM container baru tiap kali NetworkMap
+  // di-mount (misal habis Fast Refresh / Strict Mode double-invoke di dev),
+  // supaya Leaflet tidak nemu container lama yang masih ada _leaflet_id-nya
+  // -> menghindari error "Map container is being reused by another instance".
+  const [mapKey] = useState(() => `map-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+  // titik yang lagi dipilih (buka drawer detail di kanan)
+  const [selectedPoint, setSelectedPoint] = useState<NetworkPoint | null>(null);
+
   // Cache rute jalan asli per pasangan titik (key: connection id)
   const [routes, setRoutes] = useState<Record<string, LatLng[]>>({});
   const fetchedRef = useRef<Set<string>>(new Set());
@@ -88,6 +106,10 @@ export default function NetworkMap({ points }: { points: NetworkPoint[] }) {
 
   const filteredPoints = useMemo(() => {
     return points.filter((p) => {
+      // FIX: buang titik dengan koordinat rusak/NaN dari awal,
+      // supaya nggak nyampe ke MapAutoPan, Marker, atau perhitungan koneksi
+      if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return false;
+
       if (!activeTypes.has(p.type)) return false;
 
       if (p.type === "FAB" && fabStatusFilter !== "ALL") {
@@ -157,7 +179,7 @@ export default function NetworkMap({ points }: { points: NetworkPoint[] }) {
       : [-6.9147, 107.6098];
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800">
+   <div className="relative isolate overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800">
 
       {/* Search bar */}
       <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
@@ -231,6 +253,7 @@ export default function NetworkMap({ points }: { points: NetworkPoint[] }) {
       </div>
 
       <MapContainer
+        key={mapKey}
         center={center}
         zoom={12}
         style={{ height: 400, width: "100%" }}
@@ -267,43 +290,19 @@ export default function NetworkMap({ points }: { points: NetworkPoint[] }) {
         })}
 
         {/* Marker DI DALAM cluster -- ini yang bikin 100 titik FAB yang
-            numpuk otomatis dikumpulin jadi 1 lingkaran angka */}
-        <MarkerClusterGroup chunkedLoading maxClusterRadius={60}>
+            numpuk otomatis dikumpulin jadi 1 lingkaran angka.
+            spiderfyOnMaxZoom={false} -- cluster yang gak bisa displit lagi
+            gak akan "meledak" jadi pola spider-web pas diklik. */}
+        <MarkerClusterGroup chunkedLoading maxClusterRadius={60} spiderfyOnMaxZoom={false}>
           {filteredPoints.map((p) => (
-            <Marker key={p.id} position={[p.lat, p.lng]} icon={createMarkerIcon(p)}>
-              <Popup>
-                <strong>{p.name}</strong>
-                <br />
-                {p.type}
-                {p.info ? ` — ${p.info}` : ""}
-                {p.type === "ODP" && p.connectedFabs && p.connectedFabs.length > 0 && (
-                  <>
-                    <br />
-                    <span style={{ fontSize: '11px', color: '#666' }}>
-                      Pelanggan ({p.connectedFabs.length}):
-                    </span>
-                    <ul style={{ margin: '4px 0 0 0', paddingLeft: '16px', fontSize: '11px' }}>
-                      {p.connectedFabs.slice(0, 5).map((fab) => (
-                        <li key={fab.id}>
-                          {fab.name}
-                          {fab.status === "AKTIF" && (
-                            <span style={{ color: '#10b981', marginLeft: '4px' }}>✓</span>
-                          )}
-                          {fab.status === "OPEN" && (
-                            <span style={{ color: '#f97316', marginLeft: '4px' }}>⏳</span>
-                          )}
-                        </li>
-                      ))}
-                      {p.connectedFabs.length > 5 && (
-                        <li style={{ color: '#999' }}>
-                          +{p.connectedFabs.length - 5} lagi...
-                        </li>
-                      )}
-                    </ul>
-                  </>
-                )}
-              </Popup>
-            </Marker>
+            <Marker
+              key={p.id}
+              position={[p.lat, p.lng]}
+              icon={createMarkerIcon(p)}
+              eventHandlers={{
+                click: () => setSelectedPoint(p),
+              }}
+            />
           ))}
         </MarkerClusterGroup>
       </MapContainer>
@@ -340,6 +339,9 @@ export default function NetworkMap({ points }: { points: NetworkPoint[] }) {
           ))}
         </div>
       </div>
+
+      {/* drawer detail dari kanan, muncul saat marker diklik */}
+      <PointDetailDrawer point={selectedPoint} onClose={() => setSelectedPoint(null)} />
     </div>
   );
 }
