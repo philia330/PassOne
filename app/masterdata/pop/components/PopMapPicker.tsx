@@ -43,7 +43,7 @@ const ClickHandler = ({
 const FlyTo = ({ lat, lng }: { lat: number; lng: number }) => {
   const map = useMap();
 
-  React.useEffect(() => {
+  useEffect(() => {
     map.flyTo([lat, lng], 16);
   }, [lat, lng, map]);
 
