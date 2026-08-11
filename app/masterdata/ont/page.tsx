@@ -16,6 +16,12 @@ export default async function OntPage({
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
 
+  // getOnts, getPops, getOdps semuanya sudah di-`select`/`include` seperlunya
+  // di actions.ts (tanpa field Decimal), jadi tidak perlu trik sanitize lagi di sini.
+  const currentRole = session.user.role as string;
+  // Hanya Admin yang bisa delete ONT
+  const canDelete = currentRole === "ADMIN";
+
   const [{ data: onts, total, totalPages }, pops, odps] = await Promise.all([
     getOnts(search, page),
     getPops(),
@@ -46,7 +52,7 @@ export default async function OntPage({
         </Card>
       </div>
 
-      <OntSortableTable initialData={onts} pops={pops} odps={odps} defaultValue={search} />
+      <OntSortableTable initialData={onts} pops={pops} odps={odps} defaultValue={search} canDelete={canDelete} />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Pencil, Plus, Upload } from "lucide-react";
+import { Pencil, Plus, Upload, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { JenisKelamin, Role } from "@prisma/client";
 
@@ -53,6 +53,19 @@ type Props = {
   data?: UserData;
 };
 
+const ROLE_LABEL: Record<Role, string> = {
+  ADMIN: "ADMIN",
+  LEADER: "LEADER",
+  SALES: "SALES",
+  TEKNISI: "TEKNISI",
+  LOGISTIK: "LOGISTIK",
+};
+
+const JKL_LABEL: Record<JenisKelamin, string> = {
+  LAKI_LAKI: "Laki-laki",
+  PEREMPUAN: "Perempuan",
+};
+
 export function UserFormDialog({
   mode,
   data,
@@ -85,6 +98,8 @@ export function UserFormDialog({
         : "false"
     );
 
+  const [showPassword, setShowPassword] = useState(false);
+
   useEffect(() => {
     return () => {
       if (
@@ -102,6 +117,7 @@ export function UserFormDialog({
       setJkl("");
       setStatus("true");
       setPreview(null);
+      setShowPassword(false);
     } else {
       setRole(data?.role ?? "");
       setJkl(data?.jkl ?? "");
@@ -111,6 +127,7 @@ export function UserFormDialog({
           : "false"
       );
       setPreview(data?.foto ?? null);
+      setShowPassword(false);
     }
   };
 
@@ -163,6 +180,14 @@ export function UserFormDialog({
     setPreview(
       URL.createObjectURL(file)
     );
+  };
+
+  // Cuma boleh angka, maksimal 13 digit -- batas wajar nomor HP Indonesia
+  const handleNoHpChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 13);
+    e.target.value = digitsOnly;
   };
 
   const handleSubmit = async (
@@ -412,25 +437,40 @@ export function UserFormDialog({
                 Password
               </label>
 
-              <Input
-                name="password"
-                type="password"
-                required={mode === "create"}
-                placeholder={
-                  mode === "edit"
-                    ? "Kosongkan jika tidak diubah"
-                    : "Masukkan password"
-                }
-                className="
+              <div className="relative">
+                <Input
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required={mode === "create"}
+                  placeholder={
+                    mode === "edit"
+                      ? "Kosongkan jika tidak diubah"
+                      : "Masukkan password"
+                  }
+                  className="
   h-12
   rounded-2xl
   border-slate-200
+  pr-12
   focus-visible:ring-purple-500
   dark:border-slate-700
   dark:bg-slate-800
   dark:text-slate-100
 "
-              />
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                  title={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* ================= EMAIL & NO HP ================= */}
@@ -461,7 +501,11 @@ export function UserFormDialog({
 
                 <Input
                   name="no_hp"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={13}
                   defaultValue={data?.no_hp ?? ""}
+                  onChange={handleNoHpChange}
                   placeholder="08xxxxxxxxxx"
                   className="
                     h-12
@@ -486,7 +530,9 @@ export function UserFormDialog({
                 }
               >
                 <SelectTrigger className="h-12 w-full rounded-2xl border-slate-200">
-                  <SelectValue placeholder="Pilih Jenis Kelamin" />
+                  <SelectValue placeholder="Pilih Jenis Kelamin">
+                    {(value: string) => JKL_LABEL[value as JenisKelamin] ?? "Pilih Jenis Kelamin"}
+                  </SelectValue>
                 </SelectTrigger>
 
                 <SelectContent>
@@ -520,7 +566,9 @@ export function UserFormDialog({
                 }
               >
                 <SelectTrigger className="h-12 w-full rounded-2xl border-slate-200">
-                  <SelectValue placeholder="Pilih Role" />
+                  <SelectValue placeholder="Pilih Role">
+                    {(value: string) => ROLE_LABEL[value as Role] ?? "Pilih Role"}
+                  </SelectValue>
                 </SelectTrigger>
 
                 <SelectContent>
@@ -566,7 +614,9 @@ export function UserFormDialog({
                 }
               >
                 <SelectTrigger className="h-12 w-full rounded-2xl border-slate-200">
-                  <SelectValue />
+                  <SelectValue>
+                    {(value: string) => (value === "true" ? "Aktif" : "Nonaktif")}
+                  </SelectValue>
                 </SelectTrigger>
 
                 <SelectContent>

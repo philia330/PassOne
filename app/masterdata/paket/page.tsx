@@ -19,6 +19,10 @@ export default async function PaketPage({
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
 
+  const currentRole = session.user.role;
+  // Hanya Admin yang bisa delete paket
+  const canDelete = currentRole === "ADMIN";
+
   const [{ data: paket, total, totalPages }, totalAll] = await Promise.all([
     getPakets(search, page),
     getPaketTotal(),
@@ -50,7 +54,7 @@ export default async function PaketPage({
         </Card>
       </div>
 
-      <PaketSortableTable initialData={paket} kodeOtomatis={kodeOtomatis} defaultValue={search} />
+      <PaketSortableTable initialData={paket} kodeOtomatis={kodeOtomatis} defaultValue={search} canDelete={canDelete} />
     </div>
   );
 }

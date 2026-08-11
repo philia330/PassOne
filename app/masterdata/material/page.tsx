@@ -19,6 +19,10 @@ export default async function MaterialPage({
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
 
+  const currentRole = session.user.role;
+  // Hanya Admin yang bisa delete material
+  const canDelete = currentRole === "ADMIN";
+
   const [{ data: material, total, totalPages }, totalAll] = await Promise.all([
     getMaterials(search, page),
     getMaterialTotal(),
@@ -50,7 +54,7 @@ export default async function MaterialPage({
         </Card>
       </div>
 
-      <MaterialSortableTable initialData={material} kodeOtomatis={kodeOtomatis} defaultValue={search} />
+      <MaterialSortableTable initialData={material} kodeOtomatis={kodeOtomatis} defaultValue={search} canDelete={canDelete} />
     </div>
   );
 }

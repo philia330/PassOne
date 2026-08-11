@@ -157,7 +157,10 @@ model material {
   baadetail     baadetail[]
 }
 
-model odp {
+
+model olt {
+  id_olt       Int       @id @default(autoincrement())
+  kode_olt    model odp {
   id_odp      Int       @id @default(autoincrement())
   kode_odp    String    @unique(map: "Odp_kode_odp_key")
   nama_odp    String
@@ -176,10 +179,7 @@ model odp {
 
   @@index([id_olt], map: "Odp_id_olt_fkey")
 }
-
-model olt {
-  id_olt       Int       @id @default(autoincrement())
-  kode_olt     String    @unique(map: "Olt_kode_olt_key")
+ String    @unique(map: "Olt_kode_olt_key")
   nama_olt     String
   lokasi       String
   latitude     Decimal
@@ -334,12 +334,10 @@ enum ActivityType {
   OLT_DELETED
   ODP_CREATED
   ODP_UPDATED
+  ODP_DELETED
   ONT_CREATED
   ONT_UPDATED
   ONT_DELETED
-  ODP_CREATED
-  ODP_UPDATED
-  ODP_DELETED
   PAKET_CREATED
   PAKET_UPDATED
   PAKET_DELETED

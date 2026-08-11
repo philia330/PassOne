@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUp, ArrowDown, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -16,6 +16,7 @@ import { DeleteOltDialog } from "./DeleteOltDialog";
 import { OltSearch } from "./OltSearch";
 import { OltPagination } from "./OltPagination";
 import { OltMapDialog } from "./OltMapDialog";
+import { OpenGoogleMaps } from "@/components/ui/OpenGoogleMaps";
 import { OltSecretCell } from "./OltSecretCell";
 import { OltImageDialog } from "./OltImageDialog";
 
@@ -31,21 +32,37 @@ type Olt = {
   username_olt?: string | null;
   password_olt?: string | null;
   foto_olt?: string | null;
-  pop?: { nama_pop: string };
+  pop?: { nama_pop: string } | null;
   createdAt: Date;
 };
 
 const PAGE_SIZE = 10;
 
+function LockedCell() {
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-slate-400 dark:text-slate-500"
+      title="Hanya Admin/Leader yang bisa melihat data ini"
+    >
+      <Lock className="h-3.5 w-3.5" />
+      <span className="text-xs">Terbatas</span>
+    </span>
+  );
+}
+
 export function OltSortableTable({
   initialData,
   pops,
   defaultValue,
+  currentRole,
 }: {
   initialData: Olt[];
   pops: { id_pop: number; nama_pop: string; alamat: string }[];
   defaultValue: string;
+  currentRole: string;
 }) {
+  const canViewSecret = currentRole === "ADMIN" || currentRole === "LEADER";
+
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -107,6 +124,9 @@ export function OltSortableTable({
                 <TableHead className="dark:text-slate-300">Nama OLT</TableHead>
                 <TableHead className="dark:text-slate-300">Lokasi</TableHead>
                 <TableHead className="dark:text-slate-300">POP</TableHead>
+                <TableHead className="dark:text-slate-300">IP Address</TableHead>
+                <TableHead className="dark:text-slate-300">Username</TableHead>
+                <TableHead className="dark:text-slate-300">Password</TableHead>
                 <TableHead className="dark:text-slate-300">Dibuat</TableHead>
                 <TableHead className="text-center dark:text-slate-300">Aksi</TableHead>
               </TableRow>
@@ -115,7 +135,7 @@ export function OltSortableTable({
             <TableBody>
               {paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-10 text-center text-slate-400 dark:text-slate-500">
+                  <TableCell colSpan={10} className="py-10 text-center text-slate-400 dark:text-slate-500">
                     {search ? "Tidak ada data OLT yang cocok" : "Belum ada data OLT"}
                   </TableCell>
                 </TableRow>
@@ -134,6 +154,27 @@ export function OltSortableTable({
                     <TableCell className="dark:text-slate-300">{olt.nama_olt}</TableCell>
                     <TableCell className="dark:text-slate-300">{olt.lokasi}</TableCell>
                     <TableCell className="dark:text-slate-300">{olt.pop?.nama_pop}</TableCell>
+                    <TableCell>
+                      {canViewSecret ? (
+                        <OltSecretCell value={olt.ip_olt ?? null} />
+                      ) : (
+                        <LockedCell />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {canViewSecret ? (
+                        <OltSecretCell value={olt.username_olt ?? null} />
+                      ) : (
+                        <LockedCell />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {canViewSecret ? (
+                        <OltSecretCell value={olt.password_olt ?? null} />
+                      ) : (
+                        <LockedCell />
+                      )}
+                    </TableCell>
                     <TableCell className="text-slate-500 dark:text-slate-400">
                       {new Date(olt.createdAt).toLocaleDateString("id-ID", {
                         day: "2-digit",
@@ -144,6 +185,7 @@ export function OltSortableTable({
                     <TableCell className="text-center">
                       <div className="flex justify-center gap-1">
                         <OltMapDialog nama={olt.nama_olt} lat={Number(olt.latitude)} lng={Number(olt.longitude)} />
+                        <OpenGoogleMaps lat={Number(olt.latitude)} lng={Number(olt.longitude)} name={olt.nama_olt} />
                         <OltFormDialog mode="edit" pops={pops} data={{ id_olt: olt.id_olt, nama_olt: olt.nama_olt, lokasi: olt.lokasi, latitude: String(olt.latitude), longitude: String(olt.longitude), id_pop: olt.id_pop, ip_olt: olt.ip_olt, username_olt: olt.username_olt, password_olt: olt.password_olt, foto_olt: olt.foto_olt }} />
                         <DeleteOltDialog id={olt.id_olt} name={olt.nama_olt} />
                       </div>
@@ -173,12 +215,40 @@ export function OltSortableTable({
                     </div>
                   </div>
                   <div className="flex shrink-0 gap-1">
+                    <OpenGoogleMaps lat={Number(olt.latitude)} lng={Number(olt.longitude)} name={olt.nama_olt} />
                     <OltFormDialog mode="edit" pops={pops} data={{ id_olt: olt.id_olt, nama_olt: olt.nama_olt, lokasi: olt.lokasi, latitude: String(olt.latitude), longitude: String(olt.longitude), id_pop: olt.id_pop, ip_olt: olt.ip_olt, username_olt: olt.username_olt, password_olt: olt.password_olt, foto_olt: olt.foto_olt }} />
                     <DeleteOltDialog id={olt.id_olt} name={olt.nama_olt} />
                   </div>
                 </div>
                 <p className="text-sm dark:text-slate-300">{olt.lokasi}</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">POP: {olt.pop?.nama_pop ?? "-"}</p>
+
+                <div className="space-y-1 border-t border-slate-100 pt-2 text-xs dark:border-slate-800">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400 dark:text-slate-500">IP:</span>
+                    {canViewSecret ? (
+                      <OltSecretCell value={olt.ip_olt ?? null} />
+                    ) : (
+                      <LockedCell />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400 dark:text-slate-500">Username:</span>
+                    {canViewSecret ? (
+                      <OltSecretCell value={olt.username_olt ?? null} />
+                    ) : (
+                      <LockedCell />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400 dark:text-slate-500">Password:</span>
+                    {canViewSecret ? (
+                      <OltSecretCell value={olt.password_olt ?? null} />
+                    ) : (
+                      <LockedCell />
+                    )}
+                  </div>
+                </div>
               </div>
             ))
           )}

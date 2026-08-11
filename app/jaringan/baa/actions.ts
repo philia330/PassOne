@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, ActivityType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { auth } from "@/lib/auth";
@@ -31,12 +31,12 @@ async function saveFotoInstalasi(
  * HELPER: Audit Log
  * ======================================
  */
-async function logActivity(type: string, description: string) {
+async function logActivity(type: ActivityType, description: string) {
   const session = await auth();
   try {
     await prisma.activityLog.create({
       data: {
-        type: type as any,
+        type,
         description,
         id_user: session?.user?.id_user as number,
       },
@@ -157,6 +157,33 @@ async function validateOdpStock(id_odp: number) {
   if (!odp) throw new Error("ODP tidak ditemukan");
   if (odp.stok_port !== null && odp.stok_port <= 0) {
     throw new Error(`Port ODP "${odp.nama_odp}" sudah habis (stok_port: ${odp.stok_port})`);
+  }
+}
+
+/**
+ * ======================================
+ * HELPER: Validasi ONT belum dipakai BAA lain
+ * ======================================
+ * Satu ONT fisik cuma boleh terpasang di satu lokasi/pelanggan. Ini jaring
+ * pengaman di server -- UI (dropdown ONT) sudah difilter cuma nampilkan yang
+ * belum kepakai, tapi tetap perlu dicek ulang di sini untuk jaga-jaga race
+ * condition (dua orang input barengan) atau request yang dikirim manual.
+ * excludeBaaId dipakai pas mode edit, supaya BAA tidak dianggap "bentrok"
+ * dengan ONT-nya sendiri.
+ */
+async function validateOntAvailability(id_ont: number, excludeBaaId?: number) {
+  const existing = await prisma.baa.findFirst({
+    where: {
+      id_ont,
+      ...(excludeBaaId ? { id_baa: { not: excludeBaaId } } : {}),
+    },
+    select: { id_baa: true, kode_baa: true },
+  });
+
+  if (existing) {
+    throw new Error(
+      `ONT ini sudah dipakai oleh BAA "${existing.kode_baa}". Pilih ONT lain yang masih tersedia.`
+    );
   }
 }
 
@@ -407,6 +434,7 @@ export async function createBaa(formData: FormData) {
   // Validasi stok SEBELUM ada perubahan
   await validateMaterialStock(details);
   await validateOdpStock(id_odp);
+  await validateOntAvailability(id_ont);
 
   const foto_instalasi = await saveFotoInstalasi(formData, null);
   const kodeSementara = `TMP-${Date.now()}`;
@@ -529,6 +557,12 @@ export async function updateBaa(id: number, formData: FormData) {
   await validateMaterialStock(details, restoredStockMap);
   if (oldBaa.id_odp !== id_odp) {
     await validateOdpStock(id_odp);
+  }
+  // ONT cuma perlu dicek ulang kalau memang diganti -- kalau tetap pakai ONT
+  // yang sama seperti sebelumnya, tidak perlu divalidasi lagi (dia sudah
+  // "milik" BAA ini).
+  if (oldBaa.id_ont !== id_ont) {
+    await validateOntAvailability(id_ont, id);
   }
 
   await prisma.$transaction(async (tx) => {
@@ -710,6 +744,9 @@ export async function getOdpOptions() {
 
 export async function getOntOptions() {
   return await prisma.ont.findMany({
+    // Sama seperti di page.tsx BAA -- cuma tampilkan ONT yang belum dipakai
+    // BAA manapun.
+    where: { baa: { none: {} } },
     orderBy: { serial_number: "asc" },
   });
 }

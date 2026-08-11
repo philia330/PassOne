@@ -26,7 +26,13 @@ export const getPortPons = async (search: string = "", page: number = 1) => {
   const [data, total] = await Promise.all([
     prisma.portPon.findMany({
       where,
-      include: { olt: true, odp: true },
+      // Batasi field relasi -- olt punya kolom Decimal (latitude/longitude)
+      // dan data sensitif (username_olt/password_olt) yang tidak boleh/perlu
+      // ikut terkirim ke Client Component. Select seperlunya saja.
+      include: {
+        olt: { select: { id_olt: true, nama_olt: true } },
+        odp: { select: { id_odp: true, nama_odp: true } },
+      },
       orderBy: [{ id_olt: "asc" }, { nomor_port: "asc" }],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,

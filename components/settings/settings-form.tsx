@@ -90,8 +90,9 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
         toast.success("Pengaturan berhasil disimpan.");
         window.location.reload();
       } catch (err) {
-        toast.error("Gagal menyimpan pengaturan. Coba lagi.");
-      }
+      console.error(err);
+      toast.error("Gagal menyimpan pengaturan. Coba lagi.");
+    }
     });
   }
 

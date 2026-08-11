@@ -36,10 +36,12 @@ export function MaterialSortableTable({
   initialData,
   kodeOtomatis,
   defaultValue,
+  canDelete = false,
 }: {
   initialData: Material[];
   kodeOtomatis: string;
   defaultValue: string;
+  canDelete?: boolean;
 }) {
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
@@ -145,7 +147,7 @@ export function MaterialSortableTable({
                       <TableCell className="text-center">
                         <div className="flex justify-center gap-1">
                           <MaterialDialog mode="edit" material={item} />
-                          <MaterialDeleteDialog id={item.id_material} namaMaterial={item.nama_material} />
+                          {canDelete && <MaterialDeleteDialog id={item.id_material} namaMaterial={item.nama_material} />}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -169,7 +171,7 @@ export function MaterialSortableTable({
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <MaterialDialog mode="edit" material={item} />
-                    <MaterialDeleteDialog id={item.id_material} namaMaterial={item.nama_material} />
+                    {canDelete && <MaterialDeleteDialog id={item.id_material} namaMaterial={item.nama_material} />}
                   </div>
                 </div>
                 <p className="text-sm dark:text-slate-300">Stok: <span className={`font-semibold ${menipis ? "text-red-600 dark:text-red-400" : ""}`}>{menipis && <AlertTriangle size={11} className="inline mr-0.5" />}{item.stok} {item.satuan}</span></p>

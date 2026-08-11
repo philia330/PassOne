@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { Role } from "@/lib/auth/roles";
-
+import { ActivityType } from "@prisma/client";
 const PAGE_SIZE = 10;
 
 /**
@@ -17,7 +17,7 @@ async function logActivity(type: string, description: string) {
   try {
     await prisma.activityLog.create({
       data: {
-        type: type as any,
+        type: type as ActivityType,
         description,
         id_user: session?.user?.id_user as number,
       },
@@ -122,6 +122,8 @@ export const createPop = async (formData: FormData) => {
   const nama_pop = (formData.get("nama_pop") as string)?.trim();
   const alamat = (formData.get("alamat") as string)?.trim();
   const id_area = parseInt(formData.get("id_area") as string, 10);
+  const latitude = parseFloat(formData.get("latitude") as string) || 0;
+  const longitude = parseFloat(formData.get("longitude") as string) || 0;
 
   if (!nama_pop || !alamat || isNaN(id_area)) {
     throw new Error("Nama POP, alamat, dan Area wajib diisi.");
@@ -131,14 +133,13 @@ export const createPop = async (formData: FormData) => {
 
   await prisma.$transaction(async (tx) => {
     await tx.pop.create({
-      data: { kode_pop, nama_pop, alamat, id_area, latitude: 0, longitude: 0 },
+      data: { kode_pop, nama_pop, alamat, id_area, latitude, longitude },
     });
   });
 
   await logActivity("POP_CREATED", `POP "${nama_pop}" (${kode_pop}) dibuat oleh ${session.user.nama}`);
   revalidatePath("/masterdata/pop");
 };
-
 /**
  * ======================================
  * UPDATE POP
@@ -155,6 +156,8 @@ export const updatePop = async (id: number, formData: FormData) => {
   const nama_pop = (formData.get("nama_pop") as string)?.trim();
   const alamat = (formData.get("alamat") as string)?.trim();
   const id_area = parseInt(formData.get("id_area") as string, 10);
+  const latitude = parseFloat(formData.get("latitude") as string) || 0;
+  const longitude = parseFloat(formData.get("longitude") as string) || 0;
 
   if (!nama_pop || !alamat || isNaN(id_area)) {
     throw new Error("Nama POP, alamat, dan Area wajib diisi.");
@@ -162,13 +165,12 @@ export const updatePop = async (id: number, formData: FormData) => {
 
   await prisma.pop.update({
     where: { id_pop: id },
-    data: { nama_pop, alamat, id_area },
+    data: { nama_pop, alamat, id_area, latitude, longitude },
   });
 
   await logActivity("POP_UPDATED", `POP "${nama_pop}" (${existing.kode_pop}) diupdate oleh ${session.user.nama}`);
   revalidatePath("/masterdata/pop");
 };
-
 /**
  * ======================================
  * DELETE POP

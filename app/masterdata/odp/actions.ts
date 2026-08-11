@@ -82,7 +82,12 @@ type OdpWithOlt = Awaited<ReturnType<typeof prisma.odp.findFirst>> & {
   olt?: { id_olt: number; nama_olt: string; latitude: number; longitude: number } | null;
 };
 
-export const getOdps = async (search: string = "", page: number = 1, includeCounts: boolean = false) => {
+export const getOdps = async (
+  search: string = "",
+  page: number = 1,
+  includeCounts: boolean = false,
+  sortOrder: "asc" | "desc" = "asc"
+) => {
   const where = search
     ? {
         OR: [
@@ -106,7 +111,7 @@ export const getOdps = async (search: string = "", page: number = 1, includeCoun
     prisma.odp.findMany({
       where,
       include,
-      orderBy: { kode_odp: "asc" },
+      orderBy: { kode_odp: sortOrder },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),

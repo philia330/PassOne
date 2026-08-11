@@ -60,8 +60,12 @@ export default async function BaaPage() {
         select: { id_odp: true, nama_odp: true },
       }),
       prisma.ont.findMany({
+        // Cuma tampilkan ONT yang belum dipakai BAA manapun -- satu ONT fisik
+        // cuma boleh terpasang di satu lokasi/pelanggan. ONT yang sedang dipakai
+        // BAA yang lagi diedit tetap muncul lewat mergedOntOptions di BaaForm.
+        where: { baa: { none: {} } },
         orderBy: { serial_number: "asc" },
-        select: { id_ont: true, serial_number: true },
+        select: { id_ont: true, serial_number: true, pelanggan: true },
       }),
       prisma.material.findMany({
         orderBy: { nama_material: "asc" },
@@ -115,23 +119,21 @@ export default async function BaaPage() {
         description="Berita Acara Aktivasi — hasil instalasi pelanggan"
       />
 
-      {/* Statistik */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="rounded-3xl border-0 bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-600 text-white shadow-lg shadow-purple-500/20 overflow-hidden relative">
-          <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-white/10" />
-          <div className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-white/5" />
-          <CardContent className="flex items-center justify-between p-6 relative">
-            <div>
-              <p className="text-sm text-white/80 font-medium">Total BAA</p>
-              <h2 className="mt-2 text-5xl font-bold tracking-tight">{baa.length}</h2>
-              <p className="mt-1 text-xs text-white/60">Instalasi Selesai</p>
-            </div>
-            <div className="rounded-2xl bg-white/20 p-4 backdrop-blur-sm">
-              <FileCheck2 className="h-8 w-8" />
-            </div>
-          </CardContent>
-        </Card>
+     {/* Statistik */}
+<div className="grid gap-4 md:grid-cols-3">
+  <Card className="rounded-3xl border-0 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-lg">
+    <CardContent className="flex items-center justify-between p-6">
+      <div>
+        <p className="text-sm text-white/80">Total BAA</p>
+        <h2 className="mt-2 text-4xl font-bold">{baa.length}</h2>
+        <p className="mt-1 text-sm text-white/80">Instalasi Selesai</p>
       </div>
+      <div className="rounded-2xl bg-white/20 p-4">
+        <FileCheck2 className="h-8 w-8" />
+      </div>
+    </CardContent>
+  </Card>
+</div>
 
       <BaaTable
         data={baa}

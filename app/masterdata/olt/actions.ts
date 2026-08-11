@@ -6,6 +6,7 @@ import { writeFile, mkdir, unlink } from "fs/promises";
 import path from "path";
 import { auth } from "@/lib/auth";
 import { Role } from "@/lib/auth/roles";
+import { Prisma } from "@prisma/client";
 
 const PAGE_SIZE = 10;
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "olt");
@@ -15,12 +16,12 @@ const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "olt");
  * HELPER: Audit Log
  * ======================================
  */
-async function logActivity(type: string, description: string) {
+async function logActivity(type: Prisma.ActivityLogCreateInput["type"], description: string) {
   const session = await auth();
   try {
     await prisma.activityLog.create({
       data: {
-        type: type as any,
+        type,
         description,
         id_user: session?.user?.id_user as number,
       },
@@ -29,7 +30,6 @@ async function logActivity(type: string, description: string) {
     console.error("Failed to log activity:", error);
   }
 }
-
 /**
  * ======================================
  * HELPER: Cek hak akses
@@ -134,11 +134,18 @@ export const getOlts = async (search: string = "", page: number = 1) => {
     prisma.olt.count({ where }),
   ]);
 
-  // Convert Decimal to number for latitude/longitude
+  // Convert Decimal to number — termasuk yang nested di dalam relasi `pop`
   const convertedData = data.map((o) => ({
     ...o,
     latitude: Number(o.latitude),
     longitude: Number(o.longitude),
+    pop: o.pop
+      ? {
+          ...o.pop,
+          latitude: Number(o.pop.latitude),
+          longitude: Number(o.pop.longitude),
+        }
+      : null,
   }));
 
   return { data: convertedData, total, totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
@@ -176,8 +183,17 @@ export const createOlt = async (formData: FormData) => {
     throw new Error("Latitude dan longitude tidak valid.");
   }
 
+  if (!ip_olt || !username_olt || !password_olt) {
+    throw new Error("IP Address, Username, dan Password wajib diisi.");
+  }
+
   const fotoFile = formData.get("foto_olt") as File | null;
-  const foto_olt = fotoFile && fotoFile.size > 0 ? await saveFotoOlt(fotoFile) : null;
+
+  if (!fotoFile || fotoFile.size === 0) {
+    throw new Error("Foto OLT wajib diisi.");
+  }
+
+  const foto_olt = await saveFotoOlt(fotoFile);
 
   const kode_olt = await generateKodeOlt();
 
@@ -232,12 +248,20 @@ export const updateOlt = async (id: number, formData: FormData) => {
     throw new Error("Latitude dan longitude tidak valid.");
   }
 
+  if (!ip_olt || !username_olt || !password_olt) {
+    throw new Error("IP Address, Username, dan Password wajib diisi.");
+  }
+
   const fotoFile = formData.get("foto_olt") as File | null;
   let foto_olt = existing.foto_olt;
 
   if (fotoFile && fotoFile.size > 0) {
     await deleteFotoOlt(existing.foto_olt);
     foto_olt = await saveFotoOlt(fotoFile);
+  }
+
+  if (!foto_olt) {
+    throw new Error("Foto OLT wajib diisi.");
   }
 
   await prisma.olt.update({

@@ -18,6 +18,8 @@ import { OdpMapDialog } from "./components/OdpMapDialog";
 import { OdpSearch } from "./components/OdpSearch";
 import { OdpPagination } from "./components/OdpPagination";
 import { OdpConnectionDialog } from "./components/OdpConnectionDialog";
+import { OdpSortToggle } from "./components/OdpSortToggle";
+import { OpenGoogleMaps } from "@/components/ui/OpenGoogleMaps";
 import { requirePageAccess } from "@/lib/auth/guards";
 
 export default async function OdpPage({
@@ -26,17 +28,22 @@ export default async function OdpPage({
   searchParams: Promise<{
     search?: string;
     page?: string;
+    sort?: string;
   }>;
 }) {
   const session = await requirePageAccess(["ADMIN", "LEADER"]);
 
-  const params = await searchParams;
+  const params = (await searchParams) ?? {};
 
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
+  const sortOrder: "asc" | "desc" = params.sort === "desc" ? "desc" : "asc";
+
+  const currentRole = session.user.role as string;
+  const canDelete = currentRole === "ADMIN" || currentRole === "LEADER";
 
   const [{ data: odps, total, totalPages }, olts] = await Promise.all([
-    getOdps(search, page, true), // true = include counts
+    getOdps(search, page, true, sortOrder),
     getOlts(),
   ]);
 
@@ -59,49 +66,45 @@ export default async function OdpPage({
 
       {/* Statistik */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="rounded-3xl border-0 bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-600 text-white shadow-lg shadow-purple-500/20 overflow-hidden relative">
-          <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-white/10" />
-          <div className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-white/5" />
-          <CardContent className="flex items-center justify-between p-6 relative">
+        <Card className="rounded-3xl border-0 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-lg">
+          <CardContent className="flex items-center justify-between p-6">
             <div>
-              <p className="text-sm text-white/80 font-medium">Total ODP</p>
-              <h2 className="mt-2 text-5xl font-bold tracking-tight">{total}</h2>
-              <p className="mt-1 text-xs text-white/60">Perangkat Terdaftar</p>
+              <p className="text-sm text-white/80">Total ODP</p>
+              <h2 className="mt-2 text-4xl font-bold">{total}</h2>
+              <p className="mt-1 text-sm text-white/80">Perangkat Terdaftar</p>
             </div>
-            <div className="rounded-2xl bg-white/20 p-4 backdrop-blur-sm">
+            <div className="rounded-2xl bg-white/20 p-4">
               <Router className="h-8 w-8" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-sky-50 shadow-md dark:border-blue-900/30 dark:from-blue-950 dark:to-sky-950 overflow-hidden relative">
-          <div className="absolute -top-4 -right-4 h-20 w-20 rounded-full bg-blue-200/30 dark:bg-blue-800/20" />
-          <CardContent className="flex items-center justify-between p-6 relative">
+        <Card className="rounded-3xl border-0 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-lg">
+          <CardContent className="flex items-center justify-between p-6">
             <div>
-              <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Total ONT</p>
-              <h2 className="mt-2 text-4xl font-bold text-blue-700 dark:text-blue-300 tracking-tight">
+              <p className="text-sm text-white/80">Total ONT</p>
+              <h2 className="mt-2 text-4xl font-bold">
                 {odps.reduce((sum, o) => sum + ((o as any)._count?.ont || 0), 0)}
               </h2>
-              <p className="mt-1 text-xs text-blue-500/70 dark:text-blue-400/50">ONT Terpasang</p>
+              <p className="mt-1 text-sm text-white/80">ONT Terpasang</p>
             </div>
-            <div className="rounded-xl bg-blue-100 p-3 dark:bg-blue-900/50">
-              <Wifi className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div className="rounded-2xl bg-white/20 p-4">
+              <Wifi className="h-8 w-8" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border border-green-100 bg-gradient-to-br from-green-50 to-emerald-50 shadow-md dark:border-green-900/30 dark:from-green-950 dark:to-emerald-950 overflow-hidden relative">
-          <div className="absolute -top-4 -right-4 h-20 w-20 rounded-full bg-green-200/30 dark:bg-green-800/20" />
-          <CardContent className="flex items-center justify-between p-6 relative">
+        <Card className="rounded-3xl border-0 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-lg">
+          <CardContent className="flex items-center justify-between p-6">
             <div>
-              <p className="text-sm text-green-600 dark:text-green-400 font-medium">Total BAA</p>
-              <h2 className="mt-2 text-4xl font-bold text-green-700 dark:text-green-300 tracking-tight">
+              <p className="text-sm text-white/80">Total BAA</p>
+              <h2 className="mt-2 text-4xl font-bold">
                 {odps.reduce((sum, o) => sum + ((o as any)._count?.baa || 0), 0)}
               </h2>
-              <p className="mt-1 text-xs text-green-500/70 dark:text-green-400/50">BAA Terbuat</p>
+              <p className="mt-1 text-sm text-white/80">BAA Terbuat</p>
             </div>
-            <div className="rounded-xl bg-green-100 p-3 dark:bg-green-900/50">
-              <FileText className="h-6 w-6 text-green-600 dark:text-green-400" />
+            <div className="rounded-2xl bg-white/20 p-4">
+              <FileText className="h-8 w-8" />
             </div>
           </CardContent>
         </Card>
@@ -122,7 +125,9 @@ export default async function OdpPage({
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/50">
-                  <TableHead className="dark:text-slate-300">Kode ODP</TableHead>
+                  <TableHead className="dark:text-slate-300">
+                    <OdpSortToggle sortOrder={sortOrder} />
+                  </TableHead>
                   <TableHead className="dark:text-slate-300">Nama ODP</TableHead>
                   <TableHead className="dark:text-slate-300">Alamat</TableHead>
                   <TableHead className="dark:text-slate-300">OLT</TableHead>
@@ -172,6 +177,11 @@ export default async function OdpPage({
                           odpNama={odp.nama_odp}
                           allPoints={allPoints}
                         />
+                        <OpenGoogleMaps
+                          lat={Number(odp.latitude)}
+                          lng={Number(odp.longitude)}
+                          name={odp.nama_odp}
+                        />
                         <OdpFormDialog
                           mode="edit"
                           olts={olts}
@@ -185,7 +195,7 @@ export default async function OdpPage({
                             jumlah_port: odp.jumlah_port,
                           }}
                         />
-                        <DeleteOdpDialog id={odp.id_odp} name={odp.nama_odp} />
+                        {canDelete && <DeleteOdpDialog id={odp.id_odp} name={odp.nama_odp} />}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -194,7 +204,7 @@ export default async function OdpPage({
                 {odps.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                      colSpan={7}
                       className="py-10 text-center text-slate-400 dark:text-slate-500"
                     >
                       {search
@@ -210,6 +220,10 @@ export default async function OdpPage({
           {/* ====================================================== */}
           {/* Versi Card - hanya muncul di HP (di bawah breakpoint md:) */}
           {/* ====================================================== */}
+          <div className="md:hidden flex justify-end">
+            <OdpSortToggle sortOrder={sortOrder} />
+          </div>
+
           <div className="grid gap-3 md:hidden">
             {odps.map((odp) => (
               <div
@@ -231,6 +245,11 @@ export default async function OdpPage({
                       odpNama={odp.nama_odp}
                       allPoints={allPoints}
                     />
+                    <OpenGoogleMaps
+                      lat={Number(odp.latitude)}
+                      lng={Number(odp.longitude)}
+                      name={odp.nama_odp}
+                    />
                     <OdpFormDialog
                       mode="edit"
                       olts={olts}
@@ -244,7 +263,7 @@ export default async function OdpPage({
                         jumlah_port: odp.jumlah_port,
                       }}
                     />
-                    <DeleteOdpDialog id={odp.id_odp} name={odp.nama_odp} />
+                    {canDelete && <DeleteOdpDialog id={odp.id_odp} name={odp.nama_odp} />}
                   </div>
                 </div>
 

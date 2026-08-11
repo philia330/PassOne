@@ -18,6 +18,7 @@ import {
   Timer,
   StickyNote,
   Image as ImageIcon,
+  Camera,
   Lock,
   Plus,
   X,
@@ -91,6 +92,23 @@ export const BaaForm = ({
   const [idFab, setIdFab] = useState(defaultValues?.id_fab ? String(defaultValues.id_fab) : "");
 
   // ================================================================
+  // TANGGAL INSTALASI -- terkunci otomatis. Mode create: hari ini.
+  // Mode edit: tetap pakai tanggal yang sudah tersimpan (tidak ditimpa
+  // jadi hari ini), sama-sama tidak bisa diubah manual dari form.
+  // ================================================================
+  const tanggalValue = defaultValues?.tanggal_instalasi
+    ? toDateInputValue(defaultValues.tanggal_instalasi)
+    : toDateInputValue(new Date());
+
+  const tanggalDisplay = tanggalValue
+    ? new Date(tanggalValue).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "";
+
+  // ================================================================
   // FOTO INSTALASI -- dropzone custom, ganti input file bawaan browser
   // ================================================================
   const [fotoPreview, setFotoPreview] = useState<string | null>(
@@ -108,6 +126,21 @@ export const BaaForm = ({
       setFotoPreview(defaultValues?.foto_instalasi ?? null);
       setFotoFileName(null);
     }
+  }
+
+  // Input file yang sama dipakai untuk dua mode -- atribut "capture" di-set
+  // atau dilepas sesaat sebelum di-trigger. Di Android/iOS ini langsung
+  // membuka kamera (capture) atau galeri (tanpa capture). Di Windows/desktop,
+  // browser mengabaikan "capture" sepenuhnya, jadi dua-duanya sama-sama
+  // membuka File Explorer biasa -- tidak ada yang error.
+  function openCamera() {
+    fotoInputRef.current?.setAttribute("capture", "environment");
+    fotoInputRef.current?.click();
+  }
+
+  function openGallery() {
+    fotoInputRef.current?.removeAttribute("capture");
+    fotoInputRef.current?.click();
   }
 
   const [idOlt, setIdOlt] = useState(defaultValues?.id_olt ? String(defaultValues.id_olt) : "");
@@ -200,14 +233,6 @@ export const BaaForm = ({
     if (value !== null) setIdOlt(value);
   };
 
-  const handleOdpChange = (value: string | null) => {
-    if (value !== null) setIdOdp(value);
-  };
-
-  const handleOntChange = (value: string | null) => {
-    if (value !== null) setIdOnt(value);
-  };
-
   const handleMaterialChange = (rowId: string, value: string | null) => {
     if (value !== null) {
       updateRow(rowId, "id_material", value);
@@ -228,6 +253,32 @@ export const BaaForm = ({
     return fabOptions;
   }, [fabOptions, defaultValues]);
 
+  // Sama seperti mergedFabOptions -- jaga-jaga kalau data ODP/ONT yang
+  // sedang dipakai (mode edit) sudah tidak ada lagi di daftar opsi baru.
+  const mergedOdpOptions = useMemo(() => {
+    if (defaultValues?.odp && !odpOptions.some((o) => o.id_odp === defaultValues.odp!.id_odp)) {
+      return [
+        { id_odp: defaultValues.odp.id_odp, nama_odp: defaultValues.odp.nama_odp } as OdpOption,
+        ...odpOptions,
+      ];
+    }
+    return odpOptions;
+  }, [odpOptions, defaultValues]);
+
+  const mergedOntOptions = useMemo(() => {
+    if (defaultValues?.ont && !ontOptions.some((o) => o.id_ont === defaultValues.ont!.id_ont)) {
+      return [
+        {
+          id_ont: defaultValues.ont.id_ont,
+          serial_number: defaultValues.ont.serial_number,
+          pelanggan: (defaultValues.ont as { pelanggan?: string }).pelanggan ?? null,
+        } as OntOption,
+        ...ontOptions,
+      ];
+    }
+    return ontOptions;
+  }, [ontOptions, defaultValues]);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
       {/* Kode BAA */}
@@ -246,22 +297,23 @@ export const BaaForm = ({
         <p className="text-xs text-slate-400 dark:text-slate-500">Dibuat otomatis, tidak bisa diubah manual</p>
       </div>
 
-      {/* Tanggal Instalasi */}
+      {/* Tanggal Instalasi -- terkunci otomatis ke hari ini (mode create) */}
       <div className="col-span-1 space-y-2">
-        <Label
-          htmlFor="tanggal_instalasi"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-        >
+        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <Calendar size={13} className="text-purple-500" /> Tanggal Instalasi
         </Label>
-        <Input
-          id="tanggal_instalasi"
-          name="tanggal_instalasi"
-          type="date"
-          defaultValue={toDateInputValue(defaultValues?.tanggal_instalasi)}
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          required
-        />
+        <div className="relative">
+          <Input
+            value={tanggalDisplay}
+            readOnly
+            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+          />
+          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+        </div>
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          Otomatis tercatat sesuai tanggal BAA ini diinput.
+        </p>
+        <input type="hidden" name="tanggal_instalasi" value={tanggalValue} />
       </div>
 
       {/* Status -- selalu terkunci "Selesai" */}
@@ -414,51 +466,43 @@ export const BaaForm = ({
         <input type="hidden" name="id_olt" value={idOlt} required />
       </div>
 
-      {/* ODP */}
+      {/* ODP -- sekarang searchable, sama pola dengan FAB */}
       <div className="col-span-1 space-y-2">
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <GitBranch size={13} className="text-purple-500" /> ODP
         </Label>
-        <Select
+        <SearchableSelect
           value={idOdp}
-          onValueChange={handleOdpChange}
-          items={odpOptions.map((o) => ({ value: String(o.id_odp), label: o.nama_odp }))}
-        >
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-            <SelectValue placeholder="Pilih ODP" />
-          </SelectTrigger>
-          <SelectContent>
-            {odpOptions.map((o) => (
-              <SelectItem key={o.id_odp} value={String(o.id_odp)}>
-                {o.nama_odp}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onValueChange={setIdOdp}
+          options={mergedOdpOptions.map((o) => ({
+            value: String(o.id_odp),
+            label: o.nama_odp,
+          }))}
+          placeholder="Pilih ODP"
+          searchPlaceholder="Cari nama ODP..."
+          emptyText="ODP tidak ditemukan"
+        />
         <input type="hidden" name="id_odp" value={idOdp} required />
       </div>
 
-      {/* ONT */}
+      {/* ONT -- sekarang searchable, sama pola dengan FAB */}
       <div className="col-span-1 space-y-2">
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <Wifi size={13} className="text-purple-500" /> ONT
         </Label>
-        <Select
+        <SearchableSelect
           value={idOnt}
-          onValueChange={handleOntChange}
-          items={ontOptions.map((o) => ({ value: String(o.id_ont), label: o.serial_number }))}
-        >
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-            <SelectValue placeholder="Pilih ONT" />
-          </SelectTrigger>
-          <SelectContent>
-            {ontOptions.map((o) => (
-              <SelectItem key={o.id_ont} value={String(o.id_ont)}>
-                {o.serial_number}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onValueChange={setIdOnt}
+          options={mergedOntOptions.map((o) => ({
+            value: String(o.id_ont),
+            label: (o as { pelanggan?: string | null }).pelanggan
+              ? `${o.serial_number} — ${(o as { pelanggan?: string | null }).pelanggan}`
+              : o.serial_number,
+          }))}
+          placeholder="Pilih ONT"
+          searchPlaceholder="Cari serial number / nama pelanggan..."
+          emptyText="ONT tidak ditemukan"
+        />
         <input type="hidden" name="id_ont" value={idOnt} required />
       </div>
 
@@ -474,7 +518,7 @@ export const BaaForm = ({
           id="port_olt"
           name="port_olt"
           type="number"
-          placeholder="Masukan port OLT"
+          placeholder="Contoh: 3"
           min={1}
           max={9999}
           defaultValue={defaultValues?.port_olt ?? ""}
@@ -495,7 +539,7 @@ export const BaaForm = ({
           id="port_odp"
           name="port_odp"
           type="number"
-          placeholder="Masukan port ODP"
+          placeholder="Contoh: 5"
           min={1}
           max={9999}
           defaultValue={defaultValues?.port_odp ?? ""}
@@ -517,7 +561,7 @@ export const BaaForm = ({
           name="rx_power_dbm"
           type="number"
           step="any"
-          placeholder="Masukkan RX Power"
+          placeholder="Contoh: -18.5 (biasanya minus)"
           required
           defaultValue={defaultValues?.rx_power_dbm ?? ""}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -537,7 +581,7 @@ export const BaaForm = ({
           name="tx_power_dbm"
           type="number"
           step="any"
-          placeholder="Masukkan TX Power"
+          placeholder="Contoh: 3.2"
           required
           defaultValue={defaultValues?.tx_power_dbm ?? ""}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -555,7 +599,7 @@ export const BaaForm = ({
         <Input
           id="speed_download"
           name="speed_download"
-          placeholder="Masukkan Speed Download"
+          placeholder="Contoh: 50 Mbps"
           required
           defaultValue={defaultValues?.speed_download ?? ""}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -573,7 +617,7 @@ export const BaaForm = ({
         <Input
           id="speed_upload"
           name="speed_upload"
-          placeholder="Masukkan Speed Upload"
+          placeholder="Contoh: 20 Mbps"
           required
           defaultValue={defaultValues?.speed_upload ?? ""}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -593,7 +637,7 @@ export const BaaForm = ({
           name="ping_ms"
           type="number"
           step="any"
-          placeholder="Masukkan Ping"
+          placeholder="Contoh: 12"
           required
           defaultValue={defaultValues?.ping_ms ?? ""}
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -621,7 +665,7 @@ export const BaaForm = ({
 
         <button
           type="button"
-          onClick={() => fotoInputRef.current?.click()}
+          onClick={openGallery}
           className="group relative w-full overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-purple-300 hover:bg-purple-50/50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-purple-700 dark:hover:bg-purple-500/10"
         >
           {fotoPreview ? (
@@ -651,6 +695,26 @@ export const BaaForm = ({
             </div>
           )}
         </button>
+
+        {/* Ambil Foto (kamera) & Pilih dari Galeri -- input yang sama, cuma
+            atribut capture-nya beda sebelum di-trigger. Di desktop dua-duanya
+            sama-sama buka File Explorer, tidak masalah. */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={openCamera}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-purple-300 hover:text-purple-600 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-purple-700 dark:hover:text-purple-400"
+          >
+            <Camera size={14} /> Ambil Foto
+          </button>
+          <button
+            type="button"
+            onClick={openGallery}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-purple-300 hover:text-purple-600 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-purple-700 dark:hover:text-purple-400"
+          >
+            <ImageIcon size={14} /> Pilih dari Galeri
+          </button>
+        </div>
 
         {fotoFileName ? (
           <p className="truncate text-xs text-slate-500 dark:text-slate-400">
