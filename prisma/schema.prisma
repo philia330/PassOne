@@ -19,7 +19,7 @@ model User {
   no_hp             String?
   email             String?      @unique
   status            Boolean      @default(true)
-  theme_preference  String       @default("SYSTEM") // LIGHT, DARK, SYSTEM
+  theme_preference  String       @default("SYSTEM")
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   baa               baa[]
@@ -39,6 +39,8 @@ model area {
   updatedAt  DateTime @updatedAt
   fab        fab[]
   pop        pop[]
+
+  @@map("area")
 }
 
 model baa {
@@ -75,6 +77,8 @@ model baa {
   @@index([id_olt], map: "Baa_id_olt_fkey")
   @@index([id_ont], map: "Baa_id_ont_fkey")
   @@index([id_user], map: "Baa_id_user_fkey")
+
+  @@map("baa")
 }
 
 model baadetail {
@@ -90,15 +94,10 @@ model baadetail {
 
   @@index([id_baa], map: "BaaDetail_id_baa_fkey")
   @@index([id_material], map: "BaaDetail_id_material_fkey")
+
+  @@map("baadetail")
 }
 
-// ======================================================
-// MODEL BAA TEKNISI (BARU)
-// Menyimpan daftar teknisi TAMBAHAN yang ikut mengerjakan
-// satu BAA -- di luar teknisi utama (baa.id_user).
-// Pola tabel ini sama persis seperti baadetail (satu BAA
-// bisa punya banyak baris teknisi tambahan).
-// ======================================================
 model baateknisi {
   id_baa_teknisi Int      @id @default(autoincrement())
   id_baa         Int
@@ -107,9 +106,9 @@ model baateknisi {
   baa            baa      @relation(fields: [id_baa], references: [id_baa], map: "BaaTeknisi_id_baa_fkey")
   users          User     @relation(fields: [id_user], references: [id_user], map: "BaaTeknisi_id_user_fkey")
 
-  // Satu teknisi tidak boleh dobel-input di BAA yang sama
   @@unique([id_baa, id_user], map: "BaaTeknisi_id_baa_id_user_key")
   @@index([id_user], map: "BaaTeknisi_id_user_fkey")
+
   @@map("baa_teknisi")
 }
 
@@ -140,6 +139,8 @@ model fab {
   @@index([id_paket], map: "Fab_id_paket_fkey")
   @@index([id_user], map: "Fab_id_user_fkey")
   @@index([id_penginput], map: "Fab_id_penginput_fkey")
+
+  @@map("fab")
 }
 
 model material {
@@ -155,31 +156,13 @@ model material {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   baadetail     baadetail[]
-}
 
+  @@map("material")
+}
 
 model olt {
   id_olt       Int       @id @default(autoincrement())
-  kode_olt    model odp {
-  id_odp      Int       @id @default(autoincrement())
-  kode_odp    String    @unique(map: "Odp_kode_odp_key")
-  nama_odp    String
-  alamat      String
-  latitude    Decimal
-  longitude   Decimal
-  jumlah_port Int?
-  stok_port   Int?      @default(0)
-  id_olt      Int
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  baa         baa[]
-  olt         olt       @relation(fields: [id_olt], references: [id_olt], map: "Odp_id_olt_fkey")
-  ont         ont[]
-  portpon     portPon[]
-
-  @@index([id_olt], map: "Odp_id_olt_fkey")
-}
- String    @unique(map: "Olt_kode_olt_key")
+  kode_olt     String    @unique(map: "Olt_kode_olt_key")
   nama_olt     String
   lokasi       String
   latitude     Decimal
@@ -197,6 +180,30 @@ model olt {
   portpon      portPon[]
 
   @@index([id_pop], map: "Olt_id_pop_fkey")
+
+  @@map("olt")
+}
+
+model odp {
+  id_odp      Int       @id @default(autoincrement())
+  kode_odp    String    @unique(map: "Odp_kode_odp_key")
+  nama_odp    String
+  alamat      String
+  latitude    Decimal
+  longitude   Decimal
+  jumlah_port Int?
+  stok_port   Int?      @default(0)
+  id_olt      Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  baa         baa[]
+  olt         olt       @relation(fields: [id_olt], references: [id_olt], map: "Odp_id_olt_fkey")
+  ont         ont[]
+  portpon     portPon[]
+
+  @@index([id_olt], map: "Odp_id_olt_fkey")
+
+  @@map("odp")
 }
 
 model ont {
@@ -214,6 +221,8 @@ model ont {
 
   @@index([id_odp], map: "Ont_id_odp_fkey")
   @@index([id_pop], map: "Ont_id_pop_fkey")
+
+  @@map("ont")
 }
 
 model paket {
@@ -226,6 +235,8 @@ model paket {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   fab        fab[]
+
+  @@map("paket")
 }
 
 model pop {
@@ -243,6 +254,8 @@ model pop {
   area      area     @relation(fields: [id_area], references: [id_area], map: "Pop_id_area_fkey")
 
   @@index([id_area], map: "Pop_id_area_fkey")
+
+  @@map("pop")
 }
 
 model portPon {
@@ -259,6 +272,7 @@ model portPon {
 
   @@unique([id_olt, nomor_port], map: "PortPon_id_olt_nomor_port_key")
   @@index([id_odp], map: "PortPon_id_odp_fkey")
+
   @@map("portpon")
 }
 
@@ -301,28 +315,18 @@ enum fab_status {
   AKTIF
 }
 
-// ======================================================
-// ENUM & MODEL ACTIVITY LOG
-// Mencatat riwayat aktivitas penting di seluruh sistem
-// ======================================================
-
 enum ActivityType {
-  // User
   USER_CREATED
   USER_UPDATED
   USER_DELETED
   USER_DEACTIVATED
   LOGIN
-
-  // Transaksi (Fahry pegang)
   FAB_CREATED
   FAB_UPDATED
   FAB_DELETED
   BAA_CREATED
   BAA_UPDATED
   BAA_DELETED
-
-  // Master Data (dipegang tim)
   AREA_CREATED
   AREA_UPDATED
   AREA_DELETED
@@ -344,8 +348,6 @@ enum ActivityType {
   MATERIAL_CREATED
   MATERIAL_UPDATED
   MATERIAL_DELETED
-
-  // Pengaturan
   SETTINGS_UPDATED
 }
 
@@ -359,13 +361,9 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
-// ======================================================
-// MODEL SETTINGS
-// Pengaturan umum aplikasi (nama app, logo login, dll)
-// ======================================================
 model Settings {
   id_setting Int      @id @default(autoincrement())
-  key        String   @unique // contoh: "app_name", "login_logo", "login_title", "login_subtitle"
+  key        String   @unique
   value      String   @db.Text
   updatedAt  DateTime @updatedAt
 
