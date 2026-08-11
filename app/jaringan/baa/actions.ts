@@ -440,6 +440,12 @@ export async function createBaa(formData: FormData) {
   const kodeSementara = `TMP-${Date.now()}`;
 
   const newBaa = await prisma.$transaction(async (tx) => {
+    // Update status ONT ke TERPASANG
+    await tx.ont.update({
+      where: { id_ont },
+      data: { status: "TERPASANG" as const },
+    });
+
     const created = await tx.baa.create({
       data: {
         kode_baa: kodeSementara,
@@ -506,6 +512,7 @@ export async function createBaa(formData: FormData) {
   revalidatePath("/jaringan/fab");
   revalidatePath("/masterdata/material");
   revalidatePath("/masterdata/odp");
+  revalidatePath("/masterdata/ont");
 
   const lowStockMaterials = await getLowStockWarnings(details.map((d) => d.id_material));
   return { success: true, lowStockMaterials };
@@ -620,6 +627,22 @@ export async function updateBaa(id: number, formData: FormData) {
       await adjustOdpStokPort(tx, id_odp, -1);
     }
 
+    // Tangani perubahan ONT
+    if (oldBaa.id_ont !== id_ont) {
+      if (oldBaa.id_ont !== null) {
+        // ONT lama dikembalikan ke TERSEDIA
+        await tx.ont.update({
+          where: { id_ont: oldBaa.id_ont },
+          data: { status: "TERSEDIA" as const },
+        });
+      }
+      // ONT baru diset ke TERPASANG
+      await tx.ont.update({
+        where: { id_ont },
+        data: { status: "TERPASANG" as const },
+      });
+    }
+
     await tx.fab.update({
       where: { id_fab },
       data: { status: "AKTIF" },
@@ -641,6 +664,7 @@ export async function updateBaa(id: number, formData: FormData) {
   revalidatePath("/jaringan/fab");
   revalidatePath("/masterdata/material");
   revalidatePath("/masterdata/odp");
+  revalidatePath("/masterdata/ont");
 
   const lowStockMaterials = await getLowStockWarnings(details.map((d) => d.id_material));
   return { success: true, lowStockMaterials };
@@ -677,6 +701,14 @@ export async function deleteBaa(id: number) {
     // Kembalikan stok_port ODP
     await adjustOdpStokPort(tx, baa.id_odp, 1);
 
+    // Kembalikan status ONT ke TERSEDIA (jika BAA memang punya ONT)
+    if (baa.id_ont !== null) {
+      await tx.ont.update({
+        where: { id_ont: baa.id_ont },
+        data: { status: "TERSEDIA" as const },
+      });
+    }
+
     await tx.baateknisi.deleteMany({ where: { id_baa: id } });
     await tx.baadetail.deleteMany({ where: { id_baa: id } });
     await tx.baa.delete({ where: { id_baa: id } });
@@ -688,6 +720,7 @@ export async function deleteBaa(id: number) {
   revalidatePath("/jaringan/baa");
   revalidatePath("/masterdata/material");
   revalidatePath("/masterdata/odp");
+  revalidatePath("/masterdata/ont");
 }
 
 /**
@@ -744,9 +777,11 @@ export async function getOdpOptions() {
 
 export async function getOntOptions() {
   return await prisma.ont.findMany({
-    // Sama seperti di page.tsx BAA -- cuma tampilkan ONT yang belum dipakai
-    // BAA manapun.
-    where: { baa: { none: {} } },
+    // Sama seperti di page.tsx BAA -- hanya ONT yang siap dipakai.
+    where: {
+      status: "TERSEDIA",
+      baa: { none: {} },
+    },
     orderBy: { serial_number: "asc" },
   });
 }

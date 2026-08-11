@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/PageHeader";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -121,53 +122,42 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans antialiased relative overflow-hidden">
-      <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-purple-200/40 blur-3xl" />
-      <div className="pointer-events-none absolute top-40 -right-24 h-80 w-80 rounded-full bg-sky-200/40 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-fuchsia-200/30 blur-3xl" />
+    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <PageHeader
+          title={baa.kode_baa}
+          description={`${baa.fab?.nama_pelanggan} • ${formatTanggal(baa.tanggal_instalasi)}`}
+        />
 
-      <div className="relative p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
-        <Link href="/workspace?view=baa">
-          <Button variant="ghost" className="rounded-xl gap-2 text-slate-600 hover:text-purple-600">
-            <ArrowLeft className="h-4 w-4" />
-            Kembali ke Daftar BAA
-          </Button>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/workspace?view=baa">
+            <Button variant="outline" className="rounded-xl gap-2 text-slate-600">
+              <ArrowLeft className="h-4 w-4" />
+              Kembali
+            </Button>
+          </Link>
 
-        {/* Header */}
-        <Card className="relative overflow-hidden rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
-          <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500" />
+          <a
+            href={`/jaringan/baadetail/${id_baa}/print`}
+            target="_blank"
+            className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-purple-700"
+          >
+            <Download className="h-4 w-4" />
+            Cetak Invoice
+          </a>
+        </div>
+      </div>
 
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl font-bold text-slate-900">{baa.kode_baa}</h1>
-                <Badge className={`rounded-full border font-semibold ${STATUS_BADGE[baa.status]}`}>
-                  <span className="flex items-center gap-1">
-                    {STATUS_ICON[baa.status]}
-                    {STATUS_LABEL[baa.status]}
-                  </span>
-                </Badge>
-              </div>
-              <p className="text-sm text-slate-500 mt-1">
-                {baa.fab?.nama_pelanggan} • {formatTanggal(baa.tanggal_instalasi)}
-              </p>
-            </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge className={`rounded-full border font-semibold ${STATUS_BADGE[baa.status]}`}>
+          <span className="flex items-center gap-1">
+            {STATUS_ICON[baa.status]}
+            {STATUS_LABEL[baa.status]}
+          </span>
+        </Badge>
+      </div>
 
-            <div className="flex gap-2">
-              <a
-                href={`/jaringan/baadetail/${id_baa}/print`}
-                target="_blank"
-                className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-purple-700"
-              >
-                <Download className="h-4 w-4" />
-                Cetak Invoice
-              </a>
-            </div>
-          </div>
-        </Card>
-
-        {/* Grid Info */}
+      <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
             <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
@@ -209,7 +199,6 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
                 <p className="font-semibold text-slate-900">{baa.users?.nama}</p>
               </div>
 
-              {/* Info Referral/Sales - jika teknisi input FAB untuk sales */}
               {baa.fab?.penginput && baa.fab?.penginput.id_user !== baa.fab?.id_user && (
                 <div className="rounded-xl bg-amber-50 border border-amber-100 p-3">
                   <p className="text-xs text-amber-600 font-medium">Referal / Sales</p>
@@ -328,7 +317,7 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
                       <th className="text-center py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Jumlah</th>
                       <th className="text-right py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Harga</th>
                       <th className="text-right py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Total</th>
-                      <th className="text-left py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Keterangan</th>
+                      <th className="text-left py-3 pl-3 text-xs font-bold uppercase tracking-wide text-slate-500">Keterangan</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -342,7 +331,9 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
                         <td className="text-right py-2.5 font-semibold text-purple-700">
                           {detail.material?.harga ? formatRupiah(Number(detail.material.harga) * detail.jumlah) : "-"}
                         </td>
-                        <td className="py-2.5 text-slate-500 text-sm">{detail.keterangan || "-"}</td>
+                        <td className="py-2.5 pl-3 text-sm leading-relaxed text-slate-500">
+                          <span className="inline-block min-h-[1.5rem]">{detail.keterangan || "-"}</span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -378,32 +369,32 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
               <ImageIcon className="h-4 w-4 text-purple-500" />
               Foto Instalasi
             </h3>
-          {baa.foto_instalasi ? (
-  <BaaImageDialog
-    fotoUrl={baa.foto_instalasi}
-    kodeBaa={baa.kode_baa}
-    trigger={
-      <div className="rounded-xl overflow-hidden border border-slate-200">
-        <div className="relative w-full h-80">
-          <Image
-            src={baa.foto_instalasi}
-            alt={`Foto instalasi ${baa.kode_baa}`}
-            fill
-            className="object-cover"
-            unoptimized={true}
-          />
-        </div>
-        <div className="p-2 bg-slate-50 text-center">
-          <span className="text-sm text-purple-600 hover:underline">
-            Lihat foto full size
-          </span>
-        </div>
-      </div>
-    }
-  />
-) : (
-  <p className="text-sm text-slate-400 italic">Tidak ada foto</p>
-)}
+            {baa.foto_instalasi ? (
+              <BaaImageDialog
+                fotoUrl={baa.foto_instalasi}
+                kodeBaa={baa.kode_baa}
+                trigger={
+                  <div className="rounded-xl overflow-hidden border border-slate-200">
+                    <div className="relative w-full h-80">
+                      <Image
+                        src={baa.foto_instalasi}
+                        alt={`Foto instalasi ${baa.kode_baa}`}
+                        fill
+                        className="object-cover"
+                        unoptimized={true}
+                      />
+                    </div>
+                    <div className="p-2 bg-slate-50 text-center">
+                      <span className="text-sm text-purple-600 hover:underline">
+                        Lihat foto full size
+                      </span>
+                    </div>
+                  </div>
+                }
+              />
+            ) : (
+              <p className="text-sm text-slate-400 italic">Tidak ada foto</p>
+            )}
           </Card>
         </div>
 

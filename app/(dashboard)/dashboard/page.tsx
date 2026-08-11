@@ -1,3 +1,4 @@
+import Link from "next/link";
 import NetworkMapLoader from "@/components/dashboard/network-map-loader";
 import {
   Users,
@@ -63,30 +64,35 @@ export default async function DashboardPage() {
       value: totalUser,
       icon: Users,
       color: "bg-blue-500",
+      href: "/workspace?view=user",
     },
     canSeeSales && {
       title: "Total FAB",
       value: totalFab,
       icon: FileText,
       color: "bg-emerald-500",
+      href: "/workspace?view=fab",
     },
     canSeeTeknisi && {
       title: "Total BAA",
       value: totalBaa,
       icon: ClipboardCheck,
       color: "bg-amber-500",
+      href: "/workspace?view=baa",
     },
     canSeeMasterData && {
       title: "Material",
       value: totalMaterial,
       icon: Package,
       color: "bg-purple-500",
+      href: "/workspace?view=material",
     },
   ].filter(Boolean) as {
     title: string;
     value: number;
     icon: React.ComponentType<{ className?: string }>;
     color: string;
+    href: string;
   }[];
 
   return (
@@ -97,9 +103,10 @@ export default async function DashboardPage() {
           const Icon = item.icon;
 
           return (
-            <div
+            <Link
               key={item.title}
-              className="rounded-2xl bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:bg-slate-900 dark:shadow-none sm:p-4"
+              href={item.href}
+              className="block rounded-2xl bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:bg-slate-900 dark:shadow-none sm:p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
@@ -112,13 +119,11 @@ export default async function DashboardPage() {
                   </h2>
                 </div>
 
-                <div
-                    className={`${item.color} rounded-xl p-3 text-white sm:rounded-2xl sm:p-4`}
-                  >
+                <div className={`${item.color} rounded-xl p-3 text-white sm:rounded-2xl sm:p-4`}>
                   <Icon className="h-5 w-5 sm:h-7 sm:w-7" />
                 </div>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { FileCheck2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
@@ -7,10 +8,14 @@ import { BaaTable } from "@/app/jaringan/baa/components/BaaTable";
 
 export default async function BaaPage() {
   const session = await auth();
+  if (!session?.user) {
+    redirect("/login");
+  }
+
   const currentUser = {
-    id_user: Number(session!.user.id_user),
-    nama: session!.user.nama,
-    role: session!.user.role,
+    id_user: Number(session.user.id_user),
+    nama: session.user.nama,
+    role: session.user.role,
   };
 
   const [rawBaa, fabList, teknisiList, oltList, odpList, ontList, materialList] =
@@ -60,10 +65,13 @@ export default async function BaaPage() {
         select: { id_odp: true, nama_odp: true },
       }),
       prisma.ont.findMany({
-        // Cuma tampilkan ONT yang belum dipakai BAA manapun -- satu ONT fisik
-        // cuma boleh terpasang di satu lokasi/pelanggan. ONT yang sedang dipakai
-        // BAA yang lagi diedit tetap muncul lewat mergedOntOptions di BaaForm.
-        where: { baa: { none: {} } },
+        // Hanya tampilkan ONT yang benar-benar siap dipakai: status TERSEDIA
+        // dan belum dipakai oleh BAA manapun. ONT yang sedang dipakai BAA yang
+        // lagi diedit tetap muncul lewat mergedOntOptions di BaaForm.
+        where: {
+          status: "TERSEDIA",
+          baa: { none: {} },
+        },
         orderBy: { serial_number: "asc" },
         select: { id_ont: true, serial_number: true, pelanggan: true },
       }),
