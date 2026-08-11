@@ -67,7 +67,9 @@ export function ActivityDetailDialog({ activity, trigger }: ActivityDetailDialog
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild onClick={() => setOpen(true)}>
+      <DialogTrigger
+        render={<button type="button" className="w-full text-left" />}
+      >
         {trigger}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md rounded-3xl">

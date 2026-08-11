@@ -59,7 +59,8 @@ export const OntFormDialog = ({
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [statusValue, setStatusValue] = useState(data?.status ?? "TERSEDIA");
+  const initialStatus = data?.status === "TERPASANG" ? "TERSEDIA" : (data?.status ?? "TERSEDIA");
+  const [statusValue, setStatusValue] = useState<"TERSEDIA" | "RUSAK">(initialStatus);
   const [popValue, setPopValue] = useState(
     data?.id_pop ? String(data.id_pop) : ""
   );
@@ -206,39 +207,55 @@ export const OntFormDialog = ({
               Status
             </label>
 
-            <Select
-              value={statusValue}
-              onValueChange={(v) => setStatusValue(v as typeof statusValue)}
-            >
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
-                <SelectValue placeholder="Pilih status">
-                  {(value: string) => statusLabel[value] ?? "Pilih status"}
-                </SelectValue>
-              </SelectTrigger>
+            {mode === "create" ? (
+              /* Mode Create: Status forced ke TERSEDIA, tidak bisa diubah */
+              <div className="flex items-center gap-3">
+                <input type="hidden" name="status" value="TERSEDIA" />
+                <div className="flex h-12 items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 dark:border-slate-800 dark:bg-slate-800/50">
+                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">
+                    Tersedia
+                  </span>
+                </div>
+                <span className="text-sm text-slate-500 dark:text-slate-400">
+                  Status otomatis diatur saat ONT ditambahkan
+                </span>
+              </div>
+            ) : (
+              /* Mode Edit: Hanya bisa ubah ke RUSAK (bila TERPASANG) atau RUSAK -> TERSEDIA */
+              <Select
+                value={statusValue}
+                onValueChange={(v) => setStatusValue(v as typeof statusValue)}
+              >
+                <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
+                  <SelectValue placeholder="Pilih status">
+                    {(value: string) => statusLabel[value] ?? "Pilih status"}
+                  </SelectValue>
+                </SelectTrigger>
 
-              <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                <SelectItem
-                  value="TERSEDIA"
-                  className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
-                >
-                  Tersedia
-                </SelectItem>
-                <SelectItem
-                  value="TERPASANG"
-                  className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
-                >
-                  Terpasang
-                </SelectItem>
-                <SelectItem
-                  value="RUSAK"
-                  className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
-                >
-                  Rusak
-                </SelectItem>
-              </SelectContent>
-            </Select>
+                <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                  <SelectItem
+                    value="TERSEDIA"
+                    className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
+                  >
+                    Tersedia
+                  </SelectItem>
+                  <SelectItem
+                    value="RUSAK"
+                    className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
+                  >
+                    Rusak
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            )}
 
-            <input type="hidden" name="status" value={statusValue} />
+            {mode === "edit" && (
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                Catatan: status <span className="font-semibold text-emerald-600 dark:text-emerald-400">Terpasang</span> diatur otomatis saat ONT dipakai di BAA. Di form ini, Anda hanya bisa mengubah ke <span className="font-semibold text-amber-600 dark:text-amber-400">Tersedia</span> atau <span className="font-semibold text-rose-600 dark:text-rose-400">Rusak</span>.
+              </p>
+            )}
+
+            <input type="hidden" name="status" value={mode === "create" ? "TERSEDIA" : statusValue} />
           </div>
 
           {/* 4. Serial Number */}

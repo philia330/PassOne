@@ -108,7 +108,8 @@ export const createOnt = async (formData: FormData) => {
 
   const serial_number = (formData.get("serial_number") as string)?.trim();
   const pelanggan = (formData.get("pelanggan") as string)?.trim();
-  const status = formData.get("status") as ont_status;
+  const rawStatus = formData.get("status") as string | null;
+  const status = rawStatus === "TERPASANG" ? "TERSEDIA" : ((rawStatus as ont_status | null) || "TERSEDIA");
   const id_pop = parseInt(formData.get("id_pop") as string, 10);
   const id_odp = parseInt(formData.get("id_odp") as string, 10);
 
@@ -156,7 +157,11 @@ export const updateOnt = async (id: number, formData: FormData) => {
 
   const serial_number = (formData.get("serial_number") as string)?.trim();
   const pelanggan = (formData.get("pelanggan") as string)?.trim();
-  const status = formData.get("status") as ont_status;
+  const rawStatus = formData.get("status") as string | null;
+  const status =
+    rawStatus === "TERPASANG"
+      ? existing.status
+      : ((rawStatus as ont_status | null) || existing.status || "TERSEDIA");
   const id_pop = parseInt(formData.get("id_pop") as string, 10);
   const id_odp = parseInt(formData.get("id_odp") as string, 10);
 

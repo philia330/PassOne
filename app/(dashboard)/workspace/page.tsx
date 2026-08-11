@@ -11,6 +11,7 @@ import PaketPage from "@/app/masterdata/paket/page";
 import UserPage from "@/app/masterdata/user/page";
 import FabPage from "@/app/jaringan/fab/page";
 import BaaPage from "@/app/jaringan/baa/page";
+import BaaDetailPage from "@/app/jaringan/baadetail/[id_baa]/page";
 import SettingsPage from "@/app/settings/page";
 
 import { WORKSPACE_MODULES, DEFAULT_MODULE, type WorkspaceModuleKey } from "./modules";
@@ -41,6 +42,7 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
   const session = await auth();
   const params = await searchParams;
   const view = (params.view as WorkspaceModuleKey) ?? DEFAULT_MODULE;
+  const detailId = params.id_baa ?? params.detailId ?? null;
 
   const moduleConfig = WORKSPACE_MODULES.find((m) => m.key === view);
 
@@ -51,6 +53,10 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
   // Settings hanya boleh diakses oleh ADMIN
   if (view === "settings" && session?.user?.role !== "ADMIN") {
     redirect("/dashboard");
+  }
+
+  if (view === "baa" && detailId) {
+    return <BaaDetailPage params={Promise.resolve({ id_baa: detailId })} />;
   }
 
   const ModuleComponent = MODULE_COMPONENTS[view];

@@ -108,7 +108,7 @@ function BaaActionMenu({
 
         <DropdownMenuItem className="rounded-xl p-0 cursor-pointer focus:bg-gradient-to-r focus:from-purple-50 focus:to-fuchsia-50 dark:focus:from-purple-500/10 dark:focus:to-fuchsia-500/10">
           <Link
-            href={`/jaringan/baadetail/${item.id_baa}`}
+            href={`/workspace?view=baa&id_baa=${item.id_baa}`}
             className="flex w-full items-center gap-3 px-2.5 py-2"
           >
             <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-fuchsia-500 shadow-sm shadow-purple-300/50">

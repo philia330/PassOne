@@ -20,8 +20,8 @@ type Pop = { id_pop: number; nama_pop: string };
 type Odp = { id_odp: number; nama_odp: string };
 
 const statusBadge: Record<string, string> = {
-  TERSEDIA: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400",
-  TERPASANG: "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400",
+  TERSEDIA: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400",
+  TERPASANG: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400",
   RUSAK: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400",
 };
 
