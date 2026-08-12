@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Inbox, Boxes, ClipboardList, MoreVertical, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, ClipboardList, MoreVertical, Pencil, Trash2, ArrowUp, ArrowDown, Filter, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -21,6 +22,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { BaaDialog } from "@/app/jaringan/baa/components/BaaDialog";
 import { BaaDeleteDialog } from "@/app/jaringan/baa/components/BaaDeleteDialog";
 import { BaaImageDialog } from "@/app/jaringan/baa/components/BaaImageDialog";
@@ -49,7 +57,7 @@ interface BaaTableProps {
   materialOptions: MaterialOption[];
   currentUser: CurrentUser;
   kodeOtomatis: string;
-  search?: string;
+  allTeknisiOptions?: TeknisiOption[]; // Semua teknisi untuk filter (admin/leader)
 }
 
 const PAGE_SIZE = 5;
@@ -166,10 +174,19 @@ export const BaaTable = ({
   materialOptions,
   currentUser,
   kodeOtomatis,
+  allTeknisiOptions = [],
 }: BaaTableProps) => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  // Untuk TEKNISI, default filter ke diri sendiri
+  const isTeknisi = currentUser.role === "TEKNISI";
+
+  // Lazy initialization untuk filter - hitung nilai default sekali saat mount
+  const [filterTeknisi, setFilterTeknisi] = useState<string>(() => {
+    return isTeknisi ? String(currentUser.id_user) : "all";
+  });
 
   const toggleSort = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -190,12 +207,25 @@ export const BaaTable = ({
   }, [data, sortOrder]);
 
   const filtered = useMemo(() => {
-    return sortedData.filter(
-      (item) =>
+    return sortedData.filter((item) => {
+      // Filter search
+      const matchesSearch =
         item.kode_baa.toLowerCase().includes(search.toLowerCase()) ||
-        (item.fab?.nama_pelanggan ?? "").toLowerCase().includes(search.toLowerCase())
-    );
-  }, [sortedData, search]);
+        (item.fab?.nama_pelanggan ?? "").toLowerCase().includes(search.toLowerCase());
+
+      // Filter berdasarkan teknisi - cek teknisi utama atau teknisi tambahan
+      const teknisiId = item.users?.id_user;
+      const isInTeknisiTambahan = item.teknisiTambahan?.some(
+        (tk) => tk.users?.id_user === Number(filterTeknisi)
+      );
+      const matchesTeknisi =
+        filterTeknisi === "all" ||
+        teknisiId === Number(filterTeknisi) ||
+        isInTeknisiTambahan;
+
+      return matchesSearch && matchesTeknisi;
+    });
+  }, [sortedData, search, filterTeknisi]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -205,20 +235,80 @@ export const BaaTable = ({
     setPage(1);
   };
 
+  const handleFilterChange = (value: string | null) => {
+    setFilterTeknisi(value ?? "all");
+    setPage(1);
+  };
+
+  const clearFilter = () => {
+    setFilterTeknisi("all");
+    setPage(1);
+  };
+
+  const showFilterDropdown = isTeknisi || allTeknisiOptions.length > 0;
+
   return (
     <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
       <div className="space-y-6 p-4 sm:p-6">
-        {/* Search bar + sort (mobile) + tombol tambah */}
+        {/* Search bar + Filter + Sort (mobile) + Tombol tambah */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
-            <Input
-              type="text"
-              placeholder="Cari kode BAA / nama pelanggan..."
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="h-11 rounded-2xl border-slate-200 pl-11 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full max-w-xs">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
+              <Input
+                type="text"
+                placeholder="Cari kode BAA / nama pelanggan..."
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="h-11 rounded-2xl border-slate-200 pl-11 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+              />
+            </div>
+
+            {/* Filter Dropdown Teknisi - hanya tampil jika ada opsi atau role teknisi */}
+            {showFilterDropdown && (
+              <div className="flex items-center gap-2">
+                <Select value={filterTeknisi} onValueChange={handleFilterChange}>
+                  <SelectTrigger className="h-11 w-[180px] rounded-2xl border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+                    <Filter className="h-4 w-4 mr-2 text-slate-400" />
+                    <SelectValue placeholder="Filter teknisi">
+                      {(value: string) => {
+                        if (value === "all") return "Semua";
+                        if (isTeknisi && value === String(currentUser.id_user)) {
+                          return `Saya (${currentUser.nama})`;
+                        }
+                        const opt = allTeknisiOptions.find((o) => String(o.id_user) === value);
+                        return opt?.nama ?? "Filter teknisi";
+                      }}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isTeknisi && (
+                      <SelectItem value={String(currentUser.id_user)}>
+                        Saya ({currentUser.nama})
+                      </SelectItem>
+                    )}
+                    <SelectItem value="all">Semua</SelectItem>
+                    {allTeknisiOptions.map((opt) => (
+                      <SelectItem key={opt.id_user} value={String(opt.id_user)}>
+                        {opt.nama}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Clear filter button */}
+                {filterTeknisi !== "all" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilter}
+                    className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+                  >
+                    <X className="h-4 w-4 text-slate-500" />
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">

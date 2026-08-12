@@ -10,7 +10,7 @@ export default async function OntPage({
 }: {
   searchParams: Promise<{ search?: string; page?: string }>;
 }) {
-  const session = await requirePageAccess(["ADMIN", "LOGISTIK"]);
+  const session = await requirePageAccess(["ADMIN", "LOGISTIK", "TEKNISI"]);
 
   const params = await searchParams;
   const search = params.search ?? "";

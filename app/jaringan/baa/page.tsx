@@ -110,6 +110,21 @@ export default async function BaaPage() {
     })),
   }));
 
+  // Buat daftar teknisi unik dari data BAA untuk filter
+  const uniqueTeknisiMap = new Map<number, { id_user: number; nama: string; username?: string }>();
+  baa.forEach((item) => {
+    if (item.users) {
+      uniqueTeknisiMap.set(item.users.id_user, item.users);
+    }
+    // Include teknisi tambahan
+    item.teknisiTambahan?.forEach((tk) => {
+      if (tk.users) {
+        uniqueTeknisiMap.set(tk.users.id_user, tk.users);
+      }
+    });
+  });
+  const uniqueTeknisiList = Array.from(uniqueTeknisiMap.values());
+
   const kodeOtomatis = `BAA${String(baa.length + 1).padStart(3, "0")}`;
 
   // Ubah semua data yang mengandung Decimal jadi Plain Object dalam 1 baris.
@@ -153,6 +168,7 @@ export default async function BaaPage() {
         materialOptions={sanitizedMaterial}
         currentUser={currentUser}
         kodeOtomatis={kodeOtomatis}
+        allTeknisiOptions={uniqueTeknisiList}
       />
     </div>
   );

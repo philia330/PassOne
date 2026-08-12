@@ -9,10 +9,9 @@ import {
   Package,
   PackageOpen,
   FileText,
-
+  FileUp,
   Cable,
   Users,
-
   Settings,
 } from "lucide-react";
 
@@ -27,6 +26,20 @@ export interface NavigationGroup {
   title: string;
   items: NavigationItem[];
 }
+
+export const importExcelOptions = [
+  { label: "Area", route: "/api/area/import" },
+  { label: "Material", route: "/api/material/import" },
+  { label: "OLT", route: "/api/olt/import" },
+  { label: "ODP", route: "/api/odp/import" },
+  { label: "ONT", route: "/api/ont/import" },
+  { label: "Paket", route: "/api/paket/import" },
+  { label: "POP", route: "/api/pop/import" },
+  { label: "Port PON", route: "/api/port-pon/import" },
+  { label: "FAB", route: "/api/fab/import" },
+  { label: "BAA", route: "/api/baa/import" },
+  { label: "User", route: "/api/user/import" },
+] as const;
 
 export const navigation: NavigationGroup[] = [
   {
@@ -132,6 +145,12 @@ export const navigation: NavigationGroup[] = [
         title: "Settings",
         href: "/workspace?view=settings",
         icon: Settings,
+        roles: [Role.ADMIN],
+      },
+      {
+        title: "Import Excel",
+        href: "#import-excel",
+        icon: FileUp,
         roles: [Role.ADMIN],
       },
     ],
