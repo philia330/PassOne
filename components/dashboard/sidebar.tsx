@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { LogOut, UserCircle2, X } from "lucide-react";
 import ImagePreview from "@/components/shared/image-preview";
 
-import { navigation } from "@/app/config/navigation";
+import { importExcelOptions, navigation } from "@/app/config/navigation";
 import { RoleLabel, Role } from "@/lib/auth/roles";
 
 type Settings = {
@@ -36,8 +36,54 @@ export default function Sidebar({
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [importMenuOpen, setImportMenuOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [pendingImportRoute, setPendingImportRoute] = useState<string | null>(null);
 
   const role = session?.user?.role;
+
+  const handleImportSelect = (route: string) => {
+    setImportMenuOpen(false);
+    setPendingImportRoute(route);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    const route = pendingImportRoute;
+
+    event.target.value = "";
+
+    if (!file || !route) {
+      setPendingImportRoute(null);
+      return;
+    }
+
+    try {
+      setImporting(true);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(route, {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || "Import Excel gagal");
+      }
+
+      alert(result.message || "Import Excel berhasil");
+    } catch (error: any) {
+      alert(error.message || "Terjadi kesalahan saat import Excel");
+    } finally {
+      setImporting(false);
+      setPendingImportRoute(null);
+    }
+  };
 
   useEffect(() => {
     if (!session?.user) return;
@@ -76,6 +122,14 @@ export default function Sidebar({
 
       {/* Menu */}
       <nav className="sidebar-scroll flex-1 overflow-y-auto px-4 py-6">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          className="hidden"
+          onChange={handleFileUpload}
+        />
+
         {navigation.map((group) => {
           const visibleItems = role
             ? group.items.filter((item) => item.roles.includes(role as Role))
@@ -94,6 +148,43 @@ export default function Sidebar({
                   const Icon = item.icon;
                   const active = isActiveNavItem(item.href, pathname, searchParams);
                   const count = counts[item.href];
+
+                  if (item.title === "Import Excel") {
+                    return (
+                      <div key={item.title} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setImportMenuOpen((prev) => !prev)}
+                          className={`flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 transition-all duration-200 ${
+                            active
+                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                              : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                          }`}
+                        >
+                          <span className="flex items-center gap-3">
+                            <Icon size={20} />
+                            <span>{item.title}</span>
+                          </span>
+                        </button>
+
+                        {importMenuOpen && (
+                          <div className="mt-2 rounded-xl border border-slate-700 bg-slate-800 p-2 shadow-lg">
+                            {importExcelOptions.map((option) => (
+                              <button
+                                key={option.label}
+                                type="button"
+                                onClick={() => handleImportSelect(option.route)}
+                                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700"
+                              >
+                                <span>{option.label}</span>
+                                <span className="text-xs text-slate-400">Excel</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
 
                   return (
                     <Link

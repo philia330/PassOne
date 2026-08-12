@@ -9,10 +9,13 @@ import {
   ArrowDown,
   ArrowUpDown,
   ImageIcon,
+  Filter,
+  X,
 } from "lucide-react";
 import { FabActionsDropdown } from "./FabActionsDropdown";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import {
   Table,
@@ -22,6 +25,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { FabPagination } from "@/app/jaringan/fab/components/FabPagination";
 import { FabDialog } from "./FabDialog";
 import type {
@@ -33,6 +43,11 @@ import type {
   CurrentUser,
 } from "@/types/fab";
 
+interface PenginputOption {
+  id_user: number;
+  nama: string;
+}
+
 interface FabTableProps {
   data: FabData[];
   areaOptions: AreaOption[];
@@ -40,6 +55,7 @@ interface FabTableProps {
   salesOptions: UserOption[];
   currentUser: CurrentUser;
   kodeOtomatis: string;
+  penginputOptions?: PenginputOption[];
 }
 
 const PAGE_SIZE = 5;
@@ -107,10 +123,19 @@ export const FabTable = ({
   salesOptions,
   currentUser,
   kodeOtomatis,
+  penginputOptions = [],
 }: FabTableProps) => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+
+  // Untuk SALES dan TEKNISI, default filter ke diri sendiri
+  const isSalesOrTeknisi = currentUser.role === "SALES" || currentUser.role === "TEKNISI";
+
+  // Lazy initialization untuk filter - hitung nilai default sekali saat mount
+  const [filterPenginput, setFilterPenginput] = useState<string>(() => {
+    return isSalesOrTeknisi ? String(currentUser.id_user) : "all";
+  });
 
   const toggleSort = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -127,19 +152,36 @@ export const FabTable = ({
 
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
-    return sortedData.filter(
-      (item) =>
+    return sortedData.filter((item) => {
+      // Filter search
+      const matchesSearch =
         item.kode_fab.toLowerCase().includes(query) ||
         item.nama_pelanggan.toLowerCase().includes(query) ||
-        item.nik.includes(search)
-    );
-  }, [sortedData, search]);
+        item.nik.includes(search);
+
+      // Filter berdasarkan penginput
+      const penginputId = item.penginput?.id_user;
+      const matchesPenginput = filterPenginput === "all" || penginputId === Number(filterPenginput);
+
+      return matchesSearch && matchesPenginput;
+    });
+  }, [sortedData, search, filterPenginput]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
+    setPage(1);
+  };
+
+  const handleFilterChange = (value: string | null) => {
+    setFilterPenginput(value ?? "all");
+    setPage(1);
+  };
+
+  const clearFilter = () => {
+    setFilterPenginput("all");
     setPage(1);
   };
 
@@ -151,20 +193,70 @@ export const FabTable = ({
   // Hanya Admin dan Leader yang bisa hapus
   const canDelete = currentUser.role === "ADMIN" || currentUser.role === "LEADER";
 
+  const showFilterDropdown = isSalesOrTeknisi ? true : penginputOptions.length > 0;
+
   return (
     <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
       <div className="space-y-6 p-4 sm:p-6">
-        {/* Search bar + Tambah */}
+        {/* Search bar + Filter + Tambah */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
-            <Input
-              type="text"
-              placeholder="Cari kode FAB / nama pelanggan / NIK..."
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="h-11 rounded-2xl border-slate-200 pl-11 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full max-w-xs">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
+              <Input
+                type="text"
+                placeholder="Cari kode FAB / nama pelanggan / NIK..."
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="h-11 rounded-2xl border-slate-200 pl-11 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+              />
+            </div>
+
+            {/* Filter Dropdown - hanya tampil jika ada opsi atau role yang sesuai */}
+            {showFilterDropdown && (
+              <div className="flex items-center gap-2">
+                <Select value={filterPenginput} onValueChange={handleFilterChange}>
+                  <SelectTrigger className="h-11 w-[180px] rounded-2xl border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+                    <Filter className="h-4 w-4 mr-2 text-slate-400" />
+                    <SelectValue placeholder="Filter penginput">
+                      {(value: string) => {
+                        if (value === "all") return "Semua";
+                        if (isSalesOrTeknisi && value === String(currentUser.id_user)) {
+                          return `Saya (${currentUser.nama})`;
+                        }
+                        const opt = penginputOptions.find((o) => String(o.id_user) === value);
+                        return opt?.nama ?? "Filter penginput";
+                      }}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isSalesOrTeknisi && (
+                      <SelectItem value={String(currentUser.id_user)}>
+                        Saya ({currentUser.nama})
+                      </SelectItem>
+                    )}
+                    <SelectItem value="all">Semua</SelectItem>
+                    {penginputOptions.map((opt) => (
+                      <SelectItem key={opt.id_user} value={String(opt.id_user)}>
+                        {opt.nama}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Clear filter button */}
+                {filterPenginput !== "all" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilter}
+                    className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+                  >
+                    <X className="h-4 w-4 text-slate-500" />
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           <FabDialog

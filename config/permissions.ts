@@ -43,7 +43,7 @@ export const permissions = {
     user: [],
     pop: ["read"],
     odp: [],
-    ont: [],
+    ont: ["create", "read", "update", "delete"],
     paket: [],
     fab: [],
     baa: ["create", "read", "update", "delete"],

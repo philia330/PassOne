@@ -45,18 +45,40 @@ export function FabActionsDropdown({
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const openGoogleMaps = () => {
+  const openGoogleMaps = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     const url = `https://www.google.com/maps?q=${fab.latitude},${fab.longitude}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
-  const openWhatsApp = () => {
+  const openWhatsApp = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     let cleanNumber = fab.no_hp.replace(/\D/g, "");
     if (cleanNumber.startsWith("0")) {
       cleanNumber = "62" + cleanNumber.substring(1);
     }
     const url = `https://wa.me/${cleanNumber}`;
     window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleView = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setViewOpen(true);
+  };
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditOpen(true);
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDeleteOpen(true);
   };
 
   return (
@@ -84,19 +106,31 @@ export function FabActionsDropdown({
           className="w-56 rounded-2xl border border-slate-200/70 bg-white/95 p-1.5 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/95 dark:shadow-black/30"
         >
           {/* View */}
-          <DropdownMenuItem onSelect={() => setViewOpen(true)} className="rounded-xl gap-3 px-3 py-2 cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-800">
+          <DropdownMenuItem
+            onSelect={(e) => e.preventDefault()}
+            onClick={handleView}
+            className="rounded-xl gap-3 px-3 py-2 cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-800"
+          >
             <Eye className="h-4 w-4 text-slate-500" />
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Lihat Detail</span>
           </DropdownMenuItem>
 
           {/* Google Maps */}
-          <DropdownMenuItem onClick={openGoogleMaps} className="rounded-xl gap-3 px-3 py-2 cursor-pointer focus:bg-sky-50 dark:focus:bg-sky-500/10">
+          <DropdownMenuItem
+            onSelect={(e) => e.preventDefault()}
+            onClick={openGoogleMaps}
+            className="rounded-xl gap-3 px-3 py-2 cursor-pointer focus:bg-sky-50 dark:focus:bg-sky-500/10"
+          >
             <Globe className="h-4 w-4 text-sky-600 dark:text-sky-400" />
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Buka di Google Maps</span>
           </DropdownMenuItem>
 
           {/* WhatsApp */}
-          <DropdownMenuItem onClick={openWhatsApp} className="rounded-xl gap-3 px-3 py-2 cursor-pointer focus:bg-green-50 dark:focus:bg-green-500/10">
+          <DropdownMenuItem
+            onSelect={(e) => e.preventDefault()}
+            onClick={openWhatsApp}
+            className="rounded-xl gap-3 px-3 py-2 cursor-pointer focus:bg-green-50 dark:focus:bg-green-500/10"
+          >
             <MessageCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Hubungi via WhatsApp</span>
           </DropdownMenuItem>
@@ -105,7 +139,11 @@ export function FabActionsDropdown({
           {canEdit && (
             <>
               <div className="my-1.5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-700" />
-              <DropdownMenuItem onSelect={() => setEditOpen(true)} className="rounded-xl gap-3 px-3 py-2 cursor-pointer focus:bg-amber-50 dark:focus:bg-amber-500/10">
+              <DropdownMenuItem
+                onSelect={(e) => e.preventDefault()}
+                onClick={handleEdit}
+                className="rounded-xl gap-3 px-3 py-2 cursor-pointer focus:bg-amber-50 dark:focus:bg-amber-500/10"
+              >
                 <Pencil className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Edit FAB</span>
               </DropdownMenuItem>
@@ -116,7 +154,11 @@ export function FabActionsDropdown({
           {canDelete && (
             <>
               <div className="my-1.5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-700" />
-              <DropdownMenuItem onSelect={() => setDeleteOpen(true)} className="rounded-xl gap-3 px-3 py-2 cursor-pointer focus:bg-red-50 dark:focus:bg-red-500/10">
+              <DropdownMenuItem
+                onSelect={(e) => e.preventDefault()}
+                onClick={handleDelete}
+                className="rounded-xl gap-3 px-3 py-2 cursor-pointer focus:bg-red-50 dark:focus:bg-red-500/10"
+              >
                 <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
                 <span className="text-sm font-medium text-red-600 dark:text-red-400">Hapus FAB</span>
               </DropdownMenuItem>

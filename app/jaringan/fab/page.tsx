@@ -15,7 +15,7 @@ export default async function FabPage() {
     role: session!.user.role,
   };
 
-  const [rawFab, areaList, paketList, salesList, fabStats] = await Promise.all([
+  const [rawFab, areaList, paketList, salesList, penginputListRaw, fabStats] = await Promise.all([
     prisma.fab.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -38,6 +38,16 @@ export default async function FabPage() {
       orderBy: { nama: "asc" },
       select: { id_user: true, nama: true },
     }),
+    // Ambil semua user yang pernah menginput FAB (untuk filter)
+    // Kita cari user yang ada di field penginput pada FAB
+    prisma.fab.findMany({
+      select: {
+        penginput: {
+          select: { id_user: true, nama: true },
+        },
+      },
+      distinct: ["id_penginput"],
+    }),
     prisma.fab.groupBy({
       by: ["status"],
       _count: { status: true },
@@ -53,6 +63,15 @@ export default async function FabPage() {
       harga: Number(item.paket.harga),
     },
   }));
+
+  // Process penginput list - ekstrak unique penginput dari hasil query
+  const uniquePenginputMap = new Map<number, { id_user: number; nama: string }>();
+  penginputListRaw.forEach((item) => {
+    if (item.penginput) {
+      uniquePenginputMap.set(item.penginput.id_user, item.penginput);
+    }
+  });
+  const penginputList = Array.from(uniquePenginputMap.values());
 
   const fabOpen = fabStats.find((s) => s.status === "OPEN")?._count.status ?? 0;
   const fabAktif = fabStats.find((s) => s.status === "AKTIF")?._count.status ?? 0;
@@ -115,6 +134,7 @@ export default async function FabPage() {
         salesOptions={salesList}
         currentUser={currentUser}
         kodeOtomatis={kodeOtomatis}
+        penginputOptions={penginputList}
       />
     </div>
   );
