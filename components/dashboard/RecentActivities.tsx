@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Sparkles, ArrowUpRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -18,6 +19,12 @@ type RecentActivitiesProps = {
 };
 
 export function RecentActivities({ activities }: RecentActivitiesProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   if (activities.length === 0) {
     return (
       <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-100 p-4 transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
@@ -51,10 +58,12 @@ export function RecentActivities({ activities }: RecentActivitiesProps) {
                   {activity.description}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {formatDistanceToNow(new Date(activity.createdAt), {
-                    addSuffix: true,
-                    locale: localeId,
-                  })}
+                  {isMounted
+                    ? formatDistanceToNow(new Date(activity.createdAt), {
+                        addSuffix: true,
+                        locale: localeId,
+                      })
+                    : "Memuat aktivitas..."}
                 </p>
               </div>
               <ArrowUpRight className="h-4 w-4 flex-shrink-0 text-slate-400 group-hover:text-purple-500 dark:text-slate-600 dark:group-hover:text-purple-400 transition-colors" />
