@@ -137,7 +137,7 @@ export function AreaSortableTable({
                             keterangan: area.keterangan,
                           }}
                         />
-                        <DeleteAreaDialog id={area.id_area} name={area.nama_area} />
+                        <DeleteAreaDialog id={area.id_area} namaArea={area.nama_area} />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -173,7 +173,7 @@ export function AreaSortableTable({
                         keterangan: area.keterangan,
                       }}
                     />
-                    <DeleteAreaDialog id={area.id_area} name={area.nama_area} />
+                    <DeleteAreaDialog id={area.id_area} namaArea={area.nama_area} />
                   </div>
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-300">{area.keterangan ?? "-"}</p>

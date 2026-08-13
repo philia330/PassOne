@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
   Phone,
@@ -108,7 +109,6 @@ export default function PointDetailDrawer({
   point: NetworkPoint | null;
   onClose: () => void;
 }) {
-  const [mounted, setMounted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // Reset showPassword dilakukan SAAT RENDER, bukan di dalam useEffect --
@@ -120,18 +120,6 @@ export default function PointDetailDrawer({
     setShowPassword(false);
   }
 
-  // Effect ini nyinkronin animasi ke timing browser (requestAnimationFrame).
-  // Dua-duanya (mounted true & false) dibungkus rAF -- bukan cuma soal lolos
-  // lint rule, tapi juga konsisten: perubahan visual selalu terjadi di frame
-  // render berikutnya, bukan sinkron di tengah commit effect.
-  useEffect(() => {
-    if (point) {
-      requestAnimationFrame(() => setMounted(true));
-    } else {
-      requestAnimationFrame(() => setMounted(false));
-    }
-  }, [point]);
-
   // Tutup pakai tombol Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -141,283 +129,440 @@ export default function PointDetailDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  if (!point) return null;
-
-  const Icon = TYPE_ICON[point.type];
-  const waLink = point.type === "FAB" ? formatWhatsapp(point.no_hp) : null;
-  const mapsLink = `https://www.google.com/maps?q=${point.lat},${point.lng}`;
+  const Icon = point ? TYPE_ICON[point.type] : null;
+  const waLink = point && point.type === "FAB" ? formatWhatsapp(point.no_hp) : null;
+  const mapsLink = point ? `https://www.google.com/maps?q=${point.lat},${point.lng}` : "";
   const portUsed =
-    typeof point.jumlah_port === "number" && typeof point.stok_port === "number"
+    point && typeof point.jumlah_port === "number" && typeof point.stok_port === "number"
       ? point.jumlah_port - point.stok_port
       : null;
   const portPercent =
-    portUsed !== null && point.jumlah_port ? Math.min(100, Math.round((portUsed / point.jumlah_port) * 100)) : null;
+    portUsed !== null && point && point.jumlah_port ? Math.min(100, Math.round((portUsed / point.jumlah_port) * 100)) : null;
+
+  const overlayVariants = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+    transition: { duration: 0.3 },
+  };
+
+  const panelVariants = {
+    initial: { x: "100%", opacity: 0 },
+    animate: {
+      x: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        damping: 25,
+        stiffness: 300,
+        duration: 0.4,
+      },
+    },
+    exit: {
+      x: "100%",
+      opacity: 0,
+      transition: {
+        type: "spring",
+        damping: 30,
+        stiffness: 200,
+        duration: 0.3,
+      },
+    },
+  };
+
+  const contentVariants = {
+    initial: { opacity: 0, y: 20 },
+    animate: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: 0.1 + i * 0.05,
+        duration: 0.3,
+      },
+    }),
+  };
 
   return (
-    <>
-      {/* Overlay */}
-      <div
-        onClick={onClose}
-        className={`fixed inset-0 z-[1000] bg-black/40 backdrop-blur-[1px] transition-opacity duration-300 ${
-          mounted ? "opacity-100" : "opacity-0"
-        }`}
-      />
-
-      {/* Panel */}
-      <div
-        className={`fixed right-0 top-0 z-[1001] flex h-full w-full max-w-sm flex-col overflow-hidden bg-white shadow-2xl transition-transform duration-300 ease-out dark:bg-slate-900 ${
-          mounted ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        {/* Header gradient */}
-        <div className={`relative flex-shrink-0 bg-gradient-to-r ${TYPE_GRADIENT[point.type]} px-5 pb-8 pt-5 text-white`}>
-          {/* Tombol close -- pojok KIRI atas, di barisnya sendiri (bukan
-              sejajar sama teks di bawahnya) supaya tidak numpuk konten dan
-              tidak perlu indent px-9 lagi buat ngasih ruang ke tombol. */}
-          <button
+    <AnimatePresence mode="wait">
+      {point && (
+        <>
+          {/* Overlay */}
+          <motion.div
+            variants={overlayVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
             onClick={onClose}
-            className="absolute left-4 top-4 rounded-full bg-white/15 p-1.5 text-white transition hover:bg-white/25"
+            className="fixed inset-0 z-[1000] bg-black/40 backdrop-blur-[1px]"
+          />
+
+          {/* Panel */}
+          <motion.div
+            variants={panelVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="fixed right-0 top-0 z-[1001] flex h-full w-full max-w-sm flex-col overflow-hidden bg-white shadow-2xl dark:bg-slate-900"
           >
-            <X size={18} />
-          </button>
+            {/* Header gradient */}
+            <motion.div
+              className={`relative flex-shrink-0 bg-gradient-to-r ${TYPE_GRADIENT[point.type]} px-5 pb-8 pt-5 text-white`}
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15, duration: 0.3 }}
+            >
+              {/* Tombol close */}
+              <motion.button
+                onClick={onClose}
+                className="absolute left-4 top-4 rounded-full bg-white/15 p-1.5 text-white transition hover:bg-white/25"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <X size={18} />
+              </motion.button>
 
-          {/* pt-8 -- kasih jarak dari tombol close di atas, px-5 -- mepet
-              kiri, sejajar sama margin body di bawah (bukan px-9 lagi). */}
-          <div className="pt-8">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/80">
-              <Icon size={14} />
-              {TYPE_LABEL[point.type]}
-            </div>
-
-            {/* Kode + Status -- satu baris, mepet kiri, Status di sebelah
-                kanan Kode. */}
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {point.kode && (
-                <span className="rounded-full bg-white/20 px-3.5 py-1.5 font-mono text-sm font-bold tracking-wide">
-                  {point.kode}
-                </span>
-              )}
-              {point.type === "FAB" && point.info && (
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-bold shadow-sm ${
-                    FAB_STATUS_STYLE[point.info] ?? "bg-white/15"
-                  }`}
+              <div className="pt-8">
+                <motion.div
+                  className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/80"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
                 >
-                  {point.info}
-                </span>
-              )}
-            </div>
+                  <Icon size={14} />
+                  {TYPE_LABEL[point.type]}
+                </motion.div>
 
-            <h2 className="mt-2 text-xl font-bold leading-tight">{point.name}</h2>
-          </div>
-        </div>
+                <motion.div
+                  className="mt-2 flex flex-wrap items-center gap-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.25 }}
+                >
+                  {point.kode && (
+                    <motion.span
+                      className="rounded-full bg-white/20 px-3.5 py-1.5 font-mono text-sm font-bold tracking-wide"
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      {point.kode}
+                    </motion.span>
+                  )}
+                  {point.type === "FAB" && point.info && (
+                    <motion.span
+                      className={`rounded-full px-3 py-1 text-xs font-bold shadow-sm ${
+                        FAB_STATUS_STYLE[point.info] ?? "bg-white/15"
+                      }`}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 0.35 }}
+                    >
+                      {point.info}
+                    </motion.span>
+                  )}
+                </motion.div>
 
-        {/* Foto -- dikasih jarak (pt-3) dari header, tidak overlap lagi */}
-        <div className="flex-shrink-0 px-5 pt-3">
-          <div className="h-36 w-full overflow-hidden rounded-2xl border-4 border-white bg-slate-100 shadow-md dark:border-slate-900 dark:bg-slate-800">
-            {point.foto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={point.foto} alt={point.name} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <Icon size={32} className="text-slate-300 dark:text-slate-600" />
+                <motion.h2
+                  className="mt-2 text-xl font-bold leading-tight"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  {point.name}
+                </motion.h2>
               </div>
-            )}
-          </div>
-        </div>
+            </motion.div>
 
-        {/* Body scrollable */}
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
-          {/* ===== FAB ===== */}
-          {point.type === "FAB" && (
-            <>
-              {point.no_hp && (
-                <DetailRow icon={Phone} label="No. HP">
-                  <div className="flex items-center justify-between gap-2">
-                    <span>{point.no_hp}</span>
-                    <div className="flex items-center gap-1">
-                      <CopyButton value={point.no_hp} />
-                      {waLink && (
-                        <a
-                          href={waLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-md p-1 text-emerald-500 transition hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
-                          title="Chat WhatsApp"
-                        >
-                          <MessageCircle size={14} />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </DetailRow>
-              )}
-
-              {point.nik && (
-                <DetailRow icon={Boxes} label="NIK">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono">{point.nik}</span>
-                    <CopyButton value={point.nik} />
-                  </div>
-                </DetailRow>
-              )}
-
-              {point.alamat && (
-                <DetailRow icon={MapPin} label="Alamat">
-                  <p className="leading-relaxed">{point.alamat}</p>
-                  <a
-                    href={mapsLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-indigo-500 hover:underline"
-                  >
-                    Buka di Google Maps <ExternalLink size={11} />
-                  </a>
-                </DetailRow>
-              )}
-            </>
-          )}
-
-          {/* ===== ODP ===== */}
-          {point.type === "ODP" && (
-            <>
-              {point.alamat && (
-                <DetailRow icon={MapPin} label="Alamat">
-                  <p className="leading-relaxed">{point.alamat}</p>
-                  <a
-                    href={mapsLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-indigo-500 hover:underline"
-                  >
-                    Buka di Google Maps <ExternalLink size={11} />
-                  </a>
-                </DetailRow>
-              )}
-
-              <DetailRow icon={Wifi} label="Kapasitas Port">
-                <div className="flex items-center justify-between">
-                  <span>
-                    {portUsed ?? "-"} terpakai dari {point.jumlah_port ?? "-"} ({point.stok_port ?? "-"} tersisa)
-                  </span>
-                </div>
-                {portPercent !== null && (
-                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                    <div
-                      className={`h-full rounded-full ${portPercent >= 90 ? "bg-rose-500" : portPercent >= 70 ? "bg-orange-500" : "bg-emerald-500"}`}
-                      style={{ width: `${portPercent}%` }}
-                    />
+            {/* Foto */}
+            <motion.div
+              className="flex-shrink-0 px-5 pt-3"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.3 }}
+            >
+              <motion.div
+                className="h-36 w-full overflow-hidden rounded-2xl border-4 border-white bg-slate-100 shadow-md dark:border-slate-900 dark:bg-slate-800"
+                whileHover={{ scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+              >
+                {point.foto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <motion.img
+                    src={point.foto}
+                    alt={point.name}
+                    className="h-full w-full object-cover"
+                    initial={{ scale: 1.1, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.25, duration: 0.4 }}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <Icon size={32} className="text-slate-300 dark:text-slate-600" />
                   </div>
                 )}
-              </DetailRow>
+              </motion.div>
+            </motion.div>
 
-              {point.connectedFabs && point.connectedFabs.length > 0 && (
-                <div className="rounded-2xl border border-slate-100 p-3 dark:border-slate-800">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    Pelanggan Terhubung ({point.connectedFabs.length})
-                  </p>
-                  <ul className="max-h-48 space-y-1.5 overflow-y-auto">
-                    {point.connectedFabs.map((f) => (
-                      <li key={f.id} className="flex items-center justify-between gap-2 text-sm text-slate-600 dark:text-slate-300">
-                        <span className="truncate">{f.name}</span>
-                        <span
-                          className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                            FAB_STATUS_STYLE[f.status] ?? "bg-slate-100 text-slate-500"
-                          }`}
-                        >
-                          {f.status}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ===== OLT ===== */}
-          {point.type === "OLT" && (
-            <>
-              {point.lokasi && (
-                <DetailRow icon={MapPin} label="Lokasi">
-                  <p className="leading-relaxed">{point.lokasi}</p>
-                  <a
-                    href={mapsLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-indigo-500 hover:underline"
-                  >
-                    Buka di Google Maps <ExternalLink size={11} />
-                  </a>
-                </DetailRow>
-              )}
-
-              {point.ip_olt && (
-                <DetailRow icon={Wifi} label="IP Address">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono">{point.ip_olt}</span>
-                    <CopyButton value={point.ip_olt} />
-                  </div>
-                </DetailRow>
-              )}
-
-              {(point.username_olt || point.password_olt) && (
-                <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-800/40">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Kredensial Login</p>
-                  {point.username_olt && (
-                    <div className="mb-1.5 flex items-center justify-between text-sm">
-                      <span className="text-slate-500 dark:text-slate-400">Username</span>
-                      <div className="flex items-center gap-1">
-                        <span className="font-mono text-slate-700 dark:text-slate-200">{point.username_olt}</span>
-                        <CopyButton value={point.username_olt} />
-                      </div>
-                    </div>
+            {/* Body scrollable */}
+            <motion.div
+              className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.3 }}
+            >
+              {/* ===== FAB ===== */}
+              {point.type === "FAB" && (
+                <>
+                  {point.no_hp && (
+                    <motion.div custom={0} variants={contentVariants} initial="initial" animate="animate">
+                      <DetailRow icon={Phone} label="No. HP">
+                        <div className="flex items-center justify-between gap-2">
+                          <span>{point.no_hp}</span>
+                          <div className="flex items-center gap-1">
+                            <CopyButton value={point.no_hp} />
+                            {waLink && (
+                              <motion.a
+                                href={waLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-md p-1 text-emerald-500 transition hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                                title="Chat WhatsApp"
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.95 }}
+                              >
+                                <MessageCircle size={14} />
+                              </motion.a>
+                            )}
+                          </div>
+                        </div>
+                      </DetailRow>
+                    </motion.div>
                   )}
-                  {point.password_olt && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500 dark:text-slate-400">Password</span>
-                      <div className="flex items-center gap-1">
-                        <span className="font-mono text-slate-700 dark:text-slate-200">
-                          {showPassword ? point.password_olt : "••••••••"}
-                        </span>
-                        <button
-                          onClick={() => setShowPassword((s) => !s)}
-                          className="rounded-md p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                        >
-                          {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
-                        <CopyButton value={point.password_olt} />
-                      </div>
-                    </div>
+
+                  {point.nik && (
+                    <motion.div custom={1} variants={contentVariants} initial="initial" animate="animate">
+                      <DetailRow icon={Boxes} label="NIK">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono">{point.nik}</span>
+                          <CopyButton value={point.nik} />
+                        </div>
+                      </DetailRow>
+                    </motion.div>
                   )}
-                </div>
+
+                  {point.alamat && (
+                    <motion.div custom={2} variants={contentVariants} initial="initial" animate="animate">
+                      <DetailRow icon={MapPin} label="Alamat">
+                        <p className="leading-relaxed">{point.alamat}</p>
+                        <motion.a
+                          href={mapsLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-indigo-500 hover:underline"
+                          whileHover={{ x: 4 }}
+                        >
+                          Buka di Google Maps <ExternalLink size={11} />
+                        </motion.a>
+                      </DetailRow>
+                    </motion.div>
+                  )}
+                </>
               )}
-            </>
-          )}
 
-          {/* ===== POP ===== */}
-          {point.type === "POP" && point.alamat && (
-            <DetailRow icon={MapPin} label="Alamat">
-              <p className="leading-relaxed">{point.alamat}</p>
-              <a
-                href={mapsLink}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-indigo-500 hover:underline"
-              >
-                Buka di Google Maps <ExternalLink size={11} />
-              </a>
-            </DetailRow>
-          )}
+              {/* ===== ODP ===== */}
+              {point.type === "ODP" && (
+                <>
+                  {point.alamat && (
+                    <motion.div custom={0} variants={contentVariants} initial="initial" animate="animate">
+                      <DetailRow icon={MapPin} label="Alamat">
+                        <p className="leading-relaxed">{point.alamat}</p>
+                        <motion.a
+                          href={mapsLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-indigo-500 hover:underline"
+                          whileHover={{ x: 4 }}
+                        >
+                          Buka di Google Maps <ExternalLink size={11} />
+                        </motion.a>
+                      </DetailRow>
+                    </motion.div>
+                  )}
 
-          {/* Tanggal dibuat -- sama buat semua tipe */}
-          {point.createdAt && (
-            <DetailRow icon={Calendar} label="Terdaftar Sejak">
-              <p>{formatDate(point.createdAt)}</p>
-            </DetailRow>
-          )}
-        </div>
-      </div>
-    </>
+                  <motion.div custom={1} variants={contentVariants} initial="initial" animate="animate">
+                    <DetailRow icon={Wifi} label="Kapasitas Port">
+                      <div className="flex items-center justify-between">
+                        <span>
+                          {portUsed ?? "-"} terpakai dari {point.jumlah_port ?? "-"} ({point.stok_port ?? "-"} tersisa)
+                        </span>
+                      </div>
+                      {portPercent !== null && (
+                        <motion.div
+                          className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.35 }}
+                        >
+                          <motion.div
+                            className={`h-full rounded-full ${portPercent >= 90 ? "bg-rose-500" : portPercent >= 70 ? "bg-orange-500" : "bg-emerald-500"}`}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${portPercent}%` }}
+                            transition={{ delay: 0.4, duration: 0.6 }}
+                          />
+                        </motion.div>
+                      )}
+                    </DetailRow>
+                  </motion.div>
+
+                  {point.connectedFabs && point.connectedFabs.length > 0 && (
+                    <motion.div
+                      className="rounded-2xl border border-slate-100 p-3 dark:border-slate-800"
+                      custom={2}
+                      variants={contentVariants}
+                      initial="initial"
+                      animate="animate"
+                    >
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                        Pelanggan Terhubung ({point.connectedFabs.length})
+                      </p>
+                      <ul className="max-h-48 space-y-1.5 overflow-y-auto">
+                        <AnimatePresence>
+                          {point.connectedFabs.map((f, i) => (
+                            <motion.li
+                              key={f.id}
+                              className="flex items-center justify-between gap-2 text-sm text-slate-600 dark:text-slate-300"
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.45 + i * 0.05 }}
+                            >
+                              <span className="truncate">{f.name}</span>
+                              <motion.span
+                                className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                  FAB_STATUS_STYLE[f.status] ?? "bg-slate-100 text-slate-500"
+                                }`}
+                                whileHover={{ scale: 1.05 }}
+                              >
+                                {f.status}
+                              </motion.span>
+                            </motion.li>
+                          ))}
+                        </AnimatePresence>
+                      </ul>
+                    </motion.div>
+                  )}
+                </>
+              )}
+
+              {/* ===== OLT ===== */}
+              {point.type === "OLT" && (
+                <>
+                  {point.lokasi && (
+                    <motion.div custom={0} variants={contentVariants} initial="initial" animate="animate">
+                      <DetailRow icon={MapPin} label="Lokasi">
+                        <p className="leading-relaxed">{point.lokasi}</p>
+                        <motion.a
+                          href={mapsLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-indigo-500 hover:underline"
+                          whileHover={{ x: 4 }}
+                        >
+                          Buka di Google Maps <ExternalLink size={11} />
+                        </motion.a>
+                      </DetailRow>
+                    </motion.div>
+                  )}
+
+                  {point.ip_olt && (
+                    <motion.div custom={1} variants={contentVariants} initial="initial" animate="animate">
+                      <DetailRow icon={Wifi} label="IP Address">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono">{point.ip_olt}</span>
+                          <CopyButton value={point.ip_olt} />
+                        </div>
+                      </DetailRow>
+                    </motion.div>
+                  )}
+
+                  {(point.username_olt || point.password_olt) && (
+                    <motion.div
+                      className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-800/40"
+                      custom={2}
+                      variants={contentVariants}
+                      initial="initial"
+                      animate="animate"
+                    >
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Kredensial Login</p>
+                      {point.username_olt && (
+                        <div className="mb-1.5 flex items-center justify-between text-sm">
+                          <span className="text-slate-500 dark:text-slate-400">Username</span>
+                          <div className="flex items-center gap-1">
+                            <span className="font-mono text-slate-700 dark:text-slate-200">{point.username_olt}</span>
+                            <CopyButton value={point.username_olt} />
+                          </div>
+                        </div>
+                      )}
+                      {point.password_olt && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-500 dark:text-slate-400">Password</span>
+                          <div className="flex items-center gap-1">
+                            <span className="font-mono text-slate-700 dark:text-slate-200">
+                              {showPassword ? point.password_olt : "••••••••"}
+                            </span>
+                            <motion.button
+                              onClick={() => setShowPassword((s) => !s)}
+                              className="rounded-md p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </motion.button>
+                            <CopyButton value={point.password_olt} />
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </>
+              )}
+
+              {/* ===== POP ===== */}
+              {point.type === "POP" && point.alamat && (
+                <motion.div custom={0} variants={contentVariants} initial="initial" animate="animate">
+                  <DetailRow icon={MapPin} label="Alamat">
+                    <p className="leading-relaxed">{point.alamat}</p>
+                    <motion.a
+                      href={mapsLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-indigo-500 hover:underline"
+                      whileHover={{ x: 4 }}
+                    >
+                      Buka di Google Maps <ExternalLink size={11} />
+                    </motion.a>
+                  </DetailRow>
+                </motion.div>
+              )}
+
+              {/* Tanggal dibuat */}
+              {point.createdAt && (
+                <motion.div
+                  custom={
+                    point.type === "FAB" ? 3 : point.type === "ODP" ? 3 : point.type === "OLT" ? 3 : 1
+                  }
+                  variants={contentVariants}
+                  initial="initial"
+                  animate="animate"
+                >
+                  <DetailRow icon={Calendar} label="Terdaftar Sejak">
+                    <p>{formatDate(point.createdAt)}</p>
+                  </DetailRow>
+                </motion.div>
+              )}
+            </motion.div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
