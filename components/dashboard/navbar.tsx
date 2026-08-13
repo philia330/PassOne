@@ -54,7 +54,7 @@ const formattedTime = now?.toLocaleTimeString("id-ID", {
         {/* Tombol hamburger — cuma muncul di mobile */}
         <button
           onClick={onMenuClick}
-          className="rounded-xl border border-slate-200 p-2.5 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 lg:hidden"
+          className="rounded-xl border border-slate-200 p-2.5 transition hover:bg-slate-100 hover:scale-110 active:scale-95 dark:border-slate-700 dark:hover:bg-slate-800 lg:hidden"
         >
           <Menu size={20} />
         </button>
@@ -82,7 +82,7 @@ const formattedTime = now?.toLocaleTimeString("id-ID", {
 
   <button
     onClick={() => router.push("/workspace?view=settings")}
-    className="rounded-xl border border-slate-200 p-2.5 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 sm:p-3"
+    className="rounded-xl border border-slate-200 p-2.5 transition hover:bg-slate-100 hover:scale-110 active:scale-95 dark:border-slate-700 dark:hover:bg-slate-800 sm:p-3"
     title="Pengaturan"
   >
     <Settings size={20} />

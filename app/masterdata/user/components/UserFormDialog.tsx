@@ -254,13 +254,14 @@ export function UserFormDialog({
                 via-fuchsia-500
                 to-sky-500
                 text-white
+                active:scale-95 transition-transform
               "
             />
           ) : (
             <Button
               variant="ghost"
               size="icon"
-              className="cursor-pointer rounded-xl"
+              className="cursor-pointer rounded-xl active:scale-90 transition-transform"
             />
           )
         }
@@ -271,7 +272,7 @@ export function UserFormDialog({
             Tambah User
           </>
         ) : (
-          <Pencil className="h-4 w-4 text-slate-500" />
+          <Pencil className="h-4 w-4 text-orange-500 hover:text-orange-600 active:scale-90 transition-all dark:text-orange-400 dark:hover:text-orange-300" />
         )}
       </DialogTrigger>
 
@@ -529,7 +530,7 @@ export function UserFormDialog({
                   setJkl(value as JenisKelamin)
                 }
               >
-                <SelectTrigger className="h-12 w-full rounded-2xl border-slate-200">
+                <SelectTrigger className="h-12 w-full rounded-2xl border-slate-200 hover:scale-105 active:scale-95 transition-all">
                   <SelectValue placeholder="Pilih Jenis Kelamin">
                     {(value: string) => JKL_LABEL[value as JenisKelamin] ?? "Pilih Jenis Kelamin"}
                   </SelectValue>
@@ -565,7 +566,7 @@ export function UserFormDialog({
                   setRole(value as Role)
                 }
               >
-                <SelectTrigger className="h-12 w-full rounded-2xl border-slate-200">
+                <SelectTrigger className="h-12 w-full rounded-2xl border-slate-200 hover:scale-105 active:scale-95 transition-all">
                   <SelectValue placeholder="Pilih Role">
                     {(value: string) => ROLE_LABEL[value as Role] ?? "Pilih Role"}
                   </SelectValue>
@@ -613,7 +614,7 @@ export function UserFormDialog({
                   setStatus(value as "true" | "false")
                 }
               >
-                <SelectTrigger className="h-12 w-full rounded-2xl border-slate-200">
+                <SelectTrigger className="h-12 w-full rounded-2xl border-slate-200 hover:scale-105 active:scale-95 transition-all">
                   <SelectValue>
                     {(value: string) => (value === "true" ? "Aktif" : "Nonaktif")}
                   </SelectValue>
@@ -652,7 +653,7 @@ export function UserFormDialog({
             <Button
               type="button"
               variant="outline"
-              className="rounded-2xl"
+              className="rounded-2xl active:scale-95 transition-transform"
               onClick={() => {
                 setOpen(false);
                 resetForm();
@@ -675,6 +676,7 @@ export function UserFormDialog({
                 via-fuchsia-500
                 to-sky-500
                 text-white
+                active:scale-95 transition-transform
               "
             >
               {isSubmitting

@@ -94,7 +94,7 @@ export function FabActionsDropdown({
           render={
             <button
               type="button"
-              className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 w-8 p-0 cursor-pointer rounded-xl")}
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 w-8 p-0 cursor-pointer rounded-xl active:scale-90 transition-transform")}
             />
           }
         >
@@ -142,9 +142,9 @@ export function FabActionsDropdown({
               <DropdownMenuItem
                 onSelect={(e) => e.preventDefault()}
                 onClick={handleEdit}
-                className="rounded-xl gap-3 px-3 py-2 cursor-pointer focus:bg-amber-50 dark:focus:bg-amber-500/10"
+                className="rounded-xl gap-3 px-3 py-2 cursor-pointer focus:bg-orange-50 dark:focus:bg-orange-500/10"
               >
-                <Pencil className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <Pencil className="h-4 w-4 text-orange-500 dark:text-orange-400" />
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Edit FAB</span>
               </DropdownMenuItem>
             </>

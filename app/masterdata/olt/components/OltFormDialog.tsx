@@ -177,12 +177,12 @@ export const OltFormDialog = ({
       <DialogTrigger
         render={
           mode === "create" ? (
-            <Button className="cursor-pointer h-11 rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 font-semibold text-white" />
+            <Button className="cursor-pointer h-11 rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 font-semibold text-white active:scale-95 transition-transform" />
           ) : (
             <Button
               variant="ghost"
               size="icon"
-              className="cursor-pointer rounded-xl"
+              className="cursor-pointer rounded-xl active:scale-90 transition-transform"
             />
           )
         }
@@ -193,7 +193,7 @@ export const OltFormDialog = ({
             Tambah OLT
           </>
         ) : (
-          <Pencil className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+          <Pencil className="h-4 w-4 text-orange-500 hover:text-orange-600 active:scale-90 transition-all dark:text-orange-400 dark:hover:text-orange-300" />
         )}
       </DialogTrigger>
 
@@ -212,7 +212,7 @@ export const OltFormDialog = ({
           <div className="space-y-2">
             <label className="text-sm font-medium">POP</label>
             <Select value={popValue} onValueChange={handlePopChange}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 hover:scale-105 active:scale-95 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                 <SelectValue placeholder="Pilih POP">
                   {() =>
                     pops.find((p) => String(p.id_pop) === popValue)?.nama_pop ??
@@ -452,7 +452,7 @@ export const OltFormDialog = ({
               type="button"
               variant="outline"
               disabled={isSubmitting}
-              className="h-11 cursor-pointer rounded-2xl"
+              className="h-11 cursor-pointer rounded-2xl active:scale-95 transition-transform"
               onClick={() => setOpen(false)}
             >
               Batal
@@ -461,7 +461,7 @@ export const OltFormDialog = ({
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="h-11 cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 font-semibold text-white"
+              className="h-11 cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 font-semibold text-white active:scale-95 transition-transform"
             >
               {isSubmitting ? "Menyimpan..." : "Simpan"}
             </Button>

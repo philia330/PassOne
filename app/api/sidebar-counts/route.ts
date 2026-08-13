@@ -1,43 +1,49 @@
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
-
 export async function GET() {
-  const session = await auth();
-
-  if (!session?.user) {
-    return NextResponse.json({}, { status: 401 });
-  }
-
-  const [area, pop, olt, odp, portPon, ont, material, paket, user, fab, baa] =
-    await Promise.all([
+  try {
+    const [
+      fabCount,
+      baaCount,
+      areaCount,
+      popCount,
+      oltCount,
+      odpCount,
+      ontCount,
+      portPonCount,
+      materialCount,
+      paketCount,
+      userCount,
+    ] = await Promise.all([
+      prisma.fab.count(),
+      prisma.baa.count(),
       prisma.area.count(),
       prisma.pop.count(),
       prisma.olt.count(),
       prisma.odp.count(),
-      prisma.portPon.count(),
       prisma.ont.count(),
+      prisma.portPon.count(),
       prisma.material.count(),
       prisma.paket.count(),
       prisma.user.count(),
-      prisma.fab.count(),
-      prisma.baa.count(),
     ]);
 
-  const counts: Record<string, number> = {
-    "/masterdata/area": area,
-    "/masterdata/pop": pop,
-    "/masterdata/olt": olt,
-    "/masterdata/odp": odp,
-    "/masterdata/port-pon": portPon,
-    "/masterdata/ont": ont,
-    "/masterdata/material": material,
-    "/masterdata/paket": paket,
-    "/masterdata/user": user,
-    "/fab": fab,
-    "/baa": baa,
-  };
-
-  return NextResponse.json(counts);
+    return NextResponse.json({
+      "/workspace?view=fab": fabCount,
+      "/workspace?view=baa": baaCount,
+      "/workspace?view=area": areaCount,
+      "/workspace?view=pop": popCount,
+      "/workspace?view=olt": oltCount,
+      "/workspace?view=odp": odpCount,
+      "/workspace?view=ont": ontCount,
+      "/workspace?view=portpon": portPonCount,
+      "/workspace?view=material": materialCount,
+      "/workspace?view=paket": paketCount,
+      "/workspace?view=user": userCount,
+    });
+  } catch (error) {
+    console.error("Error fetching sidebar counts:", error);
+    return NextResponse.json({}, { status: 500 });
+  }
 }

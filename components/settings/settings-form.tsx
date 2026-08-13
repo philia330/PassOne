@@ -129,7 +129,7 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-3.5 text-sm font-semibold transition ${
+                className={`flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-3.5 text-sm font-semibold transition hover:scale-105 active:scale-95 ${
                   active
                     ? tab.color === "indigo"
                       ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
@@ -179,7 +179,7 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
 
                 <label
                   htmlFor="logo-upload"
-                  className="mt-4 flex cursor-pointer items-center gap-2 rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-600/30 transition hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-lg"
+                  className="mt-4 flex cursor-pointer items-center gap-2 rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-600/30 transition hover:-translate-y-0.5 hover:scale-105 hover:bg-indigo-700 hover:shadow-lg"
                 >
                   <Upload size={15} />
                   Pilih Logo
@@ -273,7 +273,7 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
                       type="button"
                       onClick={() => setSelectedFont(font.value)}
                       style={{ fontFamily: `var(--font-${font.value})` }}
-                      className={`rounded-xl border px-3 py-3 text-left transition ${
+                      className={`rounded-xl border px-3 py-3 text-left transition hover:scale-105 active:scale-95 ${
                         selectedFont === font.value
                           ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10"
                           : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600"
@@ -316,7 +316,7 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
             <button
               type="submit"
               disabled={isPending}
-              className="flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-8 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/30 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+              className="flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-8 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/30 transition hover:-translate-y-0.5 hover:scale-105 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:scale-100"
             >
               {isPending ? (
                 <>

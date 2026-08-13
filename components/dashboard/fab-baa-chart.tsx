@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   BarChart,
   Bar,
@@ -18,7 +18,13 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { TrendingUp, TrendingDown, Minus, BarChart3, TrendingUpIcon, AreaChart as AreaChartIcon } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, BarChart3, TrendingUpIcon, AreaChart as AreaChartIcon, Download, FileImage, FileText } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type MonthlyData = {
   label: string;
@@ -44,6 +50,10 @@ type ComparisonData = {
   };
 };
 
+// Tren chart colors
+const TREN_FAB_COLOR = "#f97316";   // oranye
+const TREN_BAA_COLOR = "#8b5cf6";   // ungu
+
 const STATUS_COLORS: Record<string, string> = {
   // FAB
   OPEN: "#f97316",     // oranye — masih menunggu tindak lanjut
@@ -67,6 +77,86 @@ const PERIOD_OPTIONS = [
     value: 12,
   },
 ];
+
+// Helper function to calculate Y-axis domain with proper padding
+function calculateYAxisDomain(data: MonthlyData[]): [number, number] {
+  if (!data || data.length === 0) return [0, 10];
+
+  const maxValue = Math.max(...data.map(d => Math.max(d.fab, d.baa)));
+
+  if (maxValue === 0) return [0, 10];
+
+  // Add 20% padding at top, round up to nice number
+  const paddedMax = Math.ceil(maxValue * 1.2);
+
+  // Round to nearest 5 or 10 for cleaner display
+  const niceMax = Math.ceil(paddedMax / 5) * 5;
+
+  return [0, Math.max(niceMax, 5)];
+}
+
+// Download chart as image
+async function downloadChart(
+  chartRef: HTMLDivElement | null,
+  format: "png" | "jpeg" | "pdf",
+  filename: string
+) {
+  if (!chartRef) return;
+
+  try {
+    // Create canvas from the chart element
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Set canvas size (high resolution)
+    const scale = 2; // 2x for better quality
+    const rect = chartRef.getBoundingClientRect();
+    canvas.width = rect.width * scale;
+    canvas.height = rect.height * scale;
+    ctx.scale(scale, scale);
+
+    // Create SVG serializer
+    const svgElement = chartRef.querySelector("svg");
+    if (!svgElement) return;
+
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const svgUrl = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.onload = () => {
+      // Fill background
+      ctx.fillStyle = getComputedStyle(chartRef).backgroundColor || "#ffffff";
+      ctx.fillRect(0, 0, rect.width, rect.height);
+
+      ctx.drawImage(img, 0, 0, rect.width, rect.height);
+      URL.revokeObjectURL(svgUrl);
+
+      // Convert to blob based on format
+      const mimeType = format === "jpeg" ? "image/jpeg" : "image/png";
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${filename}.${format === "jpeg" ? "jpg" : format}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }
+        },
+        mimeType,
+        1.0
+      );
+    };
+    img.src = svgUrl;
+  } catch (error) {
+    console.error("Error downloading chart:", error);
+  }
+}
 
 function TrendBadge({
   changePercent,
@@ -114,6 +204,7 @@ export default function FabBaaChart({
   baaStatus: StatusData[];
   comparison: ComparisonData;
 }) {
+  const chartRef = useRef<HTMLDivElement>(null);
   const [monthly, setMonthly] =
     useState(initialMonthly);
 
@@ -125,6 +216,9 @@ export default function FabBaaChart({
 
   const [loading, setLoading] =
     useState(false);
+
+  // Calculate Y-axis domain based on data
+  const yAxisDomain = calculateYAxisDomain(monthly);
 
   useEffect(() => {
     if (period === 6) {
@@ -142,6 +236,12 @@ export default function FabBaaChart({
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [period, initialMonthly]);
+
+  const handleDownload = (format: "png" | "jpeg" | "pdf") => {
+    if (chartRef.current) {
+      downloadChart(chartRef.current, format, `tren-fab-baa-${new Date().toISOString().split("T")[0]}`);
+    }
+  };
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -181,6 +281,37 @@ export default function FabBaaChart({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {/* Download Button */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
+                <Download size={14} />
+                <span className="hidden sm:inline">Unduh</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="rounded-xl">
+                <DropdownMenuItem
+                  onClick={() => handleDownload("png")}
+                  className="cursor-pointer rounded-lg gap-2"
+                >
+                  <FileImage size={16} className="text-slate-500" />
+                  <span>Unduh PNG</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleDownload("jpeg")}
+                  className="cursor-pointer rounded-lg gap-2"
+                >
+                  <FileImage size={16} className="text-slate-500" />
+                  <span>Unduh JPG</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleDownload("pdf")}
+                  className="cursor-pointer rounded-lg gap-2"
+                >
+                  <FileText size={16} className="text-slate-500" />
+                  <span>Unduh PDF</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {/* Chart Type Selector */}
             <div className="flex rounded-lg border border-slate-200 dark:border-slate-700">
               <button
@@ -235,44 +366,46 @@ export default function FabBaaChart({
 
         </div>
 
-        <ResponsiveContainer
-          width="100%"
-          height={320}
-        >
-          {chartType === "bar" && (
-            <BarChart data={monthly}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
-              <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
-              <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
-              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
-              <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
-              <Bar dataKey="fab" name="FAB" fill="#6ad2ff" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="baa" name="BAA" fill="#10b981" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          )}
-          {chartType === "line" && (
-            <LineChart data={monthly}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
-              <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
-              <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
-              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
-              <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
-              <Line type="monotone" dataKey="fab" name="FAB" stroke="#6ad2ff" strokeWidth={3} dot={{ r: 4 }} />
-              <Line type="monotone" dataKey="baa" name="BAA" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />
-            </LineChart>
-          )}
-          {chartType === "area" && (
-            <AreaChart data={monthly}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
-              <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
-              <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
-              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
-              <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
-              <Area type="monotone" dataKey="fab" name="FAB" fill="#6ad2ff" stroke="#6ad2ff" fillOpacity={0.3} />
-              <Area type="monotone" dataKey="baa" name="BAA" fill="#10b981" stroke="#10b981" fillOpacity={0.3} />
-            </AreaChart>
-          )}
-        </ResponsiveContainer>
+        <div ref={chartRef} className="relative">
+          <ResponsiveContainer
+            width="100%"
+            height={320}
+          >
+            {chartType === "bar" && (
+              <BarChart data={monthly} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
+                <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" domain={yAxisDomain} />
+                <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
+                <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
+                <Bar dataKey="fab" name="FAB" fill={TREN_FAB_COLOR} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="baa" name="BAA" fill={TREN_BAA_COLOR} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            )}
+            {chartType === "line" && (
+              <LineChart data={monthly} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
+                <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" domain={yAxisDomain} />
+                <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
+                <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
+                <Line type="monotone" dataKey="fab" name="FAB" stroke={TREN_FAB_COLOR} strokeWidth={3} dot={{ r: 4 }} />
+                <Line type="monotone" dataKey="baa" name="BAA" stroke={TREN_BAA_COLOR} strokeWidth={3} dot={{ r: 4 }} />
+              </LineChart>
+            )}
+            {chartType === "area" && (
+              <AreaChart data={monthly} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
+                <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" domain={yAxisDomain} />
+                <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
+                <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
+                <Area type="monotone" dataKey="fab" name="FAB" fill={TREN_FAB_COLOR} stroke={TREN_FAB_COLOR} fillOpacity={0.3} />
+                <Area type="monotone" dataKey="baa" name="BAA" fill={TREN_BAA_COLOR} stroke={TREN_BAA_COLOR} fillOpacity={0.3} />
+              </AreaChart>
+            )}
+          </ResponsiveContainer>
+        </div>
 
         {loading && (
           <p className="mt-3 text-center text-xs text-slate-400 dark:text-slate-500">

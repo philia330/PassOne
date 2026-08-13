@@ -60,12 +60,12 @@ export const AreaFormDialog = ({
       <DialogTrigger
         render={
           mode === "create" ? (
-            <Button className="cursor-pointer h-11 rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white" />
+            <Button className="cursor-pointer h-11 rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white active:scale-95 transition-transform" />
           ) : (
             <Button
               variant="ghost"
               size="icon"
-              className="cursor-pointer rounded-xl"
+              className="cursor-pointer rounded-xl active:scale-90 transition-transform"
             />
           )
         }
@@ -76,7 +76,7 @@ export const AreaFormDialog = ({
             Tambah Area
           </>
         ) : (
-          <Pencil className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+          <Pencil className="h-4 w-4 text-orange-500 hover:text-orange-600 active:scale-90 transition-all dark:text-orange-400 dark:hover:text-orange-300" />
         )}
       </DialogTrigger>
 
@@ -120,7 +120,7 @@ export const AreaFormDialog = ({
             <Button
               type="button"
               variant="outline"
-              className="cursor-pointer rounded-2xl"
+              className="cursor-pointer rounded-2xl active:scale-95 transition-transform"
               onClick={() => setOpen(false)}
             >
               Batal
@@ -129,7 +129,7 @@ export const AreaFormDialog = ({
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white"
+              className="cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white active:scale-95 transition-transform"
             >
               {isSubmitting ? "Menyimpan..." : "Simpan"}
             </Button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Trash2, Loader2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,24 +22,38 @@ interface MaterialDeleteDialogProps {
 }
 
 export const MaterialDeleteDialog = ({ id, namaMaterial }: MaterialDeleteDialogProps) => {
+  const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleConfirm = () => {
+    setErrorMsg(null);
     startTransition(async () => {
-      await deleteMaterial(id);
+      try {
+        await deleteMaterial(id);
+        setOpen(false);
+      } catch (err: unknown) {
+        const error = err as Error;
+        setErrorMsg(error.message ?? "Gagal menghapus data, coba lagi.");
+      }
     });
   };
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors w-full sm:w-auto"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+    <AlertDialog open={open} onOpenChange={(isOpen) => {
+      setOpen(isOpen);
+      if (!isOpen) setErrorMsg(null);
+    }}>
+      <AlertDialogTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 cursor-pointer rounded-xl active:scale-90 transition-transform hover:bg-rose-50 dark:hover:bg-rose-950/30"
+          />
+        }
+      >
+        <Trash2 className="h-4 w-4 text-red-500 hover:text-red-600 active:scale-90 transition-all dark:text-red-400 dark:hover:text-red-300" />
       </AlertDialogTrigger>
 
       <AlertDialogContent
@@ -70,16 +84,22 @@ export const MaterialDeleteDialog = ({ id, namaMaterial }: MaterialDeleteDialogP
           </AlertDialogDescription>
         </AlertDialogHeader>
 
+        {errorMsg && (
+          <p className="mx-4 sm:mx-6 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+            {errorMsg}
+          </p>
+        )}
+
         <div className="flex-1" />
 
         <AlertDialogFooter className="sm:justify-center gap-2 mt-2 flex-shrink-0 px-4 pb-4 sm:px-6 sm:pb-6">
-          <AlertDialogCancel disabled={isPending} className="rounded-2xl h-11 flex-1">
+          <AlertDialogCancel disabled={isPending} className="rounded-2xl h-11 flex-1 active:scale-95 transition-transform">
             Batal
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={isPending}
-            className="rounded-2xl h-11 flex-1 bg-red-600 hover:bg-red-700 font-semibold"
+            className="rounded-2xl h-11 flex-1 bg-red-600 hover:bg-red-700 font-semibold active:scale-95 transition-transform"
           >
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isPending ? "Menghapus..." : "Ya, Hapus"}

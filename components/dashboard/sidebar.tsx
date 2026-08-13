@@ -114,7 +114,7 @@ export default function Sidebar({
 
         <button
           onClick={onClose}
-          className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white lg:hidden"
+          className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white hover:scale-110 active:scale-95 transition-all lg:hidden"
         >
           <X size={22} />
         </button>
@@ -155,7 +155,7 @@ export default function Sidebar({
                         <button
                           type="button"
                           onClick={() => setImportMenuOpen((prev) => !prev)}
-                          className={`flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 transition-all duration-200 ${
+                          className={`flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 transition-all duration-200 hover:scale-105 active:scale-95 ${
                             active
                               ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                               : "text-slate-300 hover:bg-slate-800 hover:text-white"
@@ -174,7 +174,7 @@ export default function Sidebar({
                                 key={option.label}
                                 type="button"
                                 onClick={() => handleImportSelect(option.route)}
-                                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700"
+                                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 hover:scale-105 active:scale-95 transition-all"
                               >
                                 <span>{option.label}</span>
                                 <span className="text-xs text-slate-400">Excel</span>
@@ -190,7 +190,7 @@ export default function Sidebar({
                     <Link
                       key={item.title}
                       href={item.href}
-                      className={`flex items-center justify-between gap-3 rounded-xl px-4 py-3 transition-all duration-200 ${
+                      className={`flex items-center justify-between gap-3 rounded-xl px-4 py-3 transition-all duration-200 hover:scale-105 active:scale-95 ${
                         active
                           ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                           : "text-slate-300 hover:bg-slate-800 hover:text-white"
@@ -248,7 +248,7 @@ export default function Sidebar({
 
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400 transition hover:bg-red-500 hover:text-white"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400 transition hover:bg-red-500 hover:text-white hover:scale-105 active:scale-95"
         >
           <LogOut size={17} />
           Logout

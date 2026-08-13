@@ -1,78 +1,108 @@
 "use client";
 
-import { useState } from "react";
-import { Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { useState, useTransition } from "react";
+import { Trash2, Loader2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogTrigger,
   AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { deleteOlt } from "../actions";
 
-export const DeleteOltDialog = ({ id, name }: { id: number; name: string }) => {
-  const [open, setOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+interface DeleteOltDialogProps {
+  id: number;
+  namaOlt: string;
+}
 
-  const handleDelete = async () => {
-    setIsDeleting(true);
-    try {
-      await deleteOlt(id);
-      toast.success("OLT berhasil dihapus");
-      setOpen(false);
-    } catch {
-      toast.error(
-        "Gagal menghapus, pastikan OLT ini tidak sedang dipakai oleh data ODP"
-      );
-    } finally {
-      setIsDeleting(false);
-    }
+export const DeleteOltDialog = ({ id, namaOlt }: DeleteOltDialogProps) => {
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleConfirm = () => {
+    setErrorMsg(null);
+    startTransition(async () => {
+      try {
+        await deleteOlt(id);
+        setOpen(false);
+      } catch (err: unknown) {
+        const error = err as Error;
+        setErrorMsg(error.message ?? "Gagal menghapus data, coba lagi.");
+      }
+    });
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog open={open} onOpenChange={(isOpen) => {
+      setOpen(isOpen);
+      if (!isOpen) setErrorMsg(null);
+    }}>
       <AlertDialogTrigger
         render={
           <Button
             variant="ghost"
             size="icon"
-            className="cursor-pointer rounded-xl"
-          >
-            <Trash2 className="h-4 w-4 text-rose-500" />
-          </Button>
+            className="cursor-pointer rounded-xl active:scale-90 transition-transform hover:bg-rose-50 dark:hover:bg-rose-950/30"
+          />
         }
-      />
-      <AlertDialogContent className="rounded-3xl">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Hapus data OLT?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Data{" "}
-            <span className="font-semibold text-slate-800 dark:text-white">
-              {name}
-            </span>{" "}
-            akan dihapus permanen dan tidak dapat dikembalikan.
+      >
+        <Trash2 className="h-4 w-4 text-red-500 hover:text-red-600 active:scale-90 transition-all dark:text-red-400 dark:hover:text-red-300" />
+      </AlertDialogTrigger>
+
+      <AlertDialogContent
+        className="
+          flex h-full max-h-[100dvh] w-full max-w-full flex-col
+          overflow-hidden rounded-none
+          sm:h-auto sm:max-h-[90vh] sm:max-w-[400px] sm:rounded-3xl
+        "
+      >
+        <AlertDialogHeader className="!items-center !text-center sm:!text-center w-full flex-shrink-0 px-4 pt-4 sm:px-6 sm:pt-6">
+          <div className="group relative mb-2 mx-auto h-20 w-20 cursor-pointer">
+            <span className="absolute inset-0 rounded-full bg-red-400 opacity-0 group-hover:opacity-60 group-hover:animate-ping" />
+            <div className="relative h-20 w-20 rounded-full bg-red-50 flex items-center justify-center transition-all duration-300 group-hover:bg-red-100 group-hover:shadow-[0_0_30px_rgba(220,38,38,0.6)]">
+              <TriangleAlert
+                className="text-red-600 transition-transform duration-300 group-hover:scale-110"
+                size={38}
+              />
+            </div>
+          </div>
+
+          <AlertDialogTitle className="w-full text-lg font-bold text-slate-900 text-center">
+            Hapus data OLT ini?
+          </AlertDialogTitle>
+          <AlertDialogDescription className="w-full text-sm text-slate-500 leading-relaxed text-center">
+            Kamu akan menghapus OLT{" "}
+            <strong className="text-slate-700">&quot;{namaOlt}&quot;</strong>. Data yang
+            sudah dihapus tidak bisa dikembalikan.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel
-            className="cursor-pointer rounded-2xl"
-            disabled={isDeleting}
-          >
+
+        {errorMsg && (
+          <p className="mx-4 sm:mx-6 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+            {errorMsg}
+          </p>
+        )}
+
+        <div className="flex-1" />
+
+        <AlertDialogFooter className="sm:justify-center gap-2 mt-2 flex-shrink-0 px-4 pb-4 sm:px-6 sm:pb-6">
+          <AlertDialogCancel disabled={isPending} className="rounded-2xl h-11 flex-1 active:scale-95 transition-transform">
             Batal
           </AlertDialogCancel>
           <AlertDialogAction
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="cursor-pointer rounded-2xl bg-rose-600 text-white hover:bg-rose-700"
+            onClick={handleConfirm}
+            disabled={isPending}
+            className="rounded-2xl h-11 flex-1 bg-red-600 hover:bg-red-700 font-semibold active:scale-95 transition-transform"
           >
-            {isDeleting ? "Menghapus..." : "Hapus"}
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isPending ? "Menghapus..." : "Ya, Hapus"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

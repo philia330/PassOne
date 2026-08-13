@@ -61,7 +61,7 @@ export default function NotificationBell() {
     <div className="relative" ref={containerRef}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative rounded-xl border border-slate-200 p-3 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+        className="relative rounded-xl border border-slate-200 p-3 transition hover:bg-slate-100 hover:scale-110 active:scale-95 dark:border-slate-700 dark:hover:bg-slate-800"
       >
         <Bell size={20} />
         {items.length > 0 && (
@@ -101,7 +101,7 @@ export default function NotificationBell() {
                     href={item.href}
                     onClick={() => setOpen(false)}
                     title={item.description}
-                    className="flex gap-3 border-b border-slate-50 px-4 py-3 transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
+                    className="flex gap-3 border-b border-slate-50 px-4 py-3 transition hover:bg-slate-50 hover:scale-[1.02] active:scale-[0.98] dark:border-slate-800 dark:hover:bg-slate-800"
                   >
                     <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${SEVERITY_COLOR[item.severity]}`}>
                       <Icon size={16} />

@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search, ClipboardList, MoreVertical, Pencil, Trash2, ArrowUp, ArrowDown, Filter, X } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Search, ClipboardList, MoreVertical, Pencil, Trash2, ArrowUp, ArrowDown, Filter, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,47 @@ const STATUS_LABEL: Record<StatusBaa, string> = {
   SELESAI: "Selesai",
 };
 
+// ================== SKELETON ROW COMPONENTS ==================
+
+function SkeletonRow({ colCount = 18 }: { colCount?: number }) {
+  return (
+    <TableRow className="border-b border-slate-200 dark:border-slate-800">
+      {Array.from({ length: colCount }).map((_, i) => (
+        <TableCell key={i} className="py-4">
+          <div className="h-4 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+        </TableCell>
+      ))}
+    </TableRow>
+  );
+}
+
+function SkeletonCard({ key }: { key: number }) {
+  return (
+    <div
+      key={key}
+      className="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-800/40"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-700" />
+          <div className="space-y-1.5">
+            <div className="h-4 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="h-3 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+          </div>
+        </div>
+        <div className="h-8 w-8 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-700" />
+      </div>
+      <div className="h-3 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+        <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+        <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+        <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+        <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+      </div>
+    </div>
+  );
+}
+
 function formatTanggal(date: Date) {
   return new Date(date).toLocaleDateString("id-ID", {
     day: "2-digit",
@@ -99,7 +141,7 @@ function BaaActionMenu({
         render={
           <button
             type="button"
-            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), triggerClassName)}
+            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), triggerClassName, "active:scale-90 transition-transform")}
           />
         }
       >
@@ -138,10 +180,10 @@ function BaaActionMenu({
         {canEdit && (
           <DropdownMenuItem
             onClick={() => onEdit(item)}
-            className="rounded-xl gap-3 px-2.5 py-2 cursor-pointer focus:bg-amber-50 dark:focus:bg-amber-500/10"
+            className="rounded-xl gap-3 px-2.5 py-2 cursor-pointer focus:bg-orange-50 dark:focus:bg-orange-500/10"
           >
-            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-500/20">
-              <Pencil className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-500/20">
+              <Pencil className="h-4 w-4 text-orange-500 dark:text-orange-400" />
             </span>
             <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Edit BAA</span>
           </DropdownMenuItem>
@@ -176,9 +218,20 @@ export const BaaTable = ({
   kodeOtomatis,
   allTeknisiOptions = [],
 }: BaaTableProps) => {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Detect when navigation happens (e.g., after router.refresh())
+  useEffect(() => {
+    setIsLoading(true);
+    // Small delay to prevent flicker for fast operations
+    const timer = setTimeout(() => setIsLoading(false), 300);
+    return () => clearTimeout(timer);
+  }, [searchParams.toString(), pathname]);
 
   // Untuk TEKNISI, default filter ke diri sendiri
   const isTeknisi = currentUser.role === "TEKNISI";
@@ -394,7 +447,16 @@ export const BaaTable = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginated.length === 0 ? (
+              {isLoading ? (
+                // Skeleton loading rows
+                <>
+                  <SkeletonRow colCount={18} />
+                  <SkeletonRow colCount={18} />
+                  <SkeletonRow colCount={18} />
+                  <SkeletonRow colCount={18} />
+                  <SkeletonRow colCount={18} />
+                </>
+              ) : paginated.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={18} className="py-10 text-center text-slate-400 dark:text-slate-500">
                     {search ? "Tidak ada data BAA yang cocok dengan pencarian" : "Belum ada data BAA"}
@@ -453,6 +515,11 @@ export const BaaTable = ({
         {/* ====================================================== */}
         {/* Versi Card - hanya muncul di HP (di bawah breakpoint md:) */}
         {/* ====================================================== */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+          </div>
+        ) : (
         <div className="grid gap-3 md:hidden">
           {paginated.length === 0 ? (
             <div className="rounded-2xl border border-slate-200 py-10 text-center text-slate-400 dark:border-slate-800 dark:text-slate-500">
@@ -523,6 +590,7 @@ export const BaaTable = ({
             ))
           )}
         </div>
+        )}
 
         <div className="flex justify-end">
           <BaaPagination

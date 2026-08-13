@@ -51,12 +51,12 @@ export const PaketDialog = ({ mode, paket, kodeOtomatis }: PaketDialogProps) => 
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {mode === "create" ? (
-          <Button className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white w-full sm:w-auto">
+          <Button className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white w-full sm:w-auto active:scale-95 transition-transform">
             <Plus className="mr-2 h-4 w-4" /> Tambah Paket
           </Button>
         ) : (
-          <Button variant="ghost" size="icon" className="cursor-pointer rounded-xl">
-            <Pencil className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+          <Button variant="ghost" size="icon" className="cursor-pointer rounded-xl active:scale-90 transition-transform">
+            <Pencil className="h-4 w-4 text-orange-500 hover:text-orange-600 active:scale-90 transition-all dark:text-orange-400 dark:hover:text-orange-300" />
           </Button>
         )}
       </DialogTrigger>
@@ -92,7 +92,7 @@ export const PaketDialog = ({ mode, paket, kodeOtomatis }: PaketDialogProps) => 
             <Button
               type="button"
               variant="outline"
-              className="rounded-2xl h-11 flex-1 sm:flex-none"
+              className="rounded-2xl h-11 flex-1 sm:flex-none active:scale-95 transition-transform"
               onClick={() => setOpen(false)}
               disabled={isPending}
             >
@@ -101,7 +101,7 @@ export const PaketDialog = ({ mode, paket, kodeOtomatis }: PaketDialogProps) => 
             <Button
               type="submit"
               disabled={isPending}
-              className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white flex-1 sm:flex-none"
+              className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white flex-1 sm:flex-none active:scale-95 transition-transform"
             >
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Simpan

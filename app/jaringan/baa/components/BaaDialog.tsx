@@ -99,9 +99,9 @@ export const BaaDialog = ({
         <DialogTrigger
           render={
             mode === "create" ? (
-              <Button className="h-12 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white w-full sm:w-auto" />
+              <Button className="h-12 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white w-full sm:w-auto active:scale-95 transition-transform" />
             ) : (
-              <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700" />
+              <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto active:scale-95 transition-transform dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700" />
             )
           }
         >
@@ -110,7 +110,7 @@ export const BaaDialog = ({
               <Plus className="mr-2 h-4 w-4" /> Tambah BAA
             </>
           ) : (
-            <Pencil className="h-4 w-4" />
+            <Pencil className="h-4 w-4 text-orange-500" />
           )}
         </DialogTrigger>
       )}
@@ -156,7 +156,7 @@ export const BaaDialog = ({
             <Button
               type="button"
               variant="outline"
-              className="rounded-2xl h-11 flex-1 sm:flex-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              className="rounded-2xl h-11 flex-1 sm:flex-none active:scale-95 transition-transform dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               onClick={() => setOpen(false)}
               disabled={isPending}
             >
@@ -165,7 +165,7 @@ export const BaaDialog = ({
             <Button
               type="submit"
               disabled={isPending}
-              className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white flex-1 sm:flex-none"
+              className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white flex-1 sm:flex-none active:scale-95 transition-transform"
             >
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Simpan

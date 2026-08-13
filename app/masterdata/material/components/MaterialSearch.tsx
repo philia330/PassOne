@@ -31,17 +31,16 @@ export const MaterialSearch = ({ defaultValue }: { defaultValue: string }) => {
   }, [value]);
 
   return (
-    <div className="relative flex-1 min-w-[200px]">
+    <div className="relative w-full max-w-xs">
       <Search
-        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-        size={16}
+        className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500"
       />
       <Input
         type="text"
         placeholder="Cari kode / nama material..."
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="rounded-2xl h-12 pl-11 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+        className="h-11 rounded-2xl pl-9 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
       />
     </div>
   );

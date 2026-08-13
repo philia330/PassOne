@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Search,
   MapPin,
@@ -11,6 +12,7 @@ import {
   ImageIcon,
   Filter,
   X,
+  Loader2,
 } from "lucide-react";
 import { FabActionsDropdown } from "./FabActionsDropdown";
 import { Input } from "@/components/ui/input";
@@ -46,6 +48,40 @@ import type {
 interface PenginputOption {
   id_user: number;
   nama: string;
+}
+
+// ================== SKELETON ROW COMPONENTS ==================
+
+function SkeletonRow({ colCount = 13 }: { colCount?: number }) {
+  return (
+    <TableRow className="border-b border-slate-200 dark:border-slate-800">
+      {Array.from({ length: colCount }).map((_, i) => (
+        <TableCell key={i} className="py-4">
+          <div className="h-4 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+        </TableCell>
+      ))}
+    </TableRow>
+  );
+}
+
+function SkeletonCard({ key }: { key: number }) {
+  return (
+    <div
+      key={key}
+      className="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-800/40"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="space-y-1.5">
+          <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+          <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+        </div>
+        <div className="h-8 w-8 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-700" />
+      </div>
+      <div className="h-3 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+      <div className="h-3 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+      <div className="h-3 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+    </div>
+  );
 }
 
 interface FabTableProps {
@@ -125,9 +161,20 @@ export const FabTable = ({
   kodeOtomatis,
   penginputOptions = [],
 }: FabTableProps) => {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Detect when navigation happens (e.g., after router.refresh())
+  useEffect(() => {
+    setIsLoading(true);
+    // Small delay to prevent flicker for fast operations
+    const timer = setTimeout(() => setIsLoading(false), 300);
+    return () => clearTimeout(timer);
+  }, [searchParams.toString(), pathname]);
 
   // Untuk SALES dan TEKNISI, default filter ke diri sendiri
   const isSalesOrTeknisi = currentUser.role === "SALES" || currentUser.role === "TEKNISI";
@@ -307,7 +354,16 @@ export const FabTable = ({
             </TableHeader>
 
             <TableBody>
-              {paginated.length === 0 ? (
+              {isLoading ? (
+                // Skeleton loading rows
+                <>
+                  <SkeletonRow colCount={13} />
+                  <SkeletonRow colCount={13} />
+                  <SkeletonRow colCount={13} />
+                  <SkeletonRow colCount={13} />
+                  <SkeletonRow colCount={13} />
+                </>
+              ) : paginated.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={13} className="py-10 text-center text-slate-400 dark:text-slate-500">
                     {search
@@ -368,87 +424,95 @@ export const FabTable = ({
         </div>
 
         {/* MOBILE: toggle sort */}
-        <div className="md:hidden flex justify-end">
-          <button
-            type="button"
-            onClick={toggleSort}
-            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:text-purple-600 hover:border-purple-200 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-          >
-            <ArrowUpDown size={16} />
-            {sortOrder === "asc" ? "Terlama dulu" : "Terbaru dulu"}
-          </button>
-        </div>
-
-        {/* ====================================================== */}
-        {/* Versi Card - hanya muncul di HP (di bawah breakpoint md:) */}
-        {/* ====================================================== */}
-        <div className="grid gap-3 md:hidden">
-          {paginated.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 py-10 text-center text-slate-400 dark:border-slate-800 dark:text-slate-500">
-              {search
-                ? "Tidak ada data FAB yang cocok dengan pencarian"
-                : "Belum ada data FAB"}
-            </div>
-          ) : (
-            paginated.map((item) => (
-              <div
-                key={item.id_fab}
-                className="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-800/40"
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+          </div>
+        ) : (
+          <>
+            <div className="md:hidden flex justify-end">
+              <button
+                type="button"
+                onClick={toggleSort}
+                className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:text-purple-600 hover:border-purple-200 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-semibold text-slate-900 dark:text-slate-100">
-                      {item.nama_pelanggan}
+                <ArrowUpDown size={16} />
+                {sortOrder === "asc" ? "Terlama dulu" : "Terbaru dulu"}
+              </button>
+            </div>
+
+            {/* ====================================================== */}
+            {/* Versi Card - hanya muncul di HP (di bawah breakpoint md:) */}
+            {/* ====================================================== */}
+            <div className="grid gap-3 md:hidden">
+              {paginated.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 py-10 text-center text-slate-400 dark:border-slate-800 dark:text-slate-500">
+                  {search
+                    ? "Tidak ada data FAB yang cocok dengan pencarian"
+                    : "Belum ada data FAB"}
+                </div>
+              ) : (
+                paginated.map((item) => (
+                  <div
+                    key={item.id_fab}
+                    className="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-800/40"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-slate-900 dark:text-slate-100">
+                          {item.nama_pelanggan}
+                        </p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          {item.kode_fab}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <FabFotoButton foto={item.foto} namaPelanggan={item.nama_pelanggan} />
+                        <FabActionsDropdown
+                          fab={item}
+                          areaOptions={areaOptions}
+                          paketOptions={paketOptions}
+                          salesOptions={salesOptions}
+                          currentUser={currentUser}
+                          canEdit={canEdit(item)}
+                          canDelete={canDelete}
+                        />
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-500 dark:text-slate-400">NIK: {item.nik}</p>
+
+                    <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
+                      <Phone size={12} className="text-slate-400 dark:text-slate-500" />
+                      {item.no_hp}
+                    </div>
+
+                    <div className="flex items-start gap-1 text-sm text-slate-600 dark:text-slate-300">
+                      <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
+                      <span className="line-clamp-2">{item.alamat}</span>
+                    </div>
+
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Area: {item.area?.nama_area ?? "-"} &middot; Paket: {item.paket?.nama_paket ?? "-"}
                     </p>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                      {item.kode_fab}
+                      Sales: {item.users?.nama ?? "-"}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <DiinputOlehCell item={item} />
+                      <span className={`text-sm font-semibold ${STATUS_TEXT_STYLE[item.status]}`}>
+                        {STATUS_LABEL[item.status]}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      Dibuat: {formatTanggal(item.createdAt)}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <FabFotoButton foto={item.foto} namaPelanggan={item.nama_pelanggan} />
-                    <FabActionsDropdown
-                      fab={item}
-                      areaOptions={areaOptions}
-                      paketOptions={paketOptions}
-                      salesOptions={salesOptions}
-                      currentUser={currentUser}
-                      canEdit={canEdit(item)}
-                      canDelete={canDelete}
-                    />
-                  </div>
-                </div>
-
-                <p className="text-xs text-slate-500 dark:text-slate-400">NIK: {item.nik}</p>
-
-                <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
-                  <Phone size={12} className="text-slate-400 dark:text-slate-500" />
-                  {item.no_hp}
-                </div>
-
-                <div className="flex items-start gap-1 text-sm text-slate-600 dark:text-slate-300">
-                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
-                  <span className="line-clamp-2">{item.alamat}</span>
-                </div>
-
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Area: {item.area?.nama_area ?? "-"} &middot; Paket: {item.paket?.nama_paket ?? "-"}
-                </p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Sales: {item.users?.nama ?? "-"}
-                </p>
-                <div className="flex items-center justify-between">
-                  <DiinputOlehCell item={item} />
-                  <span className={`text-sm font-semibold ${STATUS_TEXT_STYLE[item.status]}`}>
-                    {STATUS_LABEL[item.status]}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 dark:text-slate-500">
-                  Dibuat: {formatTanggal(item.createdAt)}
-                </p>
-              </div>
-            ))
-          )}
-        </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
 
         <div className="flex justify-end">
           <FabPagination

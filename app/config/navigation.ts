@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   MapPinned,
   Network,
+  Map,
   Router,
   Boxes,
   Package,
@@ -49,6 +50,18 @@ export const navigation: NavigationGroup[] = [
         title: "Dashboard",
         href: "/dashboard",
         icon: LayoutDashboard,
+        roles: [
+          Role.ADMIN,
+          Role.LEADER,
+          Role.SALES,
+          Role.TEKNISI,
+          Role.LOGISTIK,
+        ],
+      },
+      {
+        title: "Peta Jaringan",
+        href: "/network",
+        icon: Map,
         roles: [
           Role.ADMIN,
           Role.LEADER,

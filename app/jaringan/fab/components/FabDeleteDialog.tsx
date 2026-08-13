@@ -92,13 +92,13 @@ export const FabDeleteDialog = ({ id, namaPelanggan, open: openProp, onOpenChang
         <div className="flex-1" />
 
         <AlertDialogFooter className="sm:justify-center gap-2 mt-2 flex-shrink-0 px-4 pb-4 sm:px-6 sm:pb-6">
-          <AlertDialogCancel disabled={isPending} className="rounded-2xl h-11 flex-1">
+          <AlertDialogCancel disabled={isPending} className="rounded-2xl h-11 flex-1 active:scale-95 transition-transform">
             Batal
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={isPending}
-            className="rounded-2xl h-11 flex-1 bg-red-600 hover:bg-red-700 font-semibold"
+            className="rounded-2xl h-11 flex-1 bg-red-600 hover:bg-red-700 font-semibold active:scale-95 transition-transform"
           >
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isPending ? "Menghapus..." : "Ya, Hapus"}

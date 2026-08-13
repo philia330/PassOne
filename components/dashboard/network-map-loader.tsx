@@ -6,12 +6,12 @@ import type { NetworkPoint } from "@/lib/network-points";
 const NetworkMap = dynamic(() => import("@/components/dashboard/network-map"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[400px] items-center justify-center rounded-2xl border border-slate-100 bg-slate-50 text-sm text-slate-400">
+    <div className="flex h-[400px] items-center justify-center rounded-2xl border border-slate-100 bg-slate-50 text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-900">
       Memuat peta...
     </div>
   ),
 });
 
-export default function NetworkMapLoader({ points }: { points: NetworkPoint[] }) {
-  return <NetworkMap points={points} />;
+export default function NetworkMapLoader({ points, fullHeight = false }: { points: NetworkPoint[]; fullHeight?: boolean }) {
+  return <NetworkMap points={points} fullHeight={fullHeight} />;
 }
