@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   Dialog,
   DialogContent,
@@ -62,6 +63,45 @@ const getActivityIcon = (type: string): React.ReactNode => {
   return <Settings className="h-5 w-5" />;
 };
 
+// Diberi anotasi eksplisit `: Variants` -- tanpa ini, TypeScript nge-infer
+// `ease: "easeOut"` sebagai tipe `string` biasa (widened), padahal Framer
+// Motion butuh union literal type khusus (mis. "easeOut" | "easeIn" | ...
+// | number[]). Dengan anotasi ini, literal string-nya "dipertahankan"
+// sesuai tipe yang diharapkan, jadi cocok dengan prop `variants` di motion.div.
+const contentVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.95, y: -20 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      duration: 0.3,
+      ease: "easeOut",
+    },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.95,
+    y: -20,
+    transition: {
+      duration: 0.2,
+      ease: "easeIn",
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: 0.1 + i * 0.05,
+      duration: 0.3,
+    },
+  }),
+};
+
 export function ActivityDetailDialog({ activity, trigger }: ActivityDetailDialogProps) {
   const [open, setOpen] = useState(false);
 
@@ -72,51 +112,120 @@ export function ActivityDetailDialog({ activity, trigger }: ActivityDetailDialog
       >
         {trigger}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md rounded-3xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${getActivityColor(activity.type)}`}>
-              {getActivityIcon(activity.type)}
-            </span>
-            <span className="text-base">Detail Aktivitas</span>
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-md rounded-3xl overflow-hidden">
+        <AnimatePresence mode="wait">
+          {open && (
+            <motion.div
+              variants={contentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <DialogHeader>
+                <motion.div
+                  custom={0}
+                  variants={itemVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  <DialogTitle className="flex items-center gap-3">
+                    <motion.span
+                      className={`flex h-10 w-10 items-center justify-center rounded-xl ${getActivityColor(activity.type)}`}
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ delay: 0.15, type: "spring", stiffness: 200 }}
+                    >
+                      {getActivityIcon(activity.type)}
+                    </motion.span>
+                    <span className="text-base">Detail Aktivitas</span>
+                  </DialogTitle>
+                </motion.div>
+              </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Deskripsi */}
-          <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800">
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Deskripsi</p>
-            <p className="font-medium dark:text-white">{activity.description}</p>
-          </div>
+              <motion.div className="space-y-4 py-4">
+                {/* Deskripsi */}
+                <motion.div
+                  custom={1}
+                  variants={itemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800"
+                >
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Deskripsi</p>
+                  <motion.p
+                    className="font-medium dark:text-white"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.25 }}
+                  >
+                    {activity.description}
+                  </motion.p>
+                </motion.div>
 
-          {/* Tipe Aktivitas & Waktu */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800">
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Tipe Aktivitas</p>
-              <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium ${getActivityColor(activity.type)}`}>
-                {activity.type.replace(/_/g, " ")}
-              </span>
-            </div>
+                {/* Tipe Aktivitas & Waktu */}
+                <motion.div className="grid grid-cols-2 gap-4">
+                  <motion.div
+                    custom={2}
+                    variants={itemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800"
+                  >
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Tipe Aktivitas</p>
+                    <motion.span
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium ${getActivityColor(activity.type)}`}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                      whileHover={{ scale: 1.05 }}
+                    >
+                      {activity.type.replace(/_/g, " ")}
+                    </motion.span>
+                  </motion.div>
 
-            {/* Waktu */}
-            <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800">
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Waktu</p>
-              <p className="font-medium dark:text-white text-sm">
-                {format(new Date(activity.createdAt), "dd MMM yyyy, HH:mm", { locale: localeId })}
-              </p>
-            </div>
-          </div>
-        </div>
+                  {/* Waktu */}
+                  <motion.div
+                    custom={3}
+                    variants={itemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800"
+                  >
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Waktu</p>
+                    <motion.p
+                      className="font-medium dark:text-white text-sm"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.35 }}
+                    >
+                      {format(new Date(activity.createdAt), "dd MMM yyyy, HH:mm", { locale: localeId })}
+                    </motion.p>
+                  </motion.div>
+                </motion.div>
+              </motion.div>
 
-        <div className="flex justify-end">
-          <Button
-            variant="outline"
-            onClick={() => setOpen(false)}
-            className="rounded-xl"
-          >
-            Tutup
-          </Button>
-        </div>
+              <motion.div
+                className="flex justify-end"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button
+                    variant="outline"
+                    onClick={() => setOpen(false)}
+                    className="rounded-xl"
+                  >
+                    Tutup
+                  </Button>
+                </motion.div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </DialogContent>
     </Dialog>
   );
