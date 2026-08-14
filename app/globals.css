@@ -299,3 +299,27 @@ button svg,
 [data-slot="sheet-content"] {
   @apply transition-all duration-200;
 }
+
+
+/* Scrollbar tipis buat chart yang bisa di-scroll horizontal */
+.chart-scroll-x {
+  scrollbar-width: thin;
+  overflow-x: scroll !important;
+}
+
+.chart-scroll-x::-webkit-scrollbar {
+  height: 8px;
+}
+
+.chart-scroll-x::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chart-scroll-x::-webkit-scrollbar-thumb {
+  background-color: rgb(203 213 225); /* slate-300 */
+  border-radius: 9999px;
+}
+
+.dark .chart-scroll-x::-webkit-scrollbar-thumb {
+  background-color: rgb(71 85 105); /* slate-600 */
+}
