@@ -2,7 +2,7 @@ import DashboardShell from "@/components/dashboard/dashboard-shell";
 import { AnimatedPage } from "@/components/layout/animated-page";
 import { getSettings } from "@/lib/settings";
 
-export default async function DashboardLayout({
+export default async function MasterdataLayout({
   children,
 }: {
   children: React.ReactNode;
