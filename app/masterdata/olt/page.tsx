@@ -4,6 +4,7 @@ import { Router } from "lucide-react";
 import { getOlts, getPops } from "./actions";
 import { OltSortableTable } from "./components/OltSortableTable";
 import { requirePageAccess } from "@/lib/auth/guards";
+import { ExportButton } from "@/components/ui/ExportButton";
 
 export default async function OltPage({
   searchParams,
@@ -26,6 +27,9 @@ export default async function OltPage({
   ]);
 
   const currentRole = session.user.role;
+
+  // Hanya Admin dan Leader yang bisa export
+  const canExport = currentRole === "ADMIN" || currentRole === "LEADER";
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
@@ -54,6 +58,7 @@ export default async function OltPage({
         pops={pops}
         defaultValue={search}
         currentRole={currentRole}
+        actions={canExport ? <ExportButton apiUrl="/api/olt/export" filenamePrefix="Export_OLT" /> : null}
       />
     </div>
   );

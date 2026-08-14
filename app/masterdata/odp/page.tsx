@@ -21,6 +21,7 @@ import { OdpConnectionDialog } from "./components/OdpConnectionDialog";
 import { OdpSortToggle } from "./components/OdpSortToggle";
 import { OpenGoogleMaps } from "@/components/ui/OpenGoogleMaps";
 import { requirePageAccess } from "@/lib/auth/guards";
+import { ExportButton } from "@/components/ui/ExportButton";
 
 export default async function OdpPage({
   searchParams,
@@ -41,6 +42,9 @@ export default async function OdpPage({
 
   const currentRole = session.user.role as string;
   const canDelete = currentRole === "ADMIN" || currentRole === "LEADER";
+
+  // Hanya Admin dan Leader yang bisa export
+  const canExport = currentRole === "ADMIN" || currentRole === "LEADER";
 
   const [{ data: odps, total, totalPages }, olts] = await Promise.all([
     getOdps(search, page, true, sortOrder),
@@ -115,7 +119,8 @@ export default async function OdpPage({
         <CardContent className="space-y-6 p-4 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <OdpSearch defaultValue={search} />
-            <div className="add-button">
+            <div className="flex items-center gap-2">
+              {canExport && <ExportButton apiUrl="/api/odp/export" filenamePrefix="Export_ODP" />}
               <OdpFormDialog mode="create" olts={olts} />
             </div>
           </div>

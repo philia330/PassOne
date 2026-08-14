@@ -99,9 +99,9 @@ export const BaaDialog = ({
         <DialogTrigger
           render={
             mode === "create" ? (
-              <Button className="h-12 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white w-full sm:w-auto active:scale-95 transition-transform" />
+              <Button className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white w-full sm:w-auto active:scale-95 hover:scale-110 hover:h-12 transition-all duration-200 shadow-md hover:shadow-lg" />
             ) : (
-              <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto active:scale-95 transition-transform dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700" />
+              <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto active:scale-95 hover:scale-105 transition-transform dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700" />
             )
           }
         >

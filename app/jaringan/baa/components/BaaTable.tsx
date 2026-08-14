@@ -378,6 +378,7 @@ export const BaaTable = ({
               <span>{sortOrder === "asc" ? "Terlama" : "Terbaru"}</span>
             </button>
 
+            {(currentUser.role === "ADMIN" || currentUser.role === "LEADER") && <BaaExportButton />}
             {canCreate && (
               <BaaDialog
                 mode="create"
@@ -391,7 +392,6 @@ export const BaaTable = ({
                 currentUser={currentUser}
               />
             )}
-            {currentUser.role === "ADMIN" && <BaaExportButton />}
           </div>
         </div>
 

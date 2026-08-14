@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, ReactNode } from "react";
 import { ArrowUp, ArrowDown, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -55,11 +55,13 @@ export function OltSortableTable({
   pops,
   defaultValue,
   currentRole,
+  actions,
 }: {
   initialData: Olt[];
   pops: { id_pop: number; nama_pop: string; alamat: string }[];
   defaultValue: string;
   currentRole: string;
+  actions?: ReactNode;
 }) {
   const canViewSecret = currentRole === "ADMIN" || currentRole === "LEADER";
 
@@ -98,7 +100,8 @@ export function OltSortableTable({
       <CardContent className="space-y-6 p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <OltSearch defaultValue={search} />
-          <div className="add-button">
+          <div className="flex items-center gap-2">
+            {actions}
             <OltFormDialog mode="create" pops={pops} />
           </div>
         </div>

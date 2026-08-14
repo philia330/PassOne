@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect, useCallback, ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   Search,
@@ -92,6 +92,7 @@ interface FabTableProps {
   currentUser: CurrentUser;
   kodeOtomatis: string;
   penginputOptions?: PenginputOption[];
+  actions?: ReactNode;
 }
 
 const PAGE_SIZE = 5;
@@ -160,6 +161,7 @@ export const FabTable = ({
   currentUser,
   kodeOtomatis,
   penginputOptions = [],
+  actions,
 }: FabTableProps) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -306,14 +308,17 @@ export const FabTable = ({
             )}
           </div>
 
-          <FabDialog
-            mode="create"
-            kodeOtomatis={kodeOtomatis}
-            areaOptions={areaOptions}
-            paketOptions={paketOptions}
-            salesOptions={salesOptions}
-            currentUser={currentUser}
-          />
+          <div className="flex items-center gap-2">
+            {actions}
+            <FabDialog
+              mode="create"
+              kodeOtomatis={kodeOtomatis}
+              areaOptions={areaOptions}
+              paketOptions={paketOptions}
+              salesOptions={salesOptions}
+              currentUser={currentUser}
+            />
+          </div>
         </div>
 
         {/* ====================================================== */}

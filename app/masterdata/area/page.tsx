@@ -6,6 +6,7 @@ import { getAreas } from "./actions";
 
 import { AreaSortableTable } from "./components/AreaSortableTable";
 import { requirePageAccess } from "@/lib/auth/guards";
+import { ExportButton } from "@/components/ui/ExportButton";
 
 export default async function AreaPage({
   searchParams,
@@ -19,6 +20,9 @@ export default async function AreaPage({
   const page = Number(params.page ?? 1);
 
   const { data: areas, total, totalPages } = await getAreas(search, page);
+
+  // Hanya Admin dan Leader yang bisa export
+  const canExport = session.user.role === "ADMIN" || session.user.role === "LEADER";
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
@@ -48,6 +52,7 @@ export default async function AreaPage({
         total={total}
         totalPages={totalPages}
         defaultValue={search}
+        actions={canExport ? <ExportButton apiUrl="/api/area/export" filenamePrefix="Export_Area" /> : null}
       />
     </div>
   );

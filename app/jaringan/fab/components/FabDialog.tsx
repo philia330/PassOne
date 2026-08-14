@@ -73,11 +73,11 @@ export const FabDialog = ({
       {!isControlled && (
         <DialogTrigger asChild>
           {mode === "create" ? (
-            <Button className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white w-full sm:w-auto active:scale-95 transition-transform">
+            <Button className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white w-full sm:w-auto active:scale-95 hover:scale-110 hover:h-12 transition-all duration-200 shadow-md hover:shadow-lg">
               <Plus className="mr-2 h-4 w-4" /> Tambah FAB
             </Button>
           ) : (
-            <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto active:scale-95 transition-transform">
+            <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto active:scale-95 hover:scale-105 transition-transform">
               <Pencil className="h-4 w-4 text-orange-500" />
             </Button>
           )}
