@@ -85,11 +85,13 @@ export function UserSortableTable({
       <CardContent className="space-y-6 p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <UserSearch defaultValue={search} />
-          <UserFormDialog mode="create" />
+          <div className="add-button">
+            <UserFormDialog mode="create" />
+          </div>
         </div>
 
         {/* Desktop Table */}
-        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block">
+        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block table-container">
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 dark:bg-slate-800/50 dark:hover:bg-slate-800/50">
@@ -176,7 +178,7 @@ export function UserSortableTable({
                     <TableCell className="text-center">
                       <div className="flex justify-center gap-2">
                         <UserFormDialog mode="edit" data={user} />
-                        <DeleteUserDialog id={user.id_user} name={user.nama} />
+                        <DeleteUserDialog id={user.id_user} name={user.nama ?? ""} />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -208,7 +210,7 @@ export function UserSortableTable({
                     </div>
                     <div className="flex shrink-0 gap-1">
                       <UserFormDialog mode="edit" data={user} />
-                      <DeleteUserDialog id={user.id_user} name={user.nama} />
+                      <DeleteUserDialog id={user.id_user} name={user.nama ?? ""} />
                     </div>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">

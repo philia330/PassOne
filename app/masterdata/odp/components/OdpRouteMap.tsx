@@ -32,29 +32,42 @@ const COLOR_OLT = "#0ea5e9";
 const COLOR_JALUR = "#eab308";
 
 // ======================================================
-// Icon custom per tipe marker
+// Icon custom per tipe marker dengan efek hover scale
 // ======================================================
 const ICON_SVG = {
   OLT: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><rect x="4" y="8" width="16" height="10" rx="1"/><path d="M9 4v4M15 4v4M9 21h6"/></svg>`,
   ODP: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V6a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 6v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l3-1.7"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>`,
 };
 
-const createMarkerIcon = (color: string, svg: string, size = 28) => {
+const createMarkerIcon = (color: string, svg: string, size = 28, isHighlight = false) => {
+  const highlightRing = isHighlight ? `box-shadow: 0 0 0 4px ${color}40, 0 2px 8px rgba(0,0,0,0.4);` : '';
+
   return L.divIcon({
     className: "custom-network-marker",
     html: `
-      <div style="
-        background-color: ${color};
+      <div class="marker-wrapper" style="
         width: ${size}px;
         height: ${size}px;
-        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 2px solid white;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        transition: transform 0.2s ease;
       ">
-        ${svg}
+        <div style="
+          background-color: ${color};
+          width: ${size}px;
+          height: ${size}px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid white;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          transition: all 0.2s ease;
+          ${highlightRing}
+        ">
+          ${svg}
+        </div>
       </div>
     `,
     iconSize: [size, size],
@@ -138,10 +151,36 @@ export const OdpRouteMap = ({ points, highlightId }: OdpRouteMapProps) => {
   );
 
   return (
-    <div className="relative isolate w-full overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+    <div className="relative isolate w-full h-full">
+      <style>{`
+        .custom-network-marker .leaflet-marker-icon {
+          transition: transform 0.2s ease !important;
+        }
+        .custom-network-marker:hover .marker-wrapper > div {
+          transform: scale(1.2);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+        }
+        .custom-network-marker:hover .marker-wrapper {
+          transform: translateY(-2px);
+        }
+        .leaflet-popup-content-wrapper {
+          border-radius: 12px !important;
+        }
+        .leaflet-popup-content {
+          margin: 12px 14px !important;
+          font-family: inherit;
+        }
+        .leaflet-popup-close-button {
+          color: #64748b !important;
+        }
+      `}</style>
+
       {loading && (
-        <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-white/70 text-sm text-slate-500 dark:bg-slate-900/70 dark:text-slate-400">
-          Menghitung jalur ke semua ODP...
+        <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-white/80 backdrop-blur-sm text-sm text-slate-500 dark:bg-slate-900/80 dark:text-slate-400 rounded-2xl">
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-8 h-8 border-2 border-slate-300 border-t-sky-500 rounded-full animate-spin"></div>
+            <span>Menghitung jalur ke semua ODP...</span>
+          </div>
         </div>
       )}
 
@@ -149,8 +188,8 @@ export const OdpRouteMap = ({ points, highlightId }: OdpRouteMapProps) => {
         key={`odp-route-all-${points.length}`}
         center={[centerLat, centerLng]}
         zoom={11}
-        style={{ height: "450px", width: "100%" }}
-        className="w-full z-0 dark:[&_.leaflet-tile]:invert dark:[&_.leaflet-tile]:hue-rotate-180 dark:[&_.leaflet-tile]:brightness-95 dark:[&_.leaflet-tile]:contrast-90 dark:[&_.leaflet-popup-content-wrapper]:bg-slate-900 dark:[&_.leaflet-popup-content-wrapper]:text-slate-100 dark:[&_.leaflet-popup-tip]:bg-slate-900"
+        style={{ height: "100%", width: "100%" }}
+        className="w-full z-0 rounded-2xl dark:[&_.leaflet-tile]:invert dark:[&_.leaflet-tile]:hue-rotate-180 dark:[&_.leaflet-tile]:brightness-95 dark:[&_.leaflet-tile]:contrast-90 dark:[&_.leaflet-popup-content-wrapper]:bg-slate-900 dark:[&_.leaflet-popup-content-wrapper]:text-slate-100 dark:[&_.leaflet-popup-tip]:bg-slate-900"
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -184,29 +223,45 @@ export const OdpRouteMap = ({ points, highlightId }: OdpRouteMapProps) => {
             icon={createMarkerIcon(COLOR_OLT, ICON_SVG.OLT)}
           >
             <Popup>
-              <strong>OLT:</strong> {olt.nama}
+              <div className="text-sm">
+                <strong className="text-sky-600 dark:text-sky-400">OLT</strong>
+                <br />
+                <span className="text-slate-700 dark:text-slate-200">{olt.nama}</span>
+              </div>
             </Popup>
           </Marker>
         ))}
 
         {/* Marker semua ODP */}
-        {points.map((p) => (
-          <Marker
-            key={`odp-${p.id_odp}`}
-            position={[p.odpLat, p.odpLng]}
-            icon={createMarkerIcon(
-              p.id_odp === highlightId ? COLOR_ODP_HIGHLIGHT : COLOR_ODP,
-              ICON_SVG.ODP,
-              p.id_odp === highlightId ? 34 : 28
-            )}
-          >
-            <Popup>
-              <strong>ODP:</strong> {p.odpNama}
-              <br />
-              OLT: {p.oltNama}
-            </Popup>
-          </Marker>
-        ))}
+        {points.map((p) => {
+          const isHighlight = p.id_odp === highlightId;
+          return (
+            <Marker
+              key={`odp-${p.id_odp}`}
+              position={[p.odpLat, p.odpLng]}
+              icon={createMarkerIcon(
+                isHighlight ? COLOR_ODP_HIGHLIGHT : COLOR_ODP,
+                ICON_SVG.ODP,
+                isHighlight ? 34 : 28,
+                isHighlight
+              )}
+            >
+              <Popup>
+                <div className="text-sm">
+                  <strong className={isHighlight ? "text-red-500" : "text-amber-600"}>
+                    ODP
+                  </strong>
+                  <br />
+                  <span className="text-slate-700 dark:text-slate-200 font-medium">{p.odpNama}</span>
+                  <br />
+                  <span className="text-slate-500 dark:text-slate-400 text-xs">
+                    OLT: {p.oltNama}
+                  </span>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
     </div>
   );

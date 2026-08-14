@@ -84,11 +84,13 @@ export function PortPonSortableTable({
       <CardContent className="space-y-6 p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <PortPonSearch defaultValue={search} />
-          <PortPonFormDialog mode="create" olts={olts} odps={odps} />
+          <div className="add-button">
+            <PortPonFormDialog mode="create" olts={olts} odps={odps} />
+          </div>
         </div>
 
         {/* Desktop Table */}
-        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block">
+        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block table-container">
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 dark:bg-slate-800/50">
@@ -123,7 +125,7 @@ export function PortPonSortableTable({
                 </TableRow>
               ) : (
                 paginated.map((port) => (
-                  <TableRow key={port.id_port} className="border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50">
+                  <TableRow key={port.id_port} className="border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 table-row-hover">
                     <TableCell className="font-medium dark:text-slate-200">{port.olt?.nama_olt}</TableCell>
                     <TableCell>
                       <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusBadge[port.status] ?? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}>{port.status}</span>
@@ -132,9 +134,9 @@ export function PortPonSortableTable({
                     <TableCell className="text-center font-medium dark:text-slate-300">{port.nomor_port}</TableCell>
                     <TableCell className="dark:text-slate-300">{port.tipe_kartu}</TableCell>
                     <TableCell className="text-center">
-                      <div className="flex justify-center gap-1">
+                      <div className="flex justify-center gap-1 group/action">
                         <PortPonFormDialog mode="edit" olts={olts} odps={odps} data={{ id_port_pon: port.id_port, nomor_port: port.nomor_port, tipe_kartu: port.tipe_kartu, status: port.status, id_olt: port.id_olt, id_odp: port.id_odp }} />
-                        <DeletePortPonDialog id={port.id_port} name={`${port.olt?.nama_olt} - Port ${port.nomor_port}`} />
+                        <DeletePortPonDialog id={port.id_port} name={`${port.olt?.nama_olt ?? ""} - Port ${port.nomor_port}`} />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -155,7 +157,7 @@ export function PortPonSortableTable({
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <PortPonFormDialog mode="edit" olts={olts} odps={odps} data={{ id_port_pon: port.id_port, nomor_port: port.nomor_port, tipe_kartu: port.tipe_kartu, status: port.status, id_olt: port.id_olt, id_odp: port.id_odp }} />
-                  <DeletePortPonDialog id={port.id_port} name={`${port.olt?.nama_olt} - Port ${port.nomor_port}`} />
+                  <DeletePortPonDialog id={port.id_port} name={`${port.olt?.nama_olt ?? ""} - Port ${port.nomor_port}`} />
                 </div>
               </div>
               <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${statusBadge[port.status] ?? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}>{port.status}</span>

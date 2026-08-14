@@ -80,16 +80,16 @@ export function OdpConnectionDialog({
     <Button
       variant="ghost"
       size="sm"
-      className="h-8 rounded-lg text-slate-500 hover:text-purple-600 hover:bg-purple-50"
+      className="h-8 rounded-lg text-slate-500 hover:text-purple-600 hover:bg-purple-50 transition-all duration-200"
       title="Lihat yang terhubung"
     >
-      <Link2 className="h-4 w-4" />
+      <Link2 className="h-4 w-4 transition-transform duration-200 group-hover:scale-125" />
     </Button>
   );
 
   return (
     <>
-      <div onClick={() => handleOpenChange(true)} className="cursor-pointer">
+      <div onClick={() => handleOpenChange(true)} className="cursor-pointer group transition-all duration-200">
         {trigger || defaultTrigger}
       </div>
 

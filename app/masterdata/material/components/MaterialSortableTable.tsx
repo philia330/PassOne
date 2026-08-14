@@ -84,11 +84,13 @@ export function MaterialSortableTable({
       <CardContent className="space-y-6 p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <MaterialSearch defaultValue={search} />
-          <MaterialDialog mode="create" kodeOtomatis={kodeOtomatis} />
+          <div className="add-button">
+            <MaterialDialog mode="create" kodeOtomatis={kodeOtomatis} />
+          </div>
         </div>
 
         {/* Desktop Table */}
-        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block">
+        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block table-container">
           <Table>
             <TableHeader>
               <TableRow className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/50">
@@ -145,7 +147,7 @@ export function MaterialSortableTable({
                       </TableCell>
                       <TableCell className="max-w-[180px] truncate text-slate-500 dark:text-slate-400">{item.keterangan || "-"}</TableCell>
                       <TableCell className="text-center">
-                        <div className="flex justify-center gap-1">
+                        <div className="flex justify-center gap-1 group/action">
                           <MaterialDialog mode="edit" material={item} />
                           {canDelete && <MaterialDeleteDialog id={item.id_material} namaMaterial={item.nama_material} />}
                         </div>

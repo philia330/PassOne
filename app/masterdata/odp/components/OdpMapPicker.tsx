@@ -4,7 +4,7 @@ import { useState } from "react";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -52,6 +52,7 @@ export const OdpMapPicker = ({ lat, lng, onPick }: OdpMapPickerProps) => {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number } | null>(null);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const hasPosition = lat !== 0 && lng !== 0;
   const center: [number, number] = hasPosition
@@ -86,27 +87,36 @@ export const OdpMapPicker = ({ lat, lng, onPick }: OdpMapPickerProps) => {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {/* Search box */}
       <div className="relative">
-        <div className="flex gap-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleSearch();
-              }
-            }}
-            placeholder="Cari nama tempat / alamat..."
-            className="h-11 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
-          />
+        <div className={`flex gap-2 p-1 rounded-2xl border transition-all duration-200 ${
+          searchFocused
+            ? 'border-purple-500 shadow-[0_0_0_3px_rgba(147,51,234,0.1)]'
+            : 'border-slate-200 dark:border-slate-700'
+        } bg-white dark:bg-slate-800`}>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 transition-colors duration-200" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSearch();
+                }
+              }}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
+              placeholder="Cari nama tempat / alamat..."
+              className="h-9 pl-10 pr-4 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+            />
+          </div>
           <Button
             type="button"
             onClick={handleSearch}
             disabled={loading}
-            className="h-11 shrink-0 cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 px-4 text-white"
+            className="h-9 shrink-0 cursor-pointer rounded-xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 px-4 text-white hover:opacity-90 active:scale-95 transition-all duration-200"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -117,15 +127,18 @@ export const OdpMapPicker = ({ lat, lng, onPick }: OdpMapPickerProps) => {
         </div>
 
         {results.length > 0 && (
-          <div className="absolute z-[1000] mt-1 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900">
+          <div className="absolute z-[1000] mt-2 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl animate-in fade-in-0 slide-in-from-top-2 duration-200 dark:border-slate-700 dark:bg-slate-900">
             {results.map((r, i) => (
               <button
                 type="button"
                 key={i}
                 onClick={() => handleSelectResult(r)}
-                className="block w-full cursor-pointer px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/70"
+                className="block w-full cursor-pointer px-4 py-3 text-left text-sm text-slate-700 hover:bg-purple-50 transition-colors duration-150 dark:text-slate-200 dark:hover:bg-purple-900/20 border-b border-slate-100 dark:border-slate-800 last:border-0"
               >
-                {r.display_name}
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 text-purple-500 mt-0.5 shrink-0" />
+                  <span className="line-clamp-2">{r.display_name}</span>
+                </div>
               </button>
             ))}
           </div>
@@ -133,7 +146,7 @@ export const OdpMapPicker = ({ lat, lng, onPick }: OdpMapPickerProps) => {
       </div>
 
       {/* Map */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 transition-all duration-200 hover:shadow-lg">
         <MapContainer
           center={center}
           zoom={hasPosition ? 15 : 12}
@@ -148,9 +161,12 @@ export const OdpMapPicker = ({ lat, lng, onPick }: OdpMapPickerProps) => {
           {hasPosition && <Marker position={[lat, lng]} icon={markerIcon} />}
           {flyTarget && <FlyTo lat={flyTarget.lat} lng={flyTarget.lng} />}
         </MapContainer>
-        <p className="border-t border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-400">
-          Cari tempat atau klik peta untuk pilih lokasi ODP
-        </p>
+        <div className="border-t border-slate-100 bg-gradient-to-r from-slate-50 to-slate-100/50 px-4 py-2.5 dark:border-slate-800 dark:from-slate-800 dark:to-slate-800/50">
+          <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <MapPin className="h-3 w-3 text-purple-500" />
+            Klik peta untuk pilih lokasi atau cari alamat di atas
+          </p>
+        </div>
       </div>
     </div>
   );

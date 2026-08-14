@@ -217,3 +217,85 @@
 .leaflet-control {
   z-index: 10 !important;
 }
+
+/* ============================================
+   Global Hover Scale Effects for Icons
+   ============================================ */
+
+/* Only the specific icon being hovered gets enlarged - NOT all icons in group */
+button:hover > svg,
+.action-icon:hover {
+  transform: scale(1.25);
+}
+
+/* Icons have smooth transition */
+button svg,
+.action-icon {
+  transition: transform 200ms ease-out;
+}
+
+/* Button icons get hover scale */
+.btn-icon-hover {
+  transition: transform 200ms ease-out;
+}
+
+.btn-icon-hover:hover {
+  transform: scale(1.1);
+}
+
+/* ============================================
+   Table Entry Animations
+   ============================================ */
+
+.table-container {
+  @apply animate-in fade-in-0 slide-in-from-bottom-2 duration-300;
+}
+
+.table-row-hover {
+  @apply transition-colors duration-200;
+}
+
+/* ============================================
+   Card Entry Animations
+   ============================================ */
+
+.card-hover-effect {
+  @apply transition-all duration-200;
+}
+
+.card-hover-effect:hover {
+  @apply shadow-lg scale-[1.01];
+}
+
+/* ============================================
+   Add Button Hover Scale
+   ============================================ */
+
+.add-button {
+  @apply transition-all duration-200;
+}
+
+.add-button:hover {
+  @apply scale-105;
+}
+
+.add-button:active {
+  @apply scale-95;
+}
+
+/* ============================================
+   Drawer/Sheet Transitions
+   ============================================ */
+
+[data-side="right"] {
+  @apply transition-transform duration-300 ease-out;
+}
+
+/* ============================================
+   Form Dialog Transitions
+   ============================================ */
+
+[data-slot="dialog-content"],
+[data-slot="sheet-content"] {
+  @apply transition-all duration-200;
+}

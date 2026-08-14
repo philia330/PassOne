@@ -87,11 +87,13 @@ export function OntSortableTable({
       <CardContent className="space-y-6 p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <OntSearch defaultValue={search} />
-          <OntFormDialog mode="create" pops={pops} odps={odps} />
+          <div className="add-button">
+            <OntFormDialog mode="create" pops={pops} odps={odps} />
+          </div>
         </div>
 
         {/* Desktop Table */}
-        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block">
+        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block table-container">
           <Table>
             <TableHeader>
               <TableRow className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/50">
@@ -127,7 +129,7 @@ export function OntSortableTable({
                 </TableRow>
               ) : (
                 paginated.map((ont) => (
-                  <TableRow key={ont.id_ont} className="border-b border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50">
+                  <TableRow key={ont.id_ont} className="border-b border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 table-row-hover">
                     <TableCell className="font-medium dark:text-slate-200">{ont.serial_number}</TableCell>
                     <TableCell className="dark:text-slate-300">{ont.pelanggan}</TableCell>
                     <TableCell>
@@ -141,7 +143,7 @@ export function OntSortableTable({
                     <TableCell className="text-center">
                       <div className="flex justify-center gap-1">
                         <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />
-                        {canDelete && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number} />}
+                        {canDelete && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number ?? ""} />}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -162,7 +164,7 @@ export function OntSortableTable({
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />
-                  {canDelete && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number} />}
+                  {canDelete && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number ?? ""} />}
                 </div>
               </div>
               <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${statusBadge[ont.status]}`}>{ont.status}</span>

@@ -94,15 +94,17 @@ export function OltSortableTable({
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
+    <Card className="rounded-3xl border shadow-xl transition-all duration-300 hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
       <CardContent className="space-y-6 p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <OltSearch defaultValue={search} />
-          <OltFormDialog mode="create" pops={pops} />
+          <div className="add-button">
+            <OltFormDialog mode="create" pops={pops} />
+          </div>
         </div>
 
         {/* Desktop Table */}
-        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block">
+        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block table-container">
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 dark:bg-slate-800/50">
@@ -143,7 +145,7 @@ export function OltSortableTable({
                 paginated.map((olt) => (
                   <TableRow
                     key={olt.id_olt}
-                    className="border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40"
+                    className="border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40 transition-colors duration-200"
                   >
                     <TableCell className="font-medium text-slate-900 dark:text-slate-100">
                       {olt.kode_olt}
@@ -183,11 +185,11 @@ export function OltSortableTable({
                       })}
                     </TableCell>
                     <TableCell className="text-center">
-                      <div className="flex justify-center gap-1">
+                      <div className="flex justify-center gap-1 group/action">
                         <OltMapDialog nama={olt.nama_olt} lat={Number(olt.latitude)} lng={Number(olt.longitude)} />
                         <OpenGoogleMaps lat={Number(olt.latitude)} lng={Number(olt.longitude)} name={olt.nama_olt} />
                         <OltFormDialog mode="edit" pops={pops} data={{ id_olt: olt.id_olt, nama_olt: olt.nama_olt, lokasi: olt.lokasi, latitude: String(olt.latitude), longitude: String(olt.longitude), id_pop: olt.id_pop, ip_olt: olt.ip_olt, username_olt: olt.username_olt, password_olt: olt.password_olt, foto_olt: olt.foto_olt }} />
-                        <DeleteOltDialog id={olt.id_olt} name={olt.nama_olt} />
+                        <DeleteOltDialog id={olt.id_olt} namaOlt={olt.nama_olt} />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -217,7 +219,7 @@ export function OltSortableTable({
                   <div className="flex shrink-0 gap-1">
                     <OpenGoogleMaps lat={Number(olt.latitude)} lng={Number(olt.longitude)} name={olt.nama_olt} />
                     <OltFormDialog mode="edit" pops={pops} data={{ id_olt: olt.id_olt, nama_olt: olt.nama_olt, lokasi: olt.lokasi, latitude: String(olt.latitude), longitude: String(olt.longitude), id_pop: olt.id_pop, ip_olt: olt.ip_olt, username_olt: olt.username_olt, password_olt: olt.password_olt, foto_olt: olt.foto_olt }} />
-                    <DeleteOltDialog id={olt.id_olt} name={olt.nama_olt} />
+                    <DeleteOltDialog id={olt.id_olt} namaOlt={olt.nama_olt} />
                   </div>
                 </div>
                 <p className="text-sm dark:text-slate-300">{olt.lokasi}</p>

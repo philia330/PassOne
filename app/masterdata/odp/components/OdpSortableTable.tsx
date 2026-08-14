@@ -79,11 +79,13 @@ export function OdpSortableTable({
       <CardContent className="space-y-6 p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <OdpSearch defaultValue={search} />
-          <OdpFormDialog mode="create" olts={olts} />
+          <div className="add-button">
+            <OdpFormDialog mode="create" olts={olts} />
+          </div>
         </div>
 
         {/* Desktop Table */}
-        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block">
+        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block table-container">
           <Table>
             <TableHeader>
               <TableRow className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/50">
@@ -119,7 +121,7 @@ export function OdpSortableTable({
                 </TableRow>
               ) : (
                 paginated.map((odp) => (
-                  <TableRow key={odp.id_odp} className="border-b border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50">
+                  <TableRow key={odp.id_odp} className="border-b border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 table-row-hover">
                     <TableCell className="font-medium dark:text-slate-200">{odp.kode_odp}</TableCell>
                     <TableCell className="dark:text-slate-300">{odp.nama_odp}</TableCell>
                     <TableCell className="dark:text-slate-300">{odp.alamat}</TableCell>
@@ -142,10 +144,10 @@ export function OdpSortableTable({
                       {!odp._count && <span className="text-slate-400">-</span>}
                     </TableCell>
                     <TableCell className="text-center">
-                      <div className="flex justify-center gap-1">
+                      <div className="flex justify-center gap-1 group/action">
                         <OdpMapDialog currentId={odp.id_odp} odpNama={odp.nama_odp} allPoints={[]} />
                         <OdpFormDialog mode="edit" olts={olts} data={{ id_odp: odp.id_odp, nama_odp: odp.nama_odp, alamat: odp.alamat, latitude: String(odp.latitude), longitude: String(odp.longitude), id_olt: odp.id_olt, jumlah_port: odp.jumlah_port }} />
-                        <DeleteOdpDialog id={odp.id_odp} name={odp.nama_odp} />
+                        <DeleteOdpDialog id={odp.id_odp} namaOdp={odp.nama_odp} />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -166,7 +168,7 @@ export function OdpSortableTable({
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <OdpFormDialog mode="edit" olts={olts} data={{ id_odp: odp.id_odp, nama_odp: odp.nama_odp, alamat: odp.alamat, latitude: String(odp.latitude), longitude: String(odp.longitude), id_olt: odp.id_olt, jumlah_port: odp.jumlah_port }} />
-                  <DeleteOdpDialog id={odp.id_odp} name={odp.nama_odp} />
+                  <DeleteOdpDialog id={odp.id_odp} namaOdp={odp.nama_odp} />
                 </div>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-300">{odp.alamat}</p>

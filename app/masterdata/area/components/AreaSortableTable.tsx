@@ -73,11 +73,13 @@ export function AreaSortableTable({
       <CardContent className="space-y-6 p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <AreaSearch defaultValue={search} />
-          <AreaFormDialog mode="create" />
+          <div className="add-button">
+            <AreaFormDialog mode="create" />
+          </div>
         </div>
 
         {/* Desktop Table */}
-        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block">
+        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block table-container">
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 dark:bg-slate-800/50">
@@ -137,7 +139,7 @@ export function AreaSortableTable({
                             keterangan: area.keterangan,
                           }}
                         />
-                        <DeleteAreaDialog id={area.id_area} name={area.nama_area} />
+                        <DeleteAreaDialog id={area.id_area} namaArea={area.nama_area} />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -173,7 +175,7 @@ export function AreaSortableTable({
                         keterangan: area.keterangan,
                       }}
                     />
-                    <DeleteAreaDialog id={area.id_area} name={area.nama_area} />
+                    <DeleteAreaDialog id={area.id_area} namaArea={area.nama_area} />
                   </div>
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-300">{area.keterangan ?? "-"}</p>

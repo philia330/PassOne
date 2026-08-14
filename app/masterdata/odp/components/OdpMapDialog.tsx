@@ -54,9 +54,9 @@ export const OdpMapDialog = ({
         size="icon"
         onClick={() => setOpen(true)}
         title="Lihat Peta"
-        className="cursor-pointer rounded-xl"
+        className="cursor-pointer rounded-xl hover:bg-sky-100 dark:hover:bg-sky-900/30 group transition-all duration-200"
       >
-        <MapPin className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+        <MapPin className="h-4 w-4 text-sky-600 dark:text-sky-400 group-hover:scale-125 transition-transform duration-200" />
       </Button>
 
       <DialogContent className="rounded-3xl sm:max-w-4xl">

@@ -111,17 +111,19 @@ export default async function OdpPage({
       </div>
 
       {/* Table & Content Card */}
-      <Card className="rounded-3xl border border-slate-200 bg-white shadow-xl transition-all hover:shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+      <Card className="rounded-3xl border border-slate-200 bg-white shadow-xl transition-all duration-300 hover:shadow-2xl dark:border-slate-800 dark:bg-slate-900">
         <CardContent className="space-y-6 p-4 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <OdpSearch defaultValue={search} />
-            <OdpFormDialog mode="create" olts={olts} />
+            <div className="add-button">
+              <OdpFormDialog mode="create" olts={olts} />
+            </div>
           </div>
 
           {/* ====================================================== */}
           {/* Versi Tabel - hanya muncul di layar medium ke atas (md:) */}
           {/* ====================================================== */}
-          <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 md:block">
+          <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 md:block table-container">
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/50">
@@ -141,7 +143,7 @@ export default async function OdpPage({
                 {odps.map((odp) => (
                   <TableRow
                     key={odp.id_odp}
-                    className="border-b border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                    className="border-b border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 transition-colors duration-200"
                   >
                     <TableCell className="font-medium dark:text-slate-200">
                       {odp.kode_odp}
@@ -158,7 +160,7 @@ export default async function OdpPage({
                           odpId={odp.id_odp}
                           odpName={odp.nama_odp}
                           trigger={
-                            <span className="cursor-pointer inline-flex items-center gap-1 text-purple-600 hover:text-purple-800 font-medium">
+                            <span className="cursor-pointer inline-flex items-center gap-1 text-purple-600 hover:text-purple-800 font-medium group">
                               <span>{(odp as any)._count?.ont || 0} ONT</span>
                               <span className="text-slate-400">+</span>
                               <span>{(odp as any)._count?.baa || 0} BAA</span>
@@ -171,7 +173,7 @@ export default async function OdpPage({
                       )}
                     </TableCell>
                     <TableCell className="text-center">
-                      <div className="flex justify-center gap-1">
+                      <div className="flex justify-center gap-1 group/action">
                         <OdpMapDialog
                           currentId={odp.id_odp}
                           odpNama={odp.nama_odp}
@@ -195,7 +197,7 @@ export default async function OdpPage({
                             jumlah_port: odp.jumlah_port,
                           }}
                         />
-                        {canDelete && <DeleteOdpDialog id={odp.id_odp} name={odp.nama_odp} />}
+                        {canDelete && <DeleteOdpDialog id={odp.id_odp} namaOdp={odp.nama_odp} />}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -224,11 +226,11 @@ export default async function OdpPage({
             <OdpSortToggle sortOrder={sortOrder} />
           </div>
 
-          <div className="grid gap-3 md:hidden">
+          <div className="grid gap-3 md:hidden animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             {odps.map((odp) => (
               <div
                 key={odp.id_odp}
-                className="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-800/40"
+                className="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-800/40 transition-all duration-200 hover:shadow-lg hover:border-purple-200 dark:hover:border-purple-800/50 active:scale-[0.99]"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -239,7 +241,7 @@ export default async function OdpPage({
                       {odp.kode_odp}
                     </p>
                   </div>
-                  <div className="flex shrink-0 gap-1">
+                  <div className="flex shrink-0 gap-1 group/action">
                     <OdpMapDialog
                       currentId={odp.id_odp}
                       odpNama={odp.nama_odp}
@@ -263,7 +265,7 @@ export default async function OdpPage({
                         jumlah_port: odp.jumlah_port,
                       }}
                     />
-                    {canDelete && <DeleteOdpDialog id={odp.id_odp} name={odp.nama_odp} />}
+                    {canDelete && <DeleteOdpDialog id={odp.id_odp} namaOdp={odp.nama_odp} />}
                   </div>
                 </div>
 

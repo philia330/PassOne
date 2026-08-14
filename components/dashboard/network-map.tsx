@@ -67,6 +67,20 @@ export default function NetworkMap({ points, fullHeight = false }: { points: Net
     });
   }
 
+  // Kalau drawer udah kebuka nampilin titik A, terus user klik titik B --
+  // jangan langsung "loncat" ganti konten. Tutup dulu (biar animasi keluar
+  // kejalan), baru sesudah durasi animasinya kelar (350ms di drawer + sedikit
+  // buffer), baru buka lagi dengan data yang baru. Kalau belum ada yang lagi
+  // kebuka (atau klik titik yang sama), langsung set aja tanpa delay.
+  function handleMarkerClick(p: NetworkPoint) {
+    if (selectedPoint && selectedPoint.id !== p.id) {
+      setSelectedPoint(null);
+      setTimeout(() => setSelectedPoint(p), 380);
+    } else {
+      setSelectedPoint(p);
+    }
+  }
+
   const filteredPoints = useMemo(() => {
     return points.filter((p) => {
       if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return false;
@@ -111,18 +125,18 @@ export default function NetworkMap({ points, fullHeight = false }: { points: Net
   return (
     <div className={`relative flex flex-col bg-white dark:bg-slate-900 ${fullHeight ? "h-full" : "rounded-2xl border border-slate-200 dark:border-slate-800"}`}>
       {/* Search bar */}
-      <div className="flex-shrink-0 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex-shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-4 py-3 dark:border-slate-800 dark:bg-slate-900/80">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-500 dark:text-purple-400 transition-colors duration-200" size={16} />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari nama POP, OLT, ODP, atau pelanggan FAB..."
-            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-9 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-indigo-500/20"
+            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-9 text-sm text-slate-700 outline-none transition-all duration-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
+            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-500 dark:text-slate-500 dark:hover:text-purple-400 transition-colors duration-200 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
               <X size={16} />
             </button>
           )}
@@ -130,7 +144,7 @@ export default function NetworkMap({ points, fullHeight = false }: { points: Net
       </div>
 
       {/* Filter controls */}
-      <div className="flex-shrink-0 flex flex-wrap items-center gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
+      <div className="flex-shrink-0 flex flex-wrap items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-3 dark:border-slate-800 dark:from-slate-800/50 dark:to-slate-900/50">
         <div className="flex flex-wrap gap-2">
           {TYPE_LABELS.map((type) => {
             const active = activeTypes.has(type);
@@ -138,10 +152,10 @@ export default function NetworkMap({ points, fullHeight = false }: { points: Net
               <button
                 key={type}
                 onClick={() => toggleType(type)}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${active ? "border-transparent text-white" : "border-slate-200 bg-white text-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-slate-700"}`}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-200 ${active ? "border-transparent text-white shadow-md scale-100 hover:scale-105 active:scale-95" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:border-slate-600"}`}
                 style={active ? { backgroundColor: TYPE_COLOR[type] } : undefined}
               >
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: active ? "white" : TYPE_COLOR[type] }} />
+                <span className="h-2 w-2 rounded-full transition-all duration-200" style={{ backgroundColor: active ? "white" : TYPE_COLOR[type] }} />
                 {type}
               </button>
             );
@@ -151,13 +165,13 @@ export default function NetworkMap({ points, fullHeight = false }: { points: Net
           <select
             value={fabStatusFilter}
             onChange={(e) => setFabStatusFilter(e.target.value)}
-            className="ml-auto rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+            className="ml-auto rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all duration-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600"
           >
             <option value="ALL">Semua Status FAB</option>
             {FAB_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
           </select>
         )}
-        <span className="text-xs text-slate-400 dark:text-slate-500">{filteredPoints.length} dari {points.length} titik</span>
+        <span className="text-xs text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">{filteredPoints.length} dari {points.length} titik</span>
       </div>
 
       {/* Map Container */}
@@ -174,7 +188,7 @@ export default function NetworkMap({ points, fullHeight = false }: { points: Net
           <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <MarkerClusterGroup chunkedLoading maxClusterRadius={60} spiderfyOnMaxZoom={false}>
             {filteredPoints.map((p) => (
-              <Marker key={p.id} position={[p.lat, p.lng]} icon={createMarkerIcon(p)} eventHandlers={{ click: () => setSelectedPoint(p) }} />
+              <Marker key={p.id} position={[p.lat, p.lng]} icon={createMarkerIcon(p)} eventHandlers={{ click: () => handleMarkerClick(p) }} />
             ))}
           </MarkerClusterGroup>
         </MapContainer>

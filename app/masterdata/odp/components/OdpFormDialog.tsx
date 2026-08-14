@@ -171,7 +171,7 @@ export const OdpFormDialog = ({
             Tambah ODP
           </>
         ) : (
-          <Pencil className="h-4 w-4 text-orange-500 hover:text-orange-600 active:scale-90 transition-all dark:text-orange-400 dark:hover:text-orange-300" />
+          <Pencil className="h-4 w-4 text-orange-500 hover:text-orange-600 active:scale-90 transition-all dark:text-orange-400 dark:hover:text-orange-300 group-hover:scale-125 transition-transform duration-200" />
         )}
       </DialogTrigger>
 

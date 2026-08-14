@@ -75,15 +75,17 @@ export function PopSortableTable({
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
+    <Card className="rounded-3xl border shadow-xl transition-all duration-300 hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
       <CardContent className="space-y-6 p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <PopSearch defaultValue={search} />
-          <PopFormDialog mode="create" areas={areas} />
+          <div className="add-button">
+            <PopFormDialog mode="create" areas={areas} />
+          </div>
         </div>
 
         {/* Desktop Table */}
-        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block">
+        <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 md:block table-container">
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 dark:bg-slate-800/50">
@@ -120,7 +122,7 @@ export function PopSortableTable({
                 paginated.map((pop) => (
                   <TableRow
                     key={pop.id_pop}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/70 dark:border-slate-800"
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800/70 dark:border-slate-800 transition-colors duration-200"
                   >
                     <TableCell className="font-medium dark:text-slate-200">
                       {pop.kode_pop}
@@ -136,7 +138,7 @@ export function PopSortableTable({
                       })}
                     </TableCell>
 <TableCell className="text-center">
-  <div className="flex justify-center gap-1">
+  <div className="flex justify-center gap-1 group/action">
     <PopMapDialog
       nama={pop.nama_pop}
       lat={Number(pop.latitude)}
@@ -159,7 +161,7 @@ export function PopSortableTable({
         longitude: pop.longitude,
       }}
     />
-    {canDelete && <DeletePopDialog id={pop.id_pop} name={pop.nama_pop} />}
+    {canDelete && <DeletePopDialog id={pop.id_pop} namaPop={pop.nama_pop} />}
   </div>
 </TableCell>
                   </TableRow>
@@ -206,7 +208,7 @@ export function PopSortableTable({
       longitude: pop.longitude,
     }}
   />
-  {canDelete && <DeletePopDialog id={pop.id_pop} name={pop.nama_pop} />}
+  {canDelete && <DeletePopDialog id={pop.id_pop} namaPop={pop.nama_pop} />}
 </div>
                 </div>
                 <p className="flex items-start gap-1 text-sm text-slate-600 dark:text-slate-300">
