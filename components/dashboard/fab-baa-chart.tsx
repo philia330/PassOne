@@ -26,7 +26,6 @@ import {
   TrendingUpIcon,
   AreaChart as AreaChartIcon,
   Download,
-  FileImage,
   FileSpreadsheet,
   ChevronLeft,
   ChevronRight,
@@ -109,69 +108,6 @@ function calculateYAxisDomain(data: MonthlyData[]): [number, number] {
   return [0, Math.max(niceMax, 10)];
 }
 
-// Download chart as image
-async function downloadChart(
-  chartRef: HTMLDivElement | null,
-  format: "png" | "jpeg" | "pdf",
-  filename: string
-) {
-  if (!chartRef) return;
-
-  try {
-    // Create canvas from the chart element
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Set canvas size (high resolution)
-    const scale = 2; // 2x for better quality
-    const rect = chartRef.getBoundingClientRect();
-    canvas.width = rect.width * scale;
-    canvas.height = rect.height * scale;
-    ctx.scale(scale, scale);
-
-    // Create SVG serializer
-    const svgElement = chartRef.querySelector("svg");
-    if (!svgElement) return;
-
-    const svgData = new XMLSerializer().serializeToString(svgElement);
-    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const svgUrl = URL.createObjectURL(svgBlob);
-
-    const img = new Image();
-    img.onload = () => {
-      // Fill background
-      ctx.fillStyle = getComputedStyle(chartRef).backgroundColor || "#ffffff";
-      ctx.fillRect(0, 0, rect.width, rect.height);
-
-      ctx.drawImage(img, 0, 0, rect.width, rect.height);
-      URL.revokeObjectURL(svgUrl);
-
-      // Convert to blob based on format
-      const mimeType = format === "jpeg" ? "image/jpeg" : "image/png";
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `${filename}.${format === "jpeg" ? "jpg" : format}`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-          }
-        },
-        mimeType,
-        1.0
-      );
-    };
-    img.src = svgUrl;
-  } catch (error) {
-    console.error("Error downloading chart:", error);
-  }
-}
-
 // Download data mentah (angka per bulan) sebagai CSV -- bisa dibuka di Excel
 function downloadCSV(data: MonthlyData[], filename: string) {
   const headers = ["Bulan", "FAB Open", "FAB Aktif", "BAA"];
@@ -235,7 +171,6 @@ export default function FabBaaChart({
   baaStatus: StatusData[];
   comparison: ComparisonData;
 }) {
-  const chartRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const [monthly, setMonthly] =
@@ -269,12 +204,6 @@ export default function FabBaaChart({
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [period, initialMonthly]);
-
-  const handleDownload = (format: "png" | "jpeg" | "pdf") => {
-    if (chartRef.current) {
-      downloadChart(chartRef.current, format, `tren-fab-baa-${new Date().toISOString().split("T")[0]}`);
-    }
-  };
 
   const handleDownloadData = () => {
     downloadCSV(monthly, `data-tren-fab-baa-${new Date().toISOString().split("T")[0]}`);
@@ -327,7 +256,7 @@ export default function FabBaaChart({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Download Button */}
+            {/* Download Button -- sekarang cuma CSV, PNG/JPG dihapus */}
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
                 <Download size={14} />
@@ -340,20 +269,6 @@ export default function FabBaaChart({
                 >
                   <FileSpreadsheet size={16} className="text-slate-500" />
                   <span>Unduh Data (CSV)</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleDownload("png")}
-                  className="cursor-pointer rounded-lg gap-2"
-                >
-                  <FileImage size={16} className="text-slate-500" />
-                  <span>Unduh PNG</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleDownload("jpeg")}
-                  className="cursor-pointer rounded-lg gap-2"
-                >
-                  <FileImage size={16} className="text-slate-500" />
-                  <span>Unduh JPG</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -433,7 +348,6 @@ export default function FabBaaChart({
 
           <div ref={scrollContainerRef} className="chart-scroll-x overflow-x-auto rounded-xl">
             <div
-              ref={chartRef}
               className="relative"
               style={{ width: Math.max(monthly.length * 110, 100), minWidth: "100%" }}
             >

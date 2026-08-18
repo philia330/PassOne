@@ -55,6 +55,7 @@ export default async function PortPonPage({
         odps={odps}
         defaultValue={search}
         actions={canExport ? <ExportButton apiUrl="/api/portpon/export" filenamePrefix="Export_Port_PON" /> : null}
+        currentUser={{ id_user: session.user.id_user, nama: session.user.nama ?? "", role: session.user.role }}
       />
     </div>
   );

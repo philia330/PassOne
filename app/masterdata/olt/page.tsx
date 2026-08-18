@@ -14,7 +14,7 @@ export default async function OltPage({
     page?: string;
   }>;
 }) {
-  const session = await requirePageAccess(["ADMIN"]);
+  const session = await requirePageAccess(["ADMIN", "LEADER"]);
 
   const params = await searchParams;
 

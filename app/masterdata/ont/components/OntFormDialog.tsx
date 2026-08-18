@@ -104,7 +104,7 @@ export const OntFormDialog = ({
       <DialogTrigger
         render={
           mode === "create" ? (
-            <Button className="h-11 cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-md hover:opacity-90 active:scale-95 transition-transform" />
+            <Button className="h-12 cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-md hover:opacity-90 active:scale-95 hover:scale-105 transition-transform font-semibold" />
           ) : (
             <Button
               variant="ghost"
@@ -289,11 +289,11 @@ export const OntFormDialog = ({
           </div>
 
           {/* Footer Actions */}
-          <DialogFooter className="pt-2">
+          <DialogFooter className="pt-2 gap-2">
             <Button
               type="button"
               variant="outline"
-              className="cursor-pointer rounded-2xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-transform"
+              className="cursor-pointer rounded-2xl h-11 border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 active:scale-95 hover:scale-105 transition-transform"
               onClick={() => setOpen(false)}
             >
               Batal
@@ -302,7 +302,7 @@ export const OntFormDialog = ({
             <Button
               type="submit"
               disabled={isSubmitting || !popValue || !odpValue}
-              className="cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-md hover:opacity-90 active:scale-95 transition-transform"
+              className="cursor-pointer rounded-2xl h-11 font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-md hover:opacity-90 active:scale-95 hover:scale-105 transition-transform"
             >
               {isSubmitting ? "Menyimpan..." : "Simpan"}
             </Button>

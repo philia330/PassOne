@@ -93,7 +93,7 @@ export function SearchableSelect({
             )}
           </div>
 
-          <div className="max-h-60 overflow-y-auto p-1">
+          <div className="max-h-80 overflow-y-auto p-1">
             {filtered.length === 0 ? (
               <p className="px-3 py-4 text-center text-xs text-slate-400">{emptyText}</p>
             ) : (

@@ -33,7 +33,6 @@ import {
 import { BaaDialog } from "@/app/jaringan/baa/components/BaaDialog";
 import { BaaDeleteDialog } from "@/app/jaringan/baa/components/BaaDeleteDialog";
 import { BaaImageDialog } from "@/app/jaringan/baa/components/BaaImageDialog";
-import { InfoTooltip } from "@/app/jaringan/baa/components/InfoTooltip";
 import { BaaPagination } from "@/app/jaringan/baa/components/BaaPagination";
 import { BaaExportButton } from "@/app/jaringan/baa/components/BaaExportButton";
 import type {
@@ -419,12 +418,7 @@ export const BaaTable = ({
                 <TableHead className="text-center dark:text-slate-300">Foto</TableHead>
                 <TableHead className="dark:text-slate-300">Tanggal Instalasi</TableHead>
                 <TableHead className="dark:text-slate-300">FAB / Pelanggan</TableHead>
-                <TableHead className="dark:text-slate-300">
-                  <span className="inline-flex items-center gap-1">
-                    Teknisi
-                    <InfoTooltip text="Hanya menampilkan penanggung jawab utama. Cek daftar lengkap & kelola lewat menu Aksi → Kelola Teknisi." />
-                  </span>
-                </TableHead>
+                <TableHead className="dark:text-slate-300">Teknisi</TableHead>
                 <TableHead className="dark:text-slate-300">OLT</TableHead>
                 <TableHead className="dark:text-slate-300">ODP</TableHead>
                 <TableHead className="dark:text-slate-300">ONT</TableHead>
@@ -437,10 +431,7 @@ export const BaaTable = ({
                 <TableHead className="text-center dark:text-slate-300">Ping</TableHead>
                 <TableHead className="dark:text-slate-300">Catatan</TableHead>
                 <TableHead className="text-center dark:text-slate-300">
-                  <span className="inline-flex items-center gap-1">
-                    Material
-                    <InfoTooltip text="Hanya menampilkan jumlah item. Cek rincian lengkap lewat menu Aksi → Detail & Material." />
-                  </span>
+                  Material
                 </TableHead>
                 <TableHead className="text-center dark:text-slate-300">Status</TableHead>
                 <TableHead className="text-right dark:text-slate-300">Aksi</TableHead>

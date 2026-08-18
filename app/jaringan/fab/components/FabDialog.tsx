@@ -73,7 +73,7 @@ export const FabDialog = ({
       {!isControlled && (
         <DialogTrigger asChild>
           {mode === "create" ? (
-            <Button className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white w-full sm:w-auto active:scale-95 hover:scale-110 hover:h-12 transition-all duration-200 shadow-md hover:shadow-lg">
+            <Button className="h-12 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white w-full sm:w-auto active:scale-95 hover:scale-105 transition-transform shadow-md hover:shadow-lg">
               <Plus className="mr-2 h-4 w-4" /> Tambah FAB
             </Button>
           ) : (
@@ -118,11 +118,11 @@ export const FabDialog = ({
             )}
           </div>
 
-          <DialogFooter className="flex-shrink-0 border-t border-slate-100 pt-4 pb-4 sm:pb-0 sm:border-t-0 sm:pt-6">
+          <DialogFooter className="flex-shrink-0 border-t border-slate-100 pt-4 pb-4 sm:pb-0 sm:border-t-0 sm:pt-6 gap-2">
             <Button
               type="button"
               variant="outline"
-              className="rounded-2xl h-11 flex-1 sm:flex-none active:scale-95 transition-transform"
+              className="rounded-2xl h-11 flex-1 sm:flex-none active:scale-95 hover:scale-105 transition-transform dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               onClick={() => setOpen(false)}
               disabled={isPending}
             >
@@ -131,7 +131,7 @@ export const FabDialog = ({
             <Button
               type="submit"
               disabled={isPending}
-              className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white flex-1 sm:flex-none active:scale-95 transition-transform"
+              className="h-11 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white flex-1 sm:flex-none active:scale-95 hover:scale-105 transition-transform shadow-md hover:shadow-lg"
             >
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Simpan

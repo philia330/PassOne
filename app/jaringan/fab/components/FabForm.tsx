@@ -25,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Select,
   SelectContent,
@@ -578,20 +579,17 @@ export const FabForm = ({
         </Label>
 
         {isTeknisi ? (
-          <Select value={idUser} onValueChange={(v) => setIdUser(v ?? "")}>
-            <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-              <SelectValue placeholder="Pilih sales referral">
-                {idUser ? getSalesName(idUser) : "Pilih sales referral"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {salesOptions.map((u) => (
-                <SelectItem key={u.id_user} value={String(u.id_user)}>
-                  {u.nama}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={idUser}
+            onValueChange={(v) => setIdUser(v)}
+            options={salesOptions.map((u) => ({
+              value: String(u.id_user),
+              label: u.nama,
+            }))}
+            placeholder="Pilih sales referral"
+            searchPlaceholder="Cari nama sales..."
+            emptyText="Sales tidak ditemukan"
+          />
         ) : (
           <div className="relative">
             <Input

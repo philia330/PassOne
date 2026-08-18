@@ -18,6 +18,11 @@ import { PortPonPagination } from "./PortPonPagination";
 
 type Olt = { id_olt: number; nama_olt: string };
 type Odp = { id_odp: number; nama_odp: string };
+type CurrentUser = {
+  id_user: number;
+  nama: string;
+  role: string;
+};
 
 const statusBadge: Record<string, string> = {
   TERSEDIA: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
@@ -44,13 +49,16 @@ export function PortPonSortableTable({
   odps,
   defaultValue,
   actions,
+  currentUser,
 }: {
   initialData: PortPon[];
   olts: Olt[];
   odps: Odp[];
   defaultValue: string;
   actions?: ReactNode;
+  currentUser?: CurrentUser;
 }) {
+  const canDelete = currentUser?.role === "ADMIN";
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -139,7 +147,9 @@ export function PortPonSortableTable({
                     <TableCell className="text-center">
                       <div className="flex justify-center gap-1 group/action">
                         <PortPonFormDialog mode="edit" olts={olts} odps={odps} data={{ id_port_pon: port.id_port, nomor_port: port.nomor_port, tipe_kartu: port.tipe_kartu, status: port.status, id_olt: port.id_olt, id_odp: port.id_odp }} />
-                        <DeletePortPonDialog id={port.id_port} name={`${port.olt?.nama_olt ?? ""} - Port ${port.nomor_port}`} />
+                        {canDelete && (
+                          <DeletePortPonDialog id={port.id_port} name={`${port.olt?.nama_olt ?? ""} - Port ${port.nomor_port}`} />
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -160,7 +170,9 @@ export function PortPonSortableTable({
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <PortPonFormDialog mode="edit" olts={olts} odps={odps} data={{ id_port_pon: port.id_port, nomor_port: port.nomor_port, tipe_kartu: port.tipe_kartu, status: port.status, id_olt: port.id_olt, id_odp: port.id_odp }} />
-                  <DeletePortPonDialog id={port.id_port} name={`${port.olt?.nama_olt ?? ""} - Port ${port.nomor_port}`} />
+                  {canDelete && (
+                    <DeletePortPonDialog id={port.id_port} name={`${port.olt?.nama_olt ?? ""} - Port ${port.nomor_port}`} />
+                  )}
                 </div>
               </div>
               <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${statusBadge[port.status] ?? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}>{port.status}</span>

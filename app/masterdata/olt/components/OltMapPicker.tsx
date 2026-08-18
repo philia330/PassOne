@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -42,9 +42,29 @@ const ClickHandler = ({
 
 const FlyTo = ({ lat, lng }: { lat: number; lng: number }) => {
   const map = useMap();
-  map.flyTo([lat, lng], 16);
+  useEffect(() => {
+    try {
+      map.flyTo([lat, lng], 16);
+    } catch {
+      // Ignore flyTo errors during initialization
+    }
+  }, [lat, lng, map]);
   return null;
 };
+
+// Guard to ensure map is ready before rendering marker
+function MapReady({ children, hasPosition }: { children: React.ReactNode; hasPosition: boolean }) {
+  const [ready, setReady] = useState(false);
+  const map = useMap();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setReady(true), 100);
+    return () => clearTimeout(timer);
+  }, [map]);
+
+  if (!ready || !hasPosition) return null;
+  return <>{children}</>;
+}
 
 export const OltMapPicker = ({ lat, lng, onPick }: OltMapPickerProps) => {
   const [query, setQuery] = useState("");
@@ -142,7 +162,9 @@ export const OltMapPicker = ({ lat, lng, onPick }: OltMapPickerProps) => {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
           <ClickHandler onPick={onPick} />
-          {hasPosition && <Marker position={[lat, lng]} icon={markerIcon} />}
+          <MapReady hasPosition={hasPosition}>
+            <Marker position={[lat, lng]} icon={markerIcon} />
+          </MapReady>
           {flyTarget && <FlyTo lat={flyTarget.lat} lng={flyTarget.lng} />}
         </MapContainer>
         <p className="border-t border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-400">
