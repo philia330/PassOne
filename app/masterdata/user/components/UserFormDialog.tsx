@@ -246,15 +246,16 @@ export function UserFormDialog({
           mode === "create" ? (
             <Button
               className="
-                h-11
+                h-12
                 cursor-pointer
                 rounded-2xl
                 bg-gradient-to-r
                 from-purple-600
                 via-fuchsia-500
                 to-sky-500
+                font-semibold
                 text-white
-                active:scale-95 transition-transform
+                active:scale-95 hover:scale-105 transition-transform
               "
             />
           ) : (
@@ -653,7 +654,7 @@ export function UserFormDialog({
             <Button
               type="button"
               variant="outline"
-              className="rounded-2xl active:scale-95 transition-transform"
+              className="rounded-2xl h-11 active:scale-95 hover:scale-105 transition-transform dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               onClick={() => {
                 setOpen(false);
                 resetForm();
@@ -671,12 +672,14 @@ export function UserFormDialog({
               }
               className="
                 rounded-2xl
+                h-11
+                font-semibold
                 bg-gradient-to-r
                 from-purple-600
                 via-fuchsia-500
                 to-sky-500
                 text-white
-                active:scale-95 transition-transform
+                active:scale-95 hover:scale-105 transition-transform
               "
             >
               {isSubmitting

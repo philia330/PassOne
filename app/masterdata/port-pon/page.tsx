@@ -4,6 +4,7 @@ import { Cable } from "lucide-react";
 import { getPortPons, getOlts, getOdps } from "./actions";
 import { PortPonSortableTable } from "./components/PortPonSortableTable";
 import { requirePageAccess } from "@/lib/auth/guards";
+import { ExportButton } from "@/components/ui/ExportButton";
 
 export default async function PortPonPage({
   searchParams,
@@ -21,6 +22,10 @@ export default async function PortPonPage({
     getOlts(),
     getOdps(),
   ]);
+
+  const currentRole = session.user.role as string;
+  // Hanya Admin dan Leader yang bisa export
+  const canExport = currentRole === "ADMIN" || currentRole === "LEADER";
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
@@ -44,7 +49,14 @@ export default async function PortPonPage({
         </Card>
       </div>
 
-      <PortPonSortableTable initialData={ports} olts={olts} odps={odps} defaultValue={search} />
+      <PortPonSortableTable
+        initialData={ports}
+        olts={olts}
+        odps={odps}
+        defaultValue={search}
+        actions={canExport ? <ExportButton apiUrl="/api/portpon/export" filenamePrefix="Export_Port_PON" /> : null}
+        currentUser={{ id_user: session.user.id_user, nama: session.user.nama ?? "", role: session.user.role }}
+      />
     </div>
   );
 }

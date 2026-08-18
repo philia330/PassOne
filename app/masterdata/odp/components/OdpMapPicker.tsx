@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -40,12 +40,32 @@ const ClickHandler = ({
   return null;
 };
 
-// Komponen kecil untuk geser center peta secara imperatif
+// Komponen kecil untuk geser center peta secara imperatif dengan error handling
 const FlyTo = ({ lat, lng }: { lat: number; lng: number }) => {
   const map = useMap();
-  map.flyTo([lat, lng], 16);
+  useEffect(() => {
+    try {
+      map.flyTo([lat, lng], 16);
+    } catch {
+      // Ignore flyTo errors during initialization
+    }
+  }, [lat, lng, map]);
   return null;
 };
+
+// Guard to ensure map is ready before rendering marker
+function MapReady({ children, hasPosition }: { children: React.ReactNode; hasPosition: boolean }) {
+  const [ready, setReady] = useState(false);
+  const map = useMap();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setReady(true), 100);
+    return () => clearTimeout(timer);
+  }, [map]);
+
+  if (!ready || !hasPosition) return null;
+  return <>{children}</>;
+}
 
 export const OdpMapPicker = ({ lat, lng, onPick }: OdpMapPickerProps) => {
   const [query, setQuery] = useState("");
@@ -158,7 +178,9 @@ export const OdpMapPicker = ({ lat, lng, onPick }: OdpMapPickerProps) => {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
           <ClickHandler onPick={onPick} />
-          {hasPosition && <Marker position={[lat, lng]} icon={markerIcon} />}
+          <MapReady hasPosition={hasPosition}>
+            <Marker position={[lat, lng]} icon={markerIcon} />
+          </MapReady>
           {flyTarget && <FlyTo lat={flyTarget.lat} lng={flyTarget.lng} />}
         </MapContainer>
         <div className="border-t border-slate-100 bg-gradient-to-r from-slate-50 to-slate-100/50 px-4 py-2.5 dark:border-slate-800 dark:from-slate-800 dark:to-slate-800/50">

@@ -4,7 +4,6 @@ const MONTH_LABELS = [
   "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
   "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
 ];
-
 export async function getMonthlyTrend(monthsCount = 6) {
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - (monthsCount - 1));
@@ -14,7 +13,7 @@ export async function getMonthlyTrend(monthsCount = 6) {
   const [fabs, baas] = await Promise.all([
     prisma.fab.findMany({
       where: { createdAt: { gte: startDate } },
-      select: { createdAt: true },
+      select: { createdAt: true, status: true },
     }),
     prisma.baa.findMany({
       where: { createdAt: { gte: startDate } },
@@ -22,12 +21,12 @@ export async function getMonthlyTrend(monthsCount = 6) {
     }),
   ]);
 
-  const buckets: { key: string; label: string; fab: number; baa: number }[] = [];
+  const buckets: { key: string; label: string; fabOpen: number; fabAktif: number; baa: number }[] = [];
   for (let i = monthsCount - 1; i >= 0; i--) {
     const d = new Date();
     d.setMonth(d.getMonth() - i);
     const key = `${d.getFullYear()}-${d.getMonth()}`;
-    buckets.push({ key, label: MONTH_LABELS[d.getMonth()], fab: 0, baa: 0 });
+    buckets.push({ key, label: MONTH_LABELS[d.getMonth()], fabOpen: 0, fabAktif: 0, baa: 0 });
   }
 
   const bucketMap = new Map(buckets.map((b) => [b.key, b]));
@@ -35,7 +34,12 @@ export async function getMonthlyTrend(monthsCount = 6) {
   fabs.forEach((f) => {
     const key = `${f.createdAt.getFullYear()}-${f.createdAt.getMonth()}`;
     const bucket = bucketMap.get(key);
-    if (bucket) bucket.fab += 1;
+    if (!bucket) return;
+    if (f.status === "AKTIF") {
+      bucket.fabAktif += 1;
+    } else {
+      bucket.fabOpen += 1;
+    }
   });
 
   baas.forEach((b) => {
@@ -44,7 +48,7 @@ export async function getMonthlyTrend(monthsCount = 6) {
     if (bucket) bucket.baa += 1;
   });
 
-  return buckets.map(({ label, fab, baa }) => ({ label, fab, baa }));
+  return buckets.map(({ label, fabOpen, fabAktif, baa }) => ({ label, fabOpen, fabAktif, baa }));
 }
 
 // Tambahan baru — buat perbandingan periode

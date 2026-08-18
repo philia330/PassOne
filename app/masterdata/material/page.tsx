@@ -4,6 +4,7 @@ import { Box } from "lucide-react";
 import { getMaterials, getMaterialTotal } from "./actions";
 import { MaterialSortableTable } from "./components/MaterialSortableTable";
 import { requirePageAccess } from "@/lib/auth/guards";
+import { ExportButton } from "@/components/ui/ExportButton";
 
 export default async function MaterialPage({
   searchParams,
@@ -22,6 +23,9 @@ export default async function MaterialPage({
   const currentRole = session.user.role;
   // Hanya Admin yang bisa delete material
   const canDelete = currentRole === "ADMIN";
+
+  // Hanya Admin dan Leader yang bisa export
+  const canExport = currentRole === "ADMIN" || currentRole === "LEADER";
 
   const [{ data: material, total, totalPages }, totalAll] = await Promise.all([
     getMaterials(search, page),
@@ -54,7 +58,13 @@ export default async function MaterialPage({
         </Card>
       </div>
 
-      <MaterialSortableTable initialData={material} kodeOtomatis={kodeOtomatis} defaultValue={search} canDelete={canDelete} />
+      <MaterialSortableTable
+        initialData={material}
+        kodeOtomatis={kodeOtomatis}
+        defaultValue={search}
+        canDelete={canDelete}
+        actions={canExport ? <ExportButton apiUrl="/api/material/export" filenamePrefix="Export_Material" /> : null}
+      />
     </div>
   );
 }

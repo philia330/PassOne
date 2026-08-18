@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { FabDialog } from "@/app/jaringan/fab/components/FabDialog";
 import { FabTable } from "@/app/jaringan/fab/components/FabTable";
+import { ExportButton } from "@/components/ui/ExportButton";
 
 export default async function FabPage() {
   const session = await auth();
@@ -78,6 +79,9 @@ export default async function FabPage() {
 
   const kodeOtomatis = `FAB${String(fab.length + 1).padStart(3, "0")}`;
 
+  // Hanya Admin dan Leader yang bisa export
+  const canExport = currentUser.role === "ADMIN" || currentUser.role === "LEADER";
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
       <PageHeader
@@ -135,6 +139,7 @@ export default async function FabPage() {
         currentUser={currentUser}
         kodeOtomatis={kodeOtomatis}
         penginputOptions={penginputList}
+        actions={canExport ? <ExportButton key="fab-export" apiUrl="/api/fab/export" filenamePrefix="Export_FAB" /> : null}
       />
     </div>
   );

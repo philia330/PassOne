@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   MoreVertical,
-  Eye,
   Pencil,
   Trash2,
   Globe,
@@ -41,7 +40,6 @@ export function FabActionsDropdown({
   canEdit,
   canDelete,
 }: FabActionsDropdownProps) {
-  const [viewOpen, setViewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -63,12 +61,6 @@ export function FabActionsDropdown({
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
-  const handleView = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setViewOpen(true);
-  };
-
   const handleEdit = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -87,7 +79,7 @@ export function FabActionsDropdown({
         {/* DropdownMenuTrigger di sini dibangun dari Base UI (MenuPrimitive.Trigger),
             BUKAN Radix -- dia tidak punya prop "asChild". Pakai "asChild" + <Button>
             di dalamnya bikin dua elemen <button> ke-render bertumpuk (nested button,
-            invalid HTML + hydration error) dan prop "asChild" ikut nyangkut ke DOM.
+            invalid HTML + hydration error) dan prop "asChild" ikut nyantung ke DOM.
             Solusinya: pakai prop "render" dengan elemen <button> polos yang di-style
             pakai buttonVariants, jangan bungkus <Button> di dalam trigger. */}
         <DropdownMenuTrigger
@@ -105,15 +97,8 @@ export function FabActionsDropdown({
           align="end"
           className="w-56 rounded-2xl border border-slate-200/70 bg-white/95 p-1.5 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/95 dark:shadow-black/30"
         >
-          {/* View */}
-          <DropdownMenuItem
-            onSelect={(e) => e.preventDefault()}
-            onClick={handleView}
-            className="rounded-xl gap-3 px-3 py-2 cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-800"
-          >
-            <Eye className="h-4 w-4 text-slate-500" />
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Lihat Detail</span>
-          </DropdownMenuItem>
+          {/* View - FabViewDialog langsung di dalam dropdown */}
+          <FabViewDialog fab={fab} />
 
           {/* Google Maps */}
           <DropdownMenuItem
@@ -166,13 +151,6 @@ export function FabActionsDropdown({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {/* View Dialog */}
-      <FabViewDialog
-        fab={fab}
-        open={viewOpen}
-        onOpenChange={setViewOpen}
-      />
 
       {/* Edit Dialog */}
       {canEdit && (

@@ -4,7 +4,7 @@
 // tidak melanggar aturan "Jangan mengubah global.css" dari standar kelompok.
 import "leaflet/dist/leaflet.css";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import L from "leaflet";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 
@@ -38,10 +38,20 @@ function InvalidateOnResize() {
   useEffect(() => {
     const container = map.getContainer();
     const observer = new ResizeObserver(() => {
-      map.invalidateSize();
+      try {
+        map.invalidateSize();
+      } catch {
+        // Ignore errors during cleanup
+      }
     });
     observer.observe(container);
-    return () => observer.disconnect();
+    return () => {
+      try {
+        observer.disconnect();
+      } catch {
+        // Ignore errors during cleanup
+      }
+    };
   }, [map]);
   return null;
 }
@@ -51,7 +61,11 @@ function InvalidateOnResize() {
 function RecenterOnChange({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
   useEffect(() => {
-    map.setView([lat, lng], map.getZoom());
+    try {
+      map.setView([lat, lng], map.getZoom());
+    } catch {
+      // Ignore errors during map initialization
+    }
   }, [lat, lng, map]);
   return null;
 }
@@ -66,6 +80,23 @@ function ClickToMove({ onChange }: { onChange: (lat: number, lng: number) => voi
   return null;
 }
 
+// Guard component to ensure map is fully ready before rendering marker
+function MapReady({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
+  const map = useMap();
+
+  useEffect(() => {
+    // Small delay to ensure map is fully initialized
+    const timer = setTimeout(() => {
+      setReady(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [map]);
+
+  if (!ready) return null;
+  return <>{children}</>;
+}
+
 export default function LocationPickerMap({
   lat,
   lng,
@@ -73,13 +104,19 @@ export default function LocationPickerMap({
   onChange,
   readOnly = false,
 }: LocationPickerMapProps) {
+  // Validate coordinates - use defaults if invalid
+  const validLat = !isNaN(lat) && lat !== 0;
+  const validLng = !isNaN(lng) && lng !== 0;
+  const defaultLat = validLat ? lat : -6.917464;
+  const defaultLng = validLng ? lng : 107.619123;
+
   return (
     <div
       style={{ height }}
       className="w-full rounded-2xl overflow-hidden border border-slate-200"
     >
       <MapContainer
-        center={[lat, lng]}
+        center={[defaultLat, defaultLng]}
         zoom={16}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={!readOnly}
@@ -89,23 +126,32 @@ export default function LocationPickerMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <Marker
-          position={[lat, lng]}
-          draggable={!readOnly}
-          eventHandlers={
-            !readOnly && onChange
-              ? {
-                  dragend: (e) => {
-                    const pos = e.target.getLatLng();
-                    onChange(pos.lat, pos.lng);
-                  },
-                }
-              : undefined
-          }
-        />
+        <MapReady>
+          <Marker
+            position={[defaultLat, defaultLng]}
+            draggable={!readOnly}
+            eventHandlers={
+              !readOnly && onChange
+                ? {
+                    dragend: (e) => {
+                      try {
+                        const target = e.target as L.Marker;
+                        const pos = target.getLatLng();
+                        if (pos && onChange) {
+                          onChange(pos.lat, pos.lng);
+                        }
+                      } catch {
+                        // Ignore drag errors
+                      }
+                    },
+                  }
+                : undefined
+            }
+          />
+        </MapReady>
 
         {!readOnly && onChange && <ClickToMove onChange={onChange} />}
-        <RecenterOnChange lat={lat} lng={lng} />
+        <RecenterOnChange lat={defaultLat} lng={defaultLng} />
         <InvalidateOnResize />
       </MapContainer>
     </div>

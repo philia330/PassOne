@@ -1,8 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
-import { Eye, MapPin } from "lucide-react";
+import { Eye, MapPin, User, Phone, Package, Users, Calendar, Hash, FileText, CreditCard, Briefcase, Clock, CheckCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,13 +9,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import type { FabData } from "@/types/fab";
 
 const LocationPickerMap = dynamic(() => import("@/components/shared/LocationPickerMap"), {
   ssr: false,
   loading: () => (
-    <div className="h-[280px] sm:h-[360px] w-full rounded-2xl bg-slate-100 animate-pulse flex items-center justify-center text-xs text-slate-400">
+    <div className="h-[160px] w-full rounded-2xl bg-slate-100 animate-pulse flex items-center justify-center text-xs text-slate-400">
       Memuat peta...
     </div>
   ),
@@ -24,69 +24,208 @@ const LocationPickerMap = dynamic(() => import("@/components/shared/LocationPick
 
 interface FabViewDialogProps {
   fab: FabData;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
 }
 
-export const FabViewDialog = ({ fab, open: openProp, onOpenChange }: FabViewDialogProps) => {
-  const [internalOpen, setInternalOpen] = useState(false);
+// Card-style info item for 2-column grid
+function InfoCard({ icon: Icon, label, value, iconBg = "bg-purple-100 dark:bg-purple-500/20", iconColor = "text-purple-600 dark:text-purple-400" }: {
+  icon: React.ElementType;
+  label: string;
+  value: React.ReactNode;
+  iconBg?: string;
+  iconColor?: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800/50">
+      <div className={cn("flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl", iconBg, iconColor)}>
+        <Icon size={18} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
+        <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{value || "-"}</p>
+      </div>
+    </div>
+  );
+}
+
+// Full-width info item
+function InfoCardFull({ icon: Icon, label, value, iconBg = "bg-sky-100 dark:bg-sky-500/20", iconColor = "text-sky-600 dark:text-sky-400" }: {
+  icon: React.ElementType;
+  label: string;
+  value: React.ReactNode;
+  iconBg?: string;
+  iconColor?: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800/50">
+      <div className={cn("flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl", iconBg, iconColor)}>
+        <Icon size={18} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{value || "-"}</p>
+      </div>
+    </div>
+  );
+}
+
+function SectionDivider({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 py-1">
+      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent dark:via-slate-600" />
+      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{children}</span>
+      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent dark:via-slate-600" />
+    </div>
+  );
+}
+
+export function FabViewDialog({ fab }: FabViewDialogProps) {
   const lat = Number(fab.latitude);
   const lng = Number(fab.longitude);
   const hasValidCoords = !Number.isNaN(lat) && !Number.isNaN(lng);
 
-  // Controlled vs uncontrolled
-  const isControlled = openProp !== undefined;
-  const open = isControlled ? openProp : internalOpen;
-  const setOpen = isControlled ? (onOpenChange ?? (() => {})) : setInternalOpen;
+  const formatDateLong = (date: Date) => {
+    return new Date(date).toLocaleDateString("id-ID", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+  };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      {/* Trigger (ikon mata) CUMA muncul kalau dipakai standalone (uncontrolled).
-          Kalau dipakai controlled -- misal dari FabActionsDropdown yang sudah
-          punya tombol titik tiga sendiri -- trigger ini disembunyikan supaya
-          tidak dobel dengan menu "Lihat Detail" di dropdown. */}
-      {!isControlled && (
-        <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto">
-            <Eye className="h-4 w-4" />
-          </Button>
-        </DialogTrigger>
-      )}
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+        >
+          <Eye className="h-4 w-4 text-slate-500" />
+          <span>Lihat Detail</span>
+        </button>
+      </DialogTrigger>
 
       <DialogContent
         className="
           flex h-full max-h-[100dvh] w-full max-w-full flex-col
           overflow-hidden rounded-none p-0
-          sm:h-auto sm:max-h-[90vh] sm:max-w-[600px] sm:rounded-3xl sm:p-6
+          sm:h-auto sm:max-h-[90vh] sm:max-w-[700px] sm:rounded-3xl sm:p-6
         "
       >
-        <DialogHeader className="flex-shrink-0 px-4 pt-4 sm:px-0 sm:pt-0">
-          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <MapPin size={18} className="text-purple-500 flex-shrink-0" />
-            <span className="truncate">Lokasi {fab.nama_pelanggan}</span>
+        <DialogHeader className="flex-shrink-0 px-4 pt-4 sm:px-0 sm:pt-0 pb-2">
+          <DialogTitle className="flex items-start gap-3 text-base sm:text-lg">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-fuchsia-500 text-white shadow-lg shadow-purple-500/30">
+              <FileText size={22} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="block truncate font-bold text-slate-900 dark:text-slate-100 text-lg">
+                {fab.nama_pelanggan}
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs font-medium text-slate-400">
+                  {fab.kode_fab}
+                </span>
+                <span className="text-slate-300">•</span>
+                <span className="text-xs text-slate-400">
+                  {fab.area?.nama_area ?? "Area belum dipilih"}
+                </span>
+              </div>
+            </div>
+            <Badge
+              variant="secondary"
+              className={cn(
+                "shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold",
+                fab.status === "AKTIF"
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
+                  : "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-400"
+              )}
+            >
+              <span className="flex items-center gap-1.5">
+                {fab.status === "AKTIF" ? <CheckCircle size={12} /> : <Clock size={12} />}
+                {fab.status === "AKTIF" ? "Aktif" : "Open"}
+              </span>
+            </Badge>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-0 py-4">
-          <div className="space-y-3">
-            <p className="text-xs sm:text-sm text-slate-500">
-              {fab.kode_fab} &middot; {fab.alamat}
-            </p>
-
-            {hasValidCoords ? (
-              <LocationPickerMap lat={lat} lng={lng} height="280px" readOnly />
-            ) : (
-              <div className="h-[280px] w-full rounded-2xl border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-xs text-slate-400">
-                Koordinat lokasi belum tersedia
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-0 py-3 space-y-4">
+          {/* Foto Lokasi */}
+          {fab.foto && (
+            <div className="relative overflow-hidden rounded-2xl">
+              <img
+                src={fab.foto}
+                alt={`Foto ${fab.nama_pelanggan}`}
+                className="h-44 w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
+                <div className="text-white">
+                  <p className="text-xs font-semibold opacity-90">Foto Lokasi</p>
+                  <p className="text-[10px] opacity-70">Pelanggan</p>
+                </div>
+                {hasValidCoords && (
+                  <span className="rounded-lg bg-black/30 px-2 py-1 text-[10px] font-mono text-white/90 backdrop-blur-sm">
+                    {lat.toFixed(4)}, {lng.toFixed(4)}
+                  </span>
+                )}
               </div>
-            )}
+            </div>
+          )}
 
-            <p className="text-xs text-slate-400 font-mono text-center">
-              {hasValidCoords ? `${lat.toFixed(6)}, ${lng.toFixed(6)}` : "-"}
-            </p>
+          {/* Info Utama - 2 Kolom */}
+          <div className="space-y-2">
+            <SectionDivider>Data Pelanggan</SectionDivider>
+            <div className="grid grid-cols-2 gap-2">
+              <InfoCard icon={User} label="Nama" value={fab.nama_pelanggan} />
+              <InfoCard icon={Phone} label="No. HP" value={fab.no_hp} iconBg="bg-green-100 dark:bg-green-500/20" iconColor="text-green-600 dark:text-green-400" />
+              <InfoCard icon={Hash} label="NIK" value={fab.nik} iconBg="bg-amber-100 dark:bg-amber-500/20" iconColor="text-amber-600 dark:text-amber-400" />
+              <InfoCard icon={Briefcase} label="Paket" value={fab.paket?.nama_paket} iconBg="bg-rose-100 dark:bg-rose-500/20" iconColor="text-rose-600 dark:text-rose-400" />
+            </div>
+          </div>
+
+          {/* Alamat */}
+          <div className="space-y-2">
+            <SectionDivider>Alamat</SectionDivider>
+            <InfoCardFull icon={MapPin} label="Alamat Lengkap" value={fab.alamat} iconBg="bg-sky-100 dark:bg-sky-500/20" iconColor="text-sky-600 dark:text-sky-400" />
+
+            {/* Map Preview */}
+            <div className="rounded-2xl border border-slate-200 overflow-hidden dark:border-slate-700">
+              {hasValidCoords ? (
+                <LocationPickerMap lat={lat} lng={lng} height="160px" readOnly />
+              ) : (
+                <div className="h-[160px] flex flex-col items-center justify-center gap-2 bg-slate-50 dark:bg-slate-800/50 text-slate-400">
+                  <MapPin size={24} />
+                  <span className="text-xs">Koordinat belum tersedia</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Penanggung Jawab */}
+          <div className="space-y-2">
+            <SectionDivider>Penanggung Jawab</SectionDivider>
+            <div className="grid grid-cols-2 gap-2">
+              <InfoCard icon={Users} label="Sales" value={fab.users?.nama} iconBg="bg-violet-100 dark:bg-violet-500/20" iconColor="text-violet-600 dark:text-violet-400" />
+              <InfoCard icon={CreditCard} label="Diinput Oleh" value={fab.penginput?.nama} iconBg="bg-indigo-100 dark:bg-indigo-500/20" iconColor="text-indigo-600 dark:text-indigo-400" />
+            </div>
+          </div>
+
+          {/* Info Waktu */}
+          <div className="space-y-2">
+            <SectionDivider>Informasi</SectionDivider>
+            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100/50 dark:border-slate-700 dark:from-slate-800/50 dark:to-slate-800/30 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
+                  <Calendar size={18} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal Dibuat</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{formatDateLong(fab.createdAt)}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </DialogContent>
     </Dialog>
   );
-};
+}

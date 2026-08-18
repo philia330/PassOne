@@ -4,6 +4,7 @@ import { Router } from "lucide-react";
 import { getOnts, getPops, getOdps } from "./actions";
 import { OntSortableTable } from "./components/OntSortableTable";
 import { requirePageAccess } from "@/lib/auth/guards";
+import { ExportButton } from "@/components/ui/ExportButton";
 
 export default async function OntPage({
   searchParams,
@@ -27,6 +28,9 @@ export default async function OntPage({
     getPops(),
     getOdps(),
   ]);
+
+  // Hanya Admin dan Leader yang bisa export
+  const canExport = currentRole === "ADMIN" || currentRole === "LEADER";
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
@@ -52,7 +56,14 @@ export default async function OntPage({
         </Card>
       </div>
 
-      <OntSortableTable initialData={onts} pops={pops} odps={odps} defaultValue={search} canDelete={canDelete} />
+      <OntSortableTable
+        initialData={onts}
+        pops={pops}
+        odps={odps}
+        defaultValue={search}
+        canDelete={canDelete}
+        actions={canExport ? <ExportButton apiUrl="/api/ont/export" filenamePrefix="Export_ONT" /> : null}
+      />
     </div>
   );
 }

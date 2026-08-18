@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, ReactNode } from "react";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -18,6 +18,11 @@ import { PortPonPagination } from "./PortPonPagination";
 
 type Olt = { id_olt: number; nama_olt: string };
 type Odp = { id_odp: number; nama_odp: string };
+type CurrentUser = {
+  id_user: number;
+  nama: string;
+  role: string;
+};
 
 const statusBadge: Record<string, string> = {
   TERSEDIA: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
@@ -43,12 +48,17 @@ export function PortPonSortableTable({
   olts,
   odps,
   defaultValue,
+  actions,
+  currentUser,
 }: {
   initialData: PortPon[];
   olts: Olt[];
   odps: Odp[];
   defaultValue: string;
+  actions?: ReactNode;
+  currentUser?: CurrentUser;
 }) {
+  const canDelete = currentUser?.role === "ADMIN";
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -84,7 +94,8 @@ export function PortPonSortableTable({
       <CardContent className="space-y-6 p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <PortPonSearch defaultValue={search} />
-          <div className="add-button">
+          <div className="flex items-center gap-2">
+            {actions}
             <PortPonFormDialog mode="create" olts={olts} odps={odps} />
           </div>
         </div>
@@ -136,7 +147,9 @@ export function PortPonSortableTable({
                     <TableCell className="text-center">
                       <div className="flex justify-center gap-1 group/action">
                         <PortPonFormDialog mode="edit" olts={olts} odps={odps} data={{ id_port_pon: port.id_port, nomor_port: port.nomor_port, tipe_kartu: port.tipe_kartu, status: port.status, id_olt: port.id_olt, id_odp: port.id_odp }} />
-                        <DeletePortPonDialog id={port.id_port} name={`${port.olt?.nama_olt ?? ""} - Port ${port.nomor_port}`} />
+                        {canDelete && (
+                          <DeletePortPonDialog id={port.id_port} name={`${port.olt?.nama_olt ?? ""} - Port ${port.nomor_port}`} />
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -157,7 +170,9 @@ export function PortPonSortableTable({
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <PortPonFormDialog mode="edit" olts={olts} odps={odps} data={{ id_port_pon: port.id_port, nomor_port: port.nomor_port, tipe_kartu: port.tipe_kartu, status: port.status, id_olt: port.id_olt, id_odp: port.id_odp }} />
-                  <DeletePortPonDialog id={port.id_port} name={`${port.olt?.nama_olt ?? ""} - Port ${port.nomor_port}`} />
+                  {canDelete && (
+                    <DeletePortPonDialog id={port.id_port} name={`${port.olt?.nama_olt ?? ""} - Port ${port.nomor_port}`} />
+                  )}
                 </div>
               </div>
               <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${statusBadge[port.status] ?? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}>{port.status}</span>

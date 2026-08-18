@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, ReactNode } from "react";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -38,11 +38,13 @@ export function PopSortableTable({
   areas,
   defaultValue,
   canDelete = false,
+  actions,
 }: {
   initialData: Pop[];
   areas: { id_area: number; nama_area: string }[];
   defaultValue: string;
   canDelete?: boolean;
+  actions?: ReactNode;
 }) {
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
@@ -79,7 +81,8 @@ export function PopSortableTable({
       <CardContent className="space-y-6 p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <PopSearch defaultValue={search} />
-          <div className="add-button">
+          <div className="flex items-center gap-2">
+            {actions}
             <PopFormDialog mode="create" areas={areas} />
           </div>
         </div>

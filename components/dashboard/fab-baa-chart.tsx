@@ -18,7 +18,18 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { TrendingUp, TrendingDown, Minus, BarChart3, TrendingUpIcon, AreaChart as AreaChartIcon, Download, FileImage, FileText } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  BarChart3,
+  TrendingUpIcon,
+  AreaChart as AreaChartIcon,
+  Download,
+  FileSpreadsheet,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +39,8 @@ import {
 
 type MonthlyData = {
   label: string;
-  fab: number;
+  fabOpen: number;
+  fabAktif: number;
   baa: number;
 };
 
@@ -51,8 +63,9 @@ type ComparisonData = {
 };
 
 // Tren chart colors
-const TREN_FAB_COLOR = "#f97316";   // oranye
-const TREN_BAA_COLOR = "#8b5cf6";   // ungu
+const TREN_FAB_OPEN_COLOR = "#f97316";   // oranye — FAB Open
+const TREN_FAB_AKTIF_COLOR = "#10b981";  // hijau — FAB Aktif
+const TREN_BAA_COLOR = "#8b5cf6";        // ungu — BAA
 
 const STATUS_COLORS: Record<string, string> = {
   // FAB
@@ -82,80 +95,34 @@ const PERIOD_OPTIONS = [
 function calculateYAxisDomain(data: MonthlyData[]): [number, number] {
   if (!data || data.length === 0) return [0, 10];
 
-  const maxValue = Math.max(...data.map(d => Math.max(d.fab, d.baa)));
+  const maxValue = Math.max(...data.map((d) => Math.max(d.fabOpen, d.fabAktif, d.baa)));
 
   if (maxValue === 0) return [0, 10];
 
-  // Add 20% padding at top, round up to nice number
-  const paddedMax = Math.ceil(maxValue * 1.2);
+  // Kasih ruang lega di atas biar bar tidak mepet ke batas atas chart
+  const paddedMax = Math.ceil(maxValue * 1.4);
 
-  // Round to nearest 5 or 10 for cleaner display
-  const niceMax = Math.ceil(paddedMax / 5) * 5;
+  // Bulatkan ke kelipatan 10 biar angka di sumbu Y rapi
+  const niceMax = Math.ceil(paddedMax / 10) * 10;
 
-  return [0, Math.max(niceMax, 5)];
+  return [0, Math.max(niceMax, 10)];
 }
 
-// Download chart as image
-async function downloadChart(
-  chartRef: HTMLDivElement | null,
-  format: "png" | "jpeg" | "pdf",
-  filename: string
-) {
-  if (!chartRef) return;
+// Download data mentah (angka per bulan) sebagai CSV -- bisa dibuka di Excel
+function downloadCSV(data: MonthlyData[], filename: string) {
+  const headers = ["Bulan", "FAB Open", "FAB Aktif", "BAA"];
+  const rows = data.map((d) => [d.label, d.fabOpen, d.fabAktif, d.baa]);
+  const csvContent = [headers, ...rows].map((row) => row.join(",")).join("\n");
 
-  try {
-    // Create canvas from the chart element
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Set canvas size (high resolution)
-    const scale = 2; // 2x for better quality
-    const rect = chartRef.getBoundingClientRect();
-    canvas.width = rect.width * scale;
-    canvas.height = rect.height * scale;
-    ctx.scale(scale, scale);
-
-    // Create SVG serializer
-    const svgElement = chartRef.querySelector("svg");
-    if (!svgElement) return;
-
-    const svgData = new XMLSerializer().serializeToString(svgElement);
-    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const svgUrl = URL.createObjectURL(svgBlob);
-
-    const img = new Image();
-    img.onload = () => {
-      // Fill background
-      ctx.fillStyle = getComputedStyle(chartRef).backgroundColor || "#ffffff";
-      ctx.fillRect(0, 0, rect.width, rect.height);
-
-      ctx.drawImage(img, 0, 0, rect.width, rect.height);
-      URL.revokeObjectURL(svgUrl);
-
-      // Convert to blob based on format
-      const mimeType = format === "jpeg" ? "image/jpeg" : "image/png";
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `${filename}.${format === "jpeg" ? "jpg" : format}`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-          }
-        },
-        mimeType,
-        1.0
-      );
-    };
-    img.src = svgUrl;
-  } catch (error) {
-    console.error("Error downloading chart:", error);
-  }
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${filename}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 function TrendBadge({
@@ -204,7 +171,8 @@ export default function FabBaaChart({
   baaStatus: StatusData[];
   comparison: ComparisonData;
 }) {
-  const chartRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   const [monthly, setMonthly] =
     useState(initialMonthly);
 
@@ -237,10 +205,17 @@ export default function FabBaaChart({
       .finally(() => setLoading(false));
   }, [period, initialMonthly]);
 
-  const handleDownload = (format: "png" | "jpeg" | "pdf") => {
-    if (chartRef.current) {
-      downloadChart(chartRef.current, format, `tren-fab-baa-${new Date().toISOString().split("T")[0]}`);
-    }
+  const handleDownloadData = () => {
+    downloadCSV(monthly, `data-tren-fab-baa-${new Date().toISOString().split("T")[0]}`);
+  };
+
+  const scrollChart = (direction: "left" | "right") => {
+    if (!scrollContainerRef.current) return;
+    const amount = 220; // geser sekitar 2 bulan tiap klik
+    scrollContainerRef.current.scrollBy({
+      left: direction === "left" ? -amount : amount,
+      behavior: "smooth",
+    });
   };
 
   return (
@@ -281,7 +256,7 @@ export default function FabBaaChart({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Download Button */}
+            {/* Download Button -- sekarang cuma CSV, PNG/JPG dihapus */}
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
                 <Download size={14} />
@@ -289,25 +264,11 @@ export default function FabBaaChart({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="rounded-xl">
                 <DropdownMenuItem
-                  onClick={() => handleDownload("png")}
+                  onClick={handleDownloadData}
                   className="cursor-pointer rounded-lg gap-2"
                 >
-                  <FileImage size={16} className="text-slate-500" />
-                  <span>Unduh PNG</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleDownload("jpeg")}
-                  className="cursor-pointer rounded-lg gap-2"
-                >
-                  <FileImage size={16} className="text-slate-500" />
-                  <span>Unduh JPG</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleDownload("pdf")}
-                  className="cursor-pointer rounded-lg gap-2"
-                >
-                  <FileText size={16} className="text-slate-500" />
-                  <span>Unduh PDF</span>
+                  <FileSpreadsheet size={16} className="text-slate-500" />
+                  <span>Unduh Data (CSV)</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -366,45 +327,73 @@ export default function FabBaaChart({
 
         </div>
 
-        <div ref={chartRef} className="relative">
-          <ResponsiveContainer
-            width="100%"
-            height={320}
+        <div className="relative">
+          {/* Tombol scroll kiri */}
+          <button
+            type="button"
+            onClick={() => scrollChart("left")}
+            className="absolute -left-2 top-1/2 z-10 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md text-slate-500 hover:bg-slate-50 hover:text-purple-600 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
           >
-            {chartType === "bar" && (
-              <BarChart data={monthly} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
-                <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" domain={yAxisDomain} />
-                <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
-                <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
-                <Bar dataKey="fab" name="FAB" fill={TREN_FAB_COLOR} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="baa" name="BAA" fill={TREN_BAA_COLOR} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            )}
-            {chartType === "line" && (
-              <LineChart data={monthly} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
-                <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" domain={yAxisDomain} />
-                <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
-                <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
-                <Line type="monotone" dataKey="fab" name="FAB" stroke={TREN_FAB_COLOR} strokeWidth={3} dot={{ r: 4 }} />
-                <Line type="monotone" dataKey="baa" name="BAA" stroke={TREN_BAA_COLOR} strokeWidth={3} dot={{ r: 4 }} />
-              </LineChart>
-            )}
-            {chartType === "area" && (
-              <AreaChart data={monthly} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
-                <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" domain={yAxisDomain} />
-                <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
-                <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
-                <Area type="monotone" dataKey="fab" name="FAB" fill={TREN_FAB_COLOR} stroke={TREN_FAB_COLOR} fillOpacity={0.3} />
-                <Area type="monotone" dataKey="baa" name="BAA" fill={TREN_BAA_COLOR} stroke={TREN_BAA_COLOR} fillOpacity={0.3} />
-              </AreaChart>
-            )}
-          </ResponsiveContainer>
+            <ChevronLeft size={16} />
+          </button>
+
+          {/* Tombol scroll kanan */}
+          <button
+            type="button"
+            onClick={() => scrollChart("right")}
+            className="absolute -right-2 top-1/2 z-10 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md text-slate-500 hover:bg-slate-50 hover:text-purple-600 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+          >
+            <ChevronRight size={16} />
+          </button>
+
+          <div ref={scrollContainerRef} className="chart-scroll-x overflow-x-auto rounded-xl">
+            <div
+              className="relative"
+              style={{ width: Math.max(monthly.length * 110, 100), minWidth: "100%" }}
+            >
+              <ResponsiveContainer
+                width="100%"
+                height={420}
+              >
+                {chartType === "bar" && (
+                  <BarChart data={monthly} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" domain={yAxisDomain} />
+                    <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
+                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
+                    <Bar dataKey="fabOpen" name="FAB Open" fill={TREN_FAB_OPEN_COLOR} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="fabAktif" name="FAB Aktif" fill={TREN_FAB_AKTIF_COLOR} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="baa" name="BAA" fill={TREN_BAA_COLOR} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                )}
+                {chartType === "line" && (
+                  <LineChart data={monthly} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" domain={yAxisDomain} />
+                    <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
+                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
+                    <Line type="monotone" dataKey="fabOpen" name="FAB Open" stroke={TREN_FAB_OPEN_COLOR} strokeWidth={3} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="fabAktif" name="FAB Aktif" stroke={TREN_FAB_AKTIF_COLOR} strokeWidth={3} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="baa" name="BAA" stroke={TREN_BAA_COLOR} strokeWidth={3} dot={{ r: 4 }} />
+                  </LineChart>
+                )}
+                {chartType === "area" && (
+                  <AreaChart data={monthly} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" domain={yAxisDomain} />
+                    <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} wrapperClassName="dark:[&_.recharts-default-tooltip]:!bg-slate-800 dark:[&_.recharts-default-tooltip]:!border-slate-700 dark:[&_.recharts-default-tooltip]:!text-white" />
+                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
+                    <Area type="monotone" dataKey="fabOpen" name="FAB Open" fill={TREN_FAB_OPEN_COLOR} stroke={TREN_FAB_OPEN_COLOR} fillOpacity={0.3} />
+                    <Area type="monotone" dataKey="fabAktif" name="FAB Aktif" fill={TREN_FAB_AKTIF_COLOR} stroke={TREN_FAB_AKTIF_COLOR} fillOpacity={0.3} />
+                    <Area type="monotone" dataKey="baa" name="BAA" fill={TREN_BAA_COLOR} stroke={TREN_BAA_COLOR} fillOpacity={0.3} />
+                  </AreaChart>
+                )}
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
 
         {loading && (

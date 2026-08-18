@@ -6,6 +6,7 @@ import { getPops, getAreas } from "./actions";
 
 import { PopSortableTable } from "./components/PopSortableTable";
 import { requirePageAccess } from "@/lib/auth/guards";
+import { ExportButton } from "@/components/ui/ExportButton";
 
 export default async function PopPage({
   searchParams,
@@ -33,6 +34,9 @@ const pops = rawPops.map((pop) => ({
   longitude: Number(pop.longitude),
 }));
 
+  // Hanya Admin dan Leader yang bisa export
+  const canExport = currentRole === "ADMIN" || currentRole === "LEADER";
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
       <PageHeader
@@ -56,7 +60,13 @@ const pops = rawPops.map((pop) => ({
         </Card>
       </div>
 
-      <PopSortableTable initialData={pops} areas={areas} defaultValue={search} canDelete={canDelete} />
+      <PopSortableTable
+        initialData={pops}
+        areas={areas}
+        defaultValue={search}
+        canDelete={canDelete}
+        actions={canExport ? <ExportButton apiUrl="/api/pop/export" filenamePrefix="Export_POP" /> : null}
+      />
     </div>
   );
 }
