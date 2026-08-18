@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback, ReactNode } from "react";
+import { useMemo, useState, useEffect, ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   Search,
@@ -8,11 +8,15 @@ import {
   Phone,
   ArrowUp,
   ArrowDown,
-  ArrowUpDown,
   ImageIcon,
   Filter,
   X,
   Loader2,
+  IdCard,
+  Router,
+  Package,
+  UserRound,
+  Calendar,
 } from "lucide-react";
 import { FabActionsDropdown } from "./FabActionsDropdown";
 import { Input } from "@/components/ui/input";
@@ -64,26 +68,6 @@ function SkeletonRow({ colCount = 13 }: { colCount?: number }) {
   );
 }
 
-function SkeletonCard({ key }: { key: number }) {
-  return (
-    <div
-      key={key}
-      className="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-800/40"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="space-y-1.5">
-          <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-          <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-        </div>
-        <div className="h-8 w-8 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-700" />
-      </div>
-      <div className="h-3 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-      <div className="h-3 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-      <div className="h-3 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-    </div>
-  );
-}
-
 interface FabTableProps {
   data: FabData[];
   areaOptions: AreaOption[];
@@ -100,6 +84,11 @@ const PAGE_SIZE = 5;
 const STATUS_TEXT_STYLE: Record<StatusFab, string> = {
   OPEN: "text-sky-600 dark:text-sky-400",
   AKTIF: "text-green-600 dark:text-green-400",
+};
+
+const STATUS_BADGE_STYLE: Record<StatusFab, string> = {
+  OPEN: "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400",
+  AKTIF: "bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400",
 };
 
 const STATUS_LABEL: Record<StatusFab, string> = {
@@ -247,7 +236,7 @@ export const FabTable = ({
   return (
     <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
       <div className="space-y-6 p-4 sm:p-6">
-        {/* Search bar + Filter + Tambah */}
+        {/* Search bar + Filter + Sort (mobile) + Tombol tambah */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative w-full max-w-xs">
@@ -261,12 +250,12 @@ export const FabTable = ({
               />
             </div>
 
-            {/* Filter Dropdown - hanya tampil jika ada opsi atau role yang sesuai */}
+            {/* Filter Dropdown Penginput - hanya tampil jika ada opsi atau role yang sesuai */}
             {showFilterDropdown && (
               <div className="flex items-center gap-2">
                 <Select value={filterPenginput} onValueChange={handleFilterChange}>
-                  <SelectTrigger className="h-11 w-[180px] rounded-2xl border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-                    <Filter className="h-4 w-4 mr-2 text-slate-400" />
+                  <SelectTrigger className="h-11 w-[190px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+                    <Filter className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
                     <SelectValue placeholder="Filter penginput">
                       {(value: string) => {
                         if (value === "all") return "Semua";
@@ -278,16 +267,31 @@ export const FabTable = ({
                       }}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-2xl border-slate-200 p-1.5 shadow-lg dark:border-slate-700">
                     {isSalesOrTeknisi && (
-                      <SelectItem value={String(currentUser.id_user)}>
-                        Saya ({currentUser.nama})
+                      <SelectItem
+                        value={String(currentUser.id_user)}
+                        className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                      >
+                        <UserRound className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                        <span className="font-medium">Saya ({currentUser.nama})</span>
                       </SelectItem>
                     )}
-                    <SelectItem value="all">Semua</SelectItem>
+                    <SelectItem
+                      value="all"
+                      className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                    >
+                      <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>Semua</span>
+                    </SelectItem>
                     {penginputOptions.map((opt) => (
-                      <SelectItem key={opt.id_user} value={String(opt.id_user)}>
-                        {opt.nama}
+                      <SelectItem
+                        key={opt.id_user}
+                        value={String(opt.id_user)}
+                        className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                      >
+                        <UserRound className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                        <span>{opt.nama}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -308,7 +312,20 @@ export const FabTable = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={toggleSort}
+              className="md:hidden inline-flex h-11 items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors flex-shrink-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-800/70"
+            >
+              {sortOrder === "asc" ? (
+                <ArrowUp size={16} className="text-purple-500" />
+              ) : (
+                <ArrowDown size={16} className="text-purple-500" />
+              )}
+              <span>{sortOrder === "asc" ? "Terlama" : "Terbaru"}</span>
+            </button>
+
             {actions}
             <FabDialog
               mode="create"
@@ -360,7 +377,6 @@ export const FabTable = ({
 
             <TableBody>
               {isLoading ? (
-                // Skeleton loading rows
                 <>
                   <SkeletonRow colCount={13} />
                   <SkeletonRow colCount={13} />
@@ -428,95 +444,100 @@ export const FabTable = ({
           </Table>
         </div>
 
-        {/* MOBILE: toggle sort */}
+        {/* MOBILE: cards */}
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
           </div>
         ) : (
-          <>
-            <div className="md:hidden flex justify-end">
-              <button
-                type="button"
-                onClick={toggleSort}
-                className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:text-purple-600 hover:border-purple-200 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-              >
-                <ArrowUpDown size={16} />
-                {sortOrder === "asc" ? "Terlama dulu" : "Terbaru dulu"}
-              </button>
-            </div>
-
-            {/* ====================================================== */}
-            {/* Versi Card - hanya muncul di HP (di bawah breakpoint md:) */}
-            {/* ====================================================== */}
-            <div className="grid gap-3 md:hidden">
-              {paginated.length === 0 ? (
-                <div className="rounded-2xl border border-slate-200 py-10 text-center text-slate-400 dark:border-slate-800 dark:text-slate-500">
-                  {search
-                    ? "Tidak ada data FAB yang cocok dengan pencarian"
-                    : "Belum ada data FAB"}
-                </div>
-              ) : (
-                paginated.map((item) => (
-                  <div
-                    key={item.id_fab}
-                    className="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-800/40"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-semibold text-slate-900 dark:text-slate-100">
+          <div className="grid gap-3 md:hidden">
+            {paginated.length === 0 ? (
+              <div className="rounded-2xl border border-slate-200 py-10 text-center text-slate-400 dark:border-slate-800 dark:text-slate-500">
+                {search
+                  ? "Tidak ada data FAB yang cocok dengan pencarian"
+                  : "Belum ada data FAB"}
+              </div>
+            ) : (
+              paginated.map((item) => (
+                <div
+                  key={item.id_fab}
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-800/40"
+                >
+                  {/* Header: kode + nama + status + aksi */}
+                  <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <FabFotoButton foto={item.foto} namaPelanggan={item.nama_pelanggan} />
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-900 dark:text-slate-100">
                           {item.nama_pelanggan}
                         </p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                          {item.kode_fab}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <FabFotoButton foto={item.foto} namaPelanggan={item.nama_pelanggan} />
-                        <FabActionsDropdown
-                          fab={item}
-                          areaOptions={areaOptions}
-                          paketOptions={paketOptions}
-                          salesOptions={salesOptions}
-                          currentUser={currentUser}
-                          canEdit={canEdit(item)}
-                          canDelete={canDelete}
-                        />
+                        <p className="text-xs text-slate-400 dark:text-slate-500">{item.kode_fab}</p>
                       </div>
                     </div>
 
-                    <p className="text-xs text-slate-500 dark:text-slate-400">NIK: {item.nik}</p>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_BADGE_STYLE[item.status]}`}
+                      >
+                        {STATUS_LABEL[item.status]}
+                      </span>
+                      <FabActionsDropdown
+                        fab={item}
+                        areaOptions={areaOptions}
+                        paketOptions={paketOptions}
+                        salesOptions={salesOptions}
+                        currentUser={currentUser}
+                        canEdit={canEdit(item)}
+                        canDelete={canDelete}
+                      />
+                    </div>
+                  </div>
 
-                    <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
-                      <Phone size={12} className="text-slate-400 dark:text-slate-500" />
+                  {/* Body: detail kontak & alamat */}
+                  <div className="space-y-2 p-4 text-sm">
+                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                      <IdCard size={14} className="shrink-0 text-slate-400 dark:text-slate-500" />
+                      <span className="font-mono text-xs">{item.nik}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                      <Phone size={14} className="shrink-0 text-slate-400 dark:text-slate-500" />
                       {item.no_hp}
                     </div>
 
-                    <div className="flex items-start gap-1 text-sm text-slate-600 dark:text-slate-300">
-                      <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
+                    <div className="flex items-start gap-2 text-slate-600 dark:text-slate-300">
+                      <MapPin size={14} className="mt-0.5 shrink-0 text-slate-400 dark:text-slate-500" />
                       <span className="line-clamp-2">{item.alamat}</span>
                     </div>
-
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Area: {item.area?.nama_area ?? "-"} &middot; Paket: {item.paket?.nama_paket ?? "-"}
-                    </p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Sales: {item.users?.nama ?? "-"}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <DiinputOlehCell item={item} />
-                      <span className={`text-sm font-semibold ${STATUS_TEXT_STYLE[item.status]}`}>
-                        {STATUS_LABEL[item.status]}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">
-                      Dibuat: {formatTanggal(item.createdAt)}
-                    </p>
                   </div>
-                ))
-              )}
-            </div>
-          </>
+
+                  {/* Footer: area/paket/sales/diinput/tanggal */}
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-slate-100 bg-slate-50/60 p-4 text-xs dark:border-slate-800 dark:bg-slate-900/40">
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                      <Router size={12} className="shrink-0" />
+                      <span className="truncate">{item.area?.nama_area ?? "-"}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                      <Package size={12} className="shrink-0" />
+                      <span className="truncate">{item.paket?.nama_paket ?? "-"}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                      <UserRound size={12} className="shrink-0" />
+                      <span className="truncate">Sales: {item.users?.nama ?? "-"}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                      <Calendar size={12} className="shrink-0" />
+                      {formatTanggal(item.createdAt)}
+                    </div>
+                    <div className="col-span-2 flex items-center gap-1.5 pt-1 border-t border-slate-200/70 dark:border-slate-700/50">
+                      <span className="text-slate-400 dark:text-slate-500">Diinput:</span>
+                      <DiinputOlehCell item={item} />
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         )}
 
         <div className="flex justify-end">

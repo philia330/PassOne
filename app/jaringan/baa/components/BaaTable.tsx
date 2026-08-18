@@ -2,7 +2,19 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Search, ClipboardList, MoreVertical, Pencil, Trash2, ArrowUp, ArrowDown, Filter, X, Loader2 } from "lucide-react";
+import {
+  Search,
+  ClipboardList,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+  Filter,
+  X,
+  Loader2,
+  UserRound,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,33 +89,6 @@ function SkeletonRow({ colCount = 18 }: { colCount?: number }) {
         </TableCell>
       ))}
     </TableRow>
-  );
-}
-
-function SkeletonCard({ key }: { key: number }) {
-  return (
-    <div
-      key={key}
-      className="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-800/40"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-700" />
-          <div className="space-y-1.5">
-            <div className="h-4 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-            <div className="h-3 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-          </div>
-        </div>
-        <div className="h-8 w-8 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-700" />
-      </div>
-      <div className="h-3 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-        <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-        <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-        <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-        <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-      </div>
-    </div>
   );
 }
 
@@ -320,8 +305,8 @@ export const BaaTable = ({
             {showFilterDropdown && (
               <div className="flex items-center gap-2">
                 <Select value={filterTeknisi} onValueChange={handleFilterChange}>
-                  <SelectTrigger className="h-11 w-[180px] rounded-2xl border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-                    <Filter className="h-4 w-4 mr-2 text-slate-400" />
+                  <SelectTrigger className="h-11 w-[190px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+                    <Filter className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
                     <SelectValue placeholder="Filter teknisi">
                       {(value: string) => {
                         if (value === "all") return "Semua";
@@ -333,16 +318,31 @@ export const BaaTable = ({
                       }}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-2xl border-slate-200 p-1.5 shadow-lg dark:border-slate-700">
                     {isTeknisi && (
-                      <SelectItem value={String(currentUser.id_user)}>
-                        Saya ({currentUser.nama})
+                      <SelectItem
+                        value={String(currentUser.id_user)}
+                        className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                      >
+                        <UserRound className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                        <span className="font-medium">Saya ({currentUser.nama})</span>
                       </SelectItem>
                     )}
-                    <SelectItem value="all">Semua</SelectItem>
+                    <SelectItem
+                      value="all"
+                      className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                    >
+                      <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>Semua</span>
+                    </SelectItem>
                     {allTeknisiOptions.map((opt) => (
-                      <SelectItem key={opt.id_user} value={String(opt.id_user)}>
-                        {opt.nama}
+                      <SelectItem
+                        key={opt.id_user}
+                        value={String(opt.id_user)}
+                        className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                      >
+                        <UserRound className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                        <span>{opt.nama}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
