@@ -19,19 +19,39 @@ import { deleteOdp } from "../actions";
 interface DeleteOdpDialogProps {
   id: number;
   namaOdp: string;
+  bulkIds?: number[];
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const DeleteOdpDialog = ({ id, namaOdp }: DeleteOdpDialogProps) => {
-  const [open, setOpen] = useState(false);
+export const DeleteOdpDialog = ({ id, namaOdp, bulkIds, open: controlledOpen, onOpenChange }: DeleteOdpDialogProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const isControlled = controlledOpen !== undefined;
+  const isOpen = isControlled ? controlledOpen : internalOpen;
+  const setIsOpen = isControlled ? onOpenChange! : setInternalOpen;
+
+  const isBulk = bulkIds && bulkIds.length > 0;
 
   const handleConfirm = () => {
     setErrorMsg(null);
     startTransition(async () => {
       try {
-        await deleteOdp(id);
-        setOpen(false);
+        if (isBulk && bulkIds) {
+          // Bulk delete via API
+          const response = await fetch(`/api/odp/bulk-delete?ids=${bulkIds.join(",")}`, {
+            method: "DELETE",
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || "Gagal menghapus data");
+          }
+        } else {
+          await deleteOdp(id);
+        }
+        setIsOpen(false);
       } catch (err: unknown) {
         const error = err as Error;
         setErrorMsg(error.message ?? "Gagal menghapus data, coba lagi.");
@@ -40,21 +60,23 @@ export const DeleteOdpDialog = ({ id, namaOdp }: DeleteOdpDialogProps) => {
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={(isOpen) => {
-      setOpen(isOpen);
-      if (!isOpen) setErrorMsg(null);
+    <AlertDialog open={isOpen} onOpenChange={(newOpen) => {
+      setIsOpen(newOpen);
+      if (!newOpen) setErrorMsg(null);
     }}>
-      <AlertDialogTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon"
-            className="cursor-pointer rounded-xl active:scale-90 transition-all hover:bg-rose-50 dark:hover:bg-rose-950/30 group"
-          />
-        }
-      >
-        <Trash2 className="h-4 w-4 text-red-500 hover:text-red-600 active:scale-90 transition-all dark:text-red-400 dark:hover:text-red-300 group-hover:scale-125 transition-transform duration-200" />
-      </AlertDialogTrigger>
+      {!isBulk && (
+        <AlertDialogTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon"
+              className="cursor-pointer rounded-xl active:scale-90 transition-all hover:bg-rose-50 dark:hover:bg-rose-950/30 group"
+            />
+          }
+        >
+          <Trash2 className="h-4 w-4 text-red-500 hover:text-red-600 active:scale-90 transition-all dark:text-red-400 dark:hover:text-red-300 group-hover:scale-125 transition-transform duration-200" />
+        </AlertDialogTrigger>
+      )}
 
       <AlertDialogContent
         className="
@@ -75,12 +97,14 @@ export const DeleteOdpDialog = ({ id, namaOdp }: DeleteOdpDialogProps) => {
           </div>
 
           <AlertDialogTitle className="w-full text-lg font-bold text-slate-900 text-center">
-            Hapus data ODP ini?
+            {isBulk ? `Hapus ${bulkIds?.length} ODP ini?` : "Hapus data ODP ini?"}
           </AlertDialogTitle>
           <AlertDialogDescription className="w-full text-sm text-slate-500 leading-relaxed text-center">
-            Kamu akan menghapus ODP{" "}
-            <strong className="text-slate-700">&quot;{namaOdp}&quot;</strong>. Data yang
-            sudah dihapus tidak bisa dikembalikan.
+            {isBulk ? (
+              <>Kamu akan menghapus <strong className="text-slate-700">{bulkIds?.length} ODP</strong> yang dipilih. Data yang sudah dihapus tidak bisa dikembalikan.</>
+            ) : (
+              <>Kamu akan menghapus ODP <strong className="text-slate-700">&quot;{namaOdp}&quot;</strong>. Data yang sudah dihapus tidak bisa dikembalikan.</>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
 

@@ -19,19 +19,38 @@ import { deletePaket } from "@/app/masterdata/paket/actions";
 interface PaketDeleteDialogProps {
   id: number;
   namaPaket: string;
+  bulkIds?: number[];
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const PaketDeleteDialog = ({ id, namaPaket }: PaketDeleteDialogProps) => {
-  const [open, setOpen] = useState(false);
+export const PaketDeleteDialog = ({ id, namaPaket, bulkIds, open: controlledOpen, onOpenChange }: PaketDeleteDialogProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const isControlled = controlledOpen !== undefined;
+  const isOpen = isControlled ? controlledOpen : internalOpen;
+  const setIsOpen = isControlled ? onOpenChange! : setInternalOpen;
+
+  const isBulk = bulkIds && bulkIds.length > 0;
 
   const handleConfirm = () => {
     setErrorMsg(null);
     startTransition(async () => {
       try {
-        await deletePaket(id);
-        setOpen(false);
+        if (isBulk && bulkIds) {
+          const response = await fetch(`/api/paket/bulk-delete?ids=${bulkIds.join(",")}`, {
+            method: "DELETE",
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || "Gagal menghapus data");
+          }
+        } else {
+          await deletePaket(id);
+        }
+        setIsOpen(false);
       } catch (err: unknown) {
         const error = err as Error;
         setErrorMsg(error.message ?? "Gagal menghapus data, coba lagi.");
@@ -40,8 +59,8 @@ export const PaketDeleteDialog = ({ id, namaPaket }: PaketDeleteDialogProps) => 
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={(isOpen) => {
-      setOpen(isOpen);
+    <AlertDialog open={isOpen} onOpenChange={(isOpen) => {
+      setIsOpen(isOpen);
       if (!isOpen) setErrorMsg(null);
     }}>
       <AlertDialogTrigger
@@ -75,12 +94,14 @@ export const PaketDeleteDialog = ({ id, namaPaket }: PaketDeleteDialogProps) => 
           </div>
 
           <AlertDialogTitle className="w-full text-lg font-bold text-slate-900 text-center">
-            Hapus paket ini?
+            {isBulk ? `Hapus ${bulkIds?.length} Paket ini?` : "Hapus paket ini?"}
           </AlertDialogTitle>
           <AlertDialogDescription className="w-full text-sm text-slate-500 leading-relaxed text-center">
-            Kamu akan menghapus paket{" "}
-            <strong className="text-slate-700">&quot;{namaPaket}&quot;</strong>. Data yang
-            sudah dihapus tidak bisa dikembalikan.
+            {isBulk ? (
+              <>Kamu akan menghapus <strong className="text-slate-700">{bulkIds?.length} Paket</strong> yang dipilih. Data yang sudah dihapus tidak bisa dikembalikan.</>
+            ) : (
+              <>Kamu akan menghapus paket <strong className="text-slate-700">&quot;{namaPaket}&quot;</strong>. Data yang sudah dihapus tidak bisa dikembalikan.</>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
 

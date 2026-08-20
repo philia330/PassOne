@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { ArrowUp, ArrowDown, MessageCircle } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { ArrowUp, ArrowDown, MessageCircle, Check, Trash2, Download, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -17,6 +17,13 @@ import { DeleteUserDialog } from "./DeleteUserDialog";
 import { UserSearch } from "./UserSearch";
 import { UserPagination } from "./UserPagination";
 import ImagePreview from "@/components/shared/image-preview";
+import { toast } from "sonner";
+
+type CurrentUser = {
+  id_user: number;
+  nama: string;
+  role: string;
+};
 
 const ROLE_BADGE_STYLES: Record<string, string> = {
   ADMIN: "bg-pink-100 text-pink-700 dark:bg-pink-500/10 dark:text-pink-400",
@@ -46,13 +53,31 @@ const PAGE_SIZE = 10;
 export function UserSortableTable({
   initialData,
   defaultValue,
+  currentUser,
 }: {
   initialData: User[];
   defaultValue: string;
+  currentUser?: CurrentUser;
 }) {
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  // Selection state for bulk actions
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [selectAllPage, setSelectAllPage] = useState(false);
+
+  const isAdmin = currentUser?.role === "ADMIN";
+  const canBulkDelete = isAdmin;
+
+  // Clear selection when filters/search change
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setSelectAllPage(false);
+  }, [search]);
 
   const toggleSort = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -80,9 +105,156 @@ export function UserSortableTable({
   const totalPagesCalc = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  // Selection functions
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const allSelected = paginated.every((item) => selectedIds.has(item.id_user));
+    if (selectAllPage && allSelected) {
+      setSelectAllPage(false);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        paginated.forEach((item) => next.delete(item.id_user));
+        return next;
+      });
+    } else {
+      setSelectAllPage(true);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        paginated.forEach((item) => next.add(item.id_user));
+        return next;
+      });
+    }
+  };
+
+  // Bulk export handler
+  const handleBulkExport = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) {
+      toast.error("Pilih item yang ingin diekspor");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const url = ids.length === sorted.length
+        ? `/api/user/export`
+        : `/api/user/export?ids=${ids.join(",")}`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.message || "Gagal mengekspor data");
+        return;
+      }
+
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const filename = contentDisposition
+        ? contentDisposition.split("filename=")[1]?.replace(/"/g, "")
+        : `Export_User_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+      const urlBlob = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = urlBlob;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(urlBlob);
+
+      toast.success(`Berhasil mengekspor ${ids.length} data User`);
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Terjadi kesalahan saat mengekspor data");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Bulk delete handler
+  const handleBulkDelete = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) {
+      toast.error("Pilih item yang ingin dihapus");
+      return;
+    }
+    setBulkDeleteIds(ids);
+    setBulkDeleteOpen(true);
+  };
+
+  // Handle delete success
+  const handleDeleteSuccess = () => {
+    setSelectedIds(new Set());
+    setSelectAllPage(false);
+    setBulkDeleteOpen(false);
+    setBulkDeleteIds([]);
+  };
+
   return (
     <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
       <CardContent className="space-y-6 p-4 sm:p-6">
+        {/* Bulk Action Bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl bg-purple-50 p-3 sm:p-4 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30">
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500 text-white font-bold text-sm">
+                {selectedIds.size}
+              </span>
+              <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">
+                item dipilih
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {canBulkDelete && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleBulkDelete}
+                  className="h-9 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
+                >
+                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  Hapus
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleBulkExport}
+                disabled={isExporting}
+                className="h-9 rounded-xl text-green-600 hover:bg-green-50 hover:text-green-700 dark:text-green-400 dark:hover:bg-green-500/10"
+              >
+                {isExporting ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-1.5 h-4 w-4" />
+                )}
+                Export Excel
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => { setSelectedIds(new Set()); setSelectAllPage(false); }}
+                className="h-9 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="mr-1.5 h-4 w-4" />
+                Batal
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <UserSearch defaultValue={search} />
           <div className="add-button">
@@ -95,6 +267,26 @@ export function UserSortableTable({
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 dark:bg-slate-800/50 dark:hover:bg-slate-800/50">
+                <TableHead className="w-12 text-center dark:text-slate-300">
+                  <button
+                    type="button"
+                    onClick={toggleSelectAll}
+                    className="inline-flex items-center justify-center"
+                    title={selectAllPage ? "Batalkan pilih semua halaman ini" : "Pilih semua halaman ini"}
+                  >
+                    <div
+                      className={`flex h-4 w-4 items-center justify-center rounded border-2 transition-colors ${
+                        paginated.length > 0 && paginated.every((item) => selectedIds.has(item.id_user))
+                          ? "border-purple-500 bg-purple-500"
+                          : "border-slate-300 dark:border-slate-600 hover:border-purple-400"
+                      }`}
+                    >
+                      {paginated.length > 0 && paginated.every((item) => selectedIds.has(item.id_user)) && (
+                        <Check className="h-3 w-3 text-white" />
+                      )}
+                    </div>
+                  </button>
+                </TableHead>
                 <TableHead className="dark:text-slate-400">
                   <button
                     type="button"
@@ -123,15 +315,44 @@ export function UserSortableTable({
             <TableBody>
               {paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-10 text-center text-slate-400 dark:text-slate-500">
+                  <TableCell colSpan={10} className="py-10 text-center text-slate-400 dark:text-slate-500">
                     {search ? "Tidak ada user yang cocok" : "Belum ada user"}
                   </TableCell>
                 </TableRow>
               ) : (
                 paginated.map((user) => (
-                  <TableRow key={user.id_user} className="hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50">
-                    <TableCell className="font-medium dark:text-slate-200">{user.kode_user}</TableCell>
-                    <TableCell>
+                  <TableRow
+                    key={user.id_user}
+                    className={`hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 transition-colors ${
+                      selectedIds.has(user.id_user)
+                        ? "bg-purple-50 dark:bg-purple-500/10"
+                        : ""
+                    }`}
+                  >
+                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelect(user.id_user);
+                        }}
+                        className="inline-flex items-center justify-center"
+                      >
+                        <div
+                          className={`flex h-4 w-4 items-center justify-center rounded border-2 transition-colors ${
+                            selectedIds.has(user.id_user)
+                              ? "border-purple-500 bg-purple-500"
+                              : "border-slate-300 dark:border-slate-600 hover:border-purple-400"
+                          }`}
+                        >
+                          {selectedIds.has(user.id_user) && (
+                            <Check className="h-3 w-3 text-white" />
+                          )}
+                        </div>
+                      </button>
+                    </TableCell>
+                    <TableCell className="font-medium dark:text-slate-200" onClick={(e) => e.stopPropagation()}>{user.kode_user}</TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="h-10 w-10 overflow-hidden rounded-full border bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
                         {user.foto ? (
                           <ImagePreview src={user.foto} alt={user.nama} width={40} height={40} className="h-full w-full object-cover" />
@@ -142,10 +363,10 @@ export function UserSortableTable({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="dark:text-slate-300">{user.nama}</TableCell>
-                    <TableCell className="dark:text-slate-300">{user.username}</TableCell>
-                    <TableCell className="dark:text-slate-300">{user.email ?? "-"}</TableCell>
-                    <TableCell className="dark:text-slate-300">
+                    <TableCell className="dark:text-slate-300" onClick={(e) => e.stopPropagation()}>{user.nama}</TableCell>
+                    <TableCell className="dark:text-slate-300" onClick={(e) => e.stopPropagation()}>{user.username}</TableCell>
+                    <TableCell className="dark:text-slate-300" onClick={(e) => e.stopPropagation()}>{user.email ?? "-"}</TableCell>
+                    <TableCell className="dark:text-slate-300" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
                         {user.no_hp ?? "-"}
                         {user.no_hp && (
@@ -167,15 +388,15 @@ export function UserSortableTable({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <span className={`rounded-full px-3 py-1 text-xs font-semibold ${ROLE_BADGE_STYLES[user.role] ?? DEFAULT_ROLE_STYLE}`}>{user.role}</span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <span className={`rounded-full px-3 py-1 text-xs font-semibold ${user.status ? "bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400"}`}>
                         {user.status ? "Aktif" : "Nonaktif"}
                       </span>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center gap-2">
                         <UserFormDialog mode="edit" data={user} />
                         <DeleteUserDialog id={user.id_user} name={user.nama ?? ""} />
@@ -191,8 +412,30 @@ export function UserSortableTable({
         {/* Mobile Cards */}
         <div className="grid gap-3 md:hidden">
           {paginated.map((user) => (
-            <div key={user.id_user} className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+            <div
+              key={user.id_user}
+              className={`rounded-2xl border border-slate-200 p-4 dark:border-slate-800 ${
+                selectedIds.has(user.id_user) ? "border-purple-300 bg-purple-50 dark:bg-purple-500/10" : ""
+              }`}
+            >
               <div className="flex items-start gap-3">
+                <button
+                  type="button"
+                  onClick={() => toggleSelect(user.id_user)}
+                  className="mt-2 shrink-0"
+                >
+                  <div
+                    className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
+                      selectedIds.has(user.id_user)
+                        ? "border-purple-500 bg-purple-500"
+                        : "border-slate-300 dark:border-slate-600 hover:border-purple-400"
+                    }`}
+                  >
+                    {selectedIds.has(user.id_user) && (
+                      <Check className="h-3.5 w-3.5 text-white" />
+                    )}
+                  </div>
+                </button>
                 <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-full border bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
                   {user.foto ? (
                     <img src={user.foto} alt={user.nama} className="h-full w-full object-cover" />
@@ -246,6 +489,22 @@ export function UserSortableTable({
           <UserPagination page={page} totalPages={totalPagesCalc} />
         </div>
       </CardContent>
+
+      {/* Bulk Delete Dialog */}
+      {bulkDeleteOpen && bulkDeleteIds.length > 0 && (
+        <DeleteUserDialog
+          id={bulkDeleteIds[0]}
+          name={`${bulkDeleteIds.length} User`}
+          bulkIds={bulkDeleteIds}
+          open={bulkDeleteOpen}
+          onOpenChange={(isOpen) => {
+            setBulkDeleteOpen(isOpen);
+            if (!isOpen) {
+              handleDeleteSuccess();
+            }
+          }}
+        />
+      )}
     </Card>
   );
 }

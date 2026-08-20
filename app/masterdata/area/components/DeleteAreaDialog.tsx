@@ -19,19 +19,39 @@ import { deleteArea } from "../actions";
 interface DeleteAreaDialogProps {
   id: number;
   namaArea: string;
+  bulkIds?: number[];
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const DeleteAreaDialog = ({ id, namaArea }: DeleteAreaDialogProps) => {
-  const [open, setOpen] = useState(false);
+export const DeleteAreaDialog = ({ id, namaArea, bulkIds, open: controlledOpen, onOpenChange }: DeleteAreaDialogProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const isControlled = controlledOpen !== undefined;
+  const isOpen = isControlled ? controlledOpen : internalOpen;
+  const setIsOpen = isControlled ? onOpenChange! : setInternalOpen;
+
+  const isBulk = bulkIds && bulkIds.length > 0;
 
   const handleConfirm = () => {
     setErrorMsg(null);
     startTransition(async () => {
       try {
-        await deleteArea(id);
-        setOpen(false);
+        if (isBulk && bulkIds) {
+          // Bulk delete via API
+          const response = await fetch(`/api/area/bulk-delete?ids=${bulkIds.join(",")}`, {
+            method: "DELETE",
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || "Gagal menghapus data");
+          }
+        } else {
+          await deleteArea(id);
+        }
+        setIsOpen(false);
       } catch (err: unknown) {
         const error = err as Error;
         setErrorMsg(error.message ?? "Gagal menghapus data, coba lagi.");
@@ -40,8 +60,8 @@ export const DeleteAreaDialog = ({ id, namaArea }: DeleteAreaDialogProps) => {
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={(isOpen) => {
-      setOpen(isOpen);
+    <AlertDialog open={isOpen} onOpenChange={(isOpen) => {
+      setIsOpen(isOpen);
       if (!isOpen) setErrorMsg(null);
     }}>
       <AlertDialogTrigger
@@ -75,12 +95,14 @@ export const DeleteAreaDialog = ({ id, namaArea }: DeleteAreaDialogProps) => {
           </div>
 
           <AlertDialogTitle className="w-full text-lg font-bold text-slate-900 text-center">
-            Hapus data Area ini?
+            {isBulk ? `Hapus ${bulkIds?.length} Area ini?` : "Hapus data Area ini?"}
           </AlertDialogTitle>
           <AlertDialogDescription className="w-full text-sm text-slate-500 leading-relaxed text-center">
-            Kamu akan menghapus Area{" "}
-            <strong className="text-slate-700">&quot;{namaArea}&quot;</strong>. Data yang
-            sudah dihapus tidak bisa dikembalikan.
+            {isBulk ? (
+              <>Kamu akan menghapus <strong className="text-slate-700">{bulkIds?.length} Area</strong> yang dipilih. Data yang sudah dihapus tidak bisa dikembalikan.</>
+            ) : (
+              <>Kamu akan menghapus Area <strong className="text-slate-700">&quot;{namaArea}&quot;</strong>. Data yang sudah dihapus tidak bisa dikembalikan.</>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
 

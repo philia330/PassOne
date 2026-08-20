@@ -17,8 +17,21 @@ export async function GET(request: Request) {
       );
     }
 
-    // Ambil semua data ONT dengan relasi
+    // Parse query params untuk filter by IDs
+    const { searchParams } = new URL(request.url);
+    const idsParam = searchParams.get("ids");
+    let whereClause: any = {};
+
+    if (idsParam) {
+      const ids = idsParam.split(",").map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+      if (ids.length > 0) {
+        whereClause = { id_ont: { in: ids } };
+      }
+    }
+
+    // Ambil data ONT dengan relasi
     const allOnts = await prisma.ont.findMany({
+      where: whereClause,
       include: {
         pop: true,
         odp: true,

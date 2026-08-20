@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import React, { useState } from "react";
 import { Eye, MapPin, User, Phone, Package, Users, Calendar, Hash, FileText, CreditCard, Briefcase, Clock, CheckCircle } from "lucide-react";
 import {
   Dialog,
@@ -24,6 +25,9 @@ const LocationPickerMap = dynamic(() => import("@/components/shared/LocationPick
 
 interface FabViewDialogProps {
   fab: FabData;
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // Card-style info item for 2-column grid
@@ -78,7 +82,12 @@ function SectionDivider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function FabViewDialog({ fab }: FabViewDialogProps) {
+export function FabViewDialog({ fab, children, open: controlledOpen, onOpenChange }: FabViewDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const isOpen = isControlled ? controlledOpen : internalOpen;
+  const setIsOpen = isControlled ? onOpenChange! : setInternalOpen;
+
   const lat = Number(fab.latitude);
   const lng = Number(fab.longitude);
   const hasValidCoords = !Number.isNaN(lat) && !Number.isNaN(lng);
@@ -92,17 +101,27 @@ export function FabViewDialog({ fab }: FabViewDialogProps) {
     });
   };
 
+  const handleClick = () => {
+    setIsOpen(true);
+  };
+
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <button
-          type="button"
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
-        >
-          <Eye className="h-4 w-4 text-slate-500" />
-          <span>Lihat Detail</span>
-        </button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      {children ? (
+        <div onDoubleClick={handleClick} className="contents">
+          {children}
+        </div>
+      ) : (
+        <DialogTrigger asChild>
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <Eye className="h-4 w-4 text-slate-500" />
+            <span>Lihat Detail</span>
+          </button>
+        </DialogTrigger>
+      )}
 
       <DialogContent
         className="

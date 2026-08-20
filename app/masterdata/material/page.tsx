@@ -24,6 +24,12 @@ export default async function MaterialPage({
   // Hanya Admin yang bisa delete material
   const canDelete = currentRole === "ADMIN";
 
+  const currentUser = {
+    id_user: Number(session.user.id_user),
+    nama: session.user.nama,
+    role: currentRole,
+  };
+
   // Hanya Admin dan Leader yang bisa export
   const canExport = currentRole === "ADMIN" || currentRole === "LEADER";
 
@@ -35,7 +41,7 @@ export default async function MaterialPage({
   const kodeOtomatis = `MTR${String(totalAll + 1).padStart(3, "0")}`;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <PageHeader
         title="Data Material"
         description="Kelola seluruh data material & inventaris PASSNET"
@@ -47,7 +53,7 @@ export default async function MaterialPage({
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="text-sm text-white/80">Total Material</p>
-              <h2 className="mt-2 text-5xl font-bold">{total}</h2>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{total}</h2>
               <p className="mt-1 text-sm text-white/80">Material Terdaftar</p>
             </div>
 
@@ -62,7 +68,7 @@ export default async function MaterialPage({
         initialData={material}
         kodeOtomatis={kodeOtomatis}
         defaultValue={search}
-        canDelete={canDelete}
+        currentUser={currentUser}
         actions={canExport ? <ExportButton apiUrl="/api/material/export" filenamePrefix="Export_Material" /> : null}
       />
     </div>

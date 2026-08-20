@@ -192,7 +192,6 @@ model odp {
   latitude    Decimal
   longitude   Decimal
   jumlah_port Int?
-  stok_port   Int?      @default(0)
   id_olt      Int
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

@@ -1,11 +1,11 @@
 import { ClipboardList, AlertCircle, CheckCircle2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { FabDialog } from "@/app/jaringan/fab/components/FabDialog";
 import { FabTable } from "@/app/jaringan/fab/components/FabTable";
 import { ExportButton } from "@/components/ui/ExportButton";
+import { StatCardsDropdown } from "@/components/dashboard/StatCardsDropdown";
 
 export default async function FabPage() {
   const session = await auth();
@@ -83,53 +83,35 @@ export default async function FabPage() {
   const canExport = currentUser.role === "ADMIN" || currentUser.role === "LEADER";
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <PageHeader
         title="Data FAB"
         description="Form Aktivasi Berlangganan — pengajuan pemasangan pelanggan"
       />
 
       {/* Statistik */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="rounded-3xl border-0 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-lg">
-          <CardContent className="flex items-center justify-between p-6">
-            <div>
-              <p className="text-sm text-white/80">Total FAB</p>
-              <h2 className="mt-2 text-4xl font-bold">{fab.length}</h2>
-              <p className="mt-1 text-sm text-white/80">Pengajuan Terdaftar</p>
-            </div>
-            <div className="rounded-2xl bg-white/20 p-4">
-              <ClipboardList className="h-8 w-8" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-3xl border-0 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-lg">
-          <CardContent className="flex items-center justify-between p-6">
-            <div>
-              <p className="text-sm text-white/80">Status Open</p>
-              <h2 className="mt-2 text-4xl font-bold">{fabOpen}</h2>
-              <p className="mt-1 text-sm text-white/80">Menunggu Aktivasi</p>
-            </div>
-            <div className="rounded-2xl bg-white/20 p-4">
-              <AlertCircle className="h-8 w-8" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-3xl border-0 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-lg">
-          <CardContent className="flex items-center justify-between p-6">
-            <div>
-              <p className="text-sm text-white/80">Status Aktif</p>
-              <h2 className="mt-2 text-4xl font-bold">{fabAktif}</h2>
-              <p className="mt-1 text-sm text-white/80">Sudah Terpasang</p>
-            </div>
-            <div className="rounded-2xl bg-white/20 p-4">
-              <CheckCircle2 className="h-8 w-8" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <StatCardsDropdown
+        stats={[
+          {
+            icon: <ClipboardList className="h-8 w-8" />,
+            label: "Total FAB",
+            value: fab.length,
+            sublabel: "Pengajuan Terdaftar",
+          },
+          {
+            icon: <AlertCircle className="h-8 w-8" />,
+            label: "Status Open",
+            value: fabOpen,
+            sublabel: "Menunggu Aktivasi",
+          },
+          {
+            icon: <CheckCircle2 className="h-8 w-8" />,
+            label: "Status Aktif",
+            value: fabAktif,
+            sublabel: "Sudah Terpasang",
+          },
+        ]}
+      />
 
       <FabTable
         data={fab}

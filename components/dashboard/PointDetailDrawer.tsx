@@ -189,10 +189,10 @@ export default function PointDetailDrawer({
               const Icon = TYPE_ICON[point.type];
               const waLink = point.type === "FAB" ? formatWhatsapp(point.no_hp) : null;
               const mapsLink = `https://www.google.com/maps?q=${point.lat},${point.lng}`;
-              const portUsed =
-                typeof point.jumlah_port === "number" && typeof point.stok_port === "number"
-                  ? point.jumlah_port - point.stok_port
-                  : null;
+              const portUsed = point.port_terpakai ?? null;
+              const availablePorts = portUsed !== null && point.jumlah_port
+                ? point.jumlah_port - portUsed
+                : null;
               const portPercent =
                 portUsed !== null && point.jumlah_port
                   ? Math.min(100, Math.round((portUsed / point.jumlah_port) * 100))
@@ -364,7 +364,7 @@ export default function PointDetailDrawer({
                           <DetailRow icon={Wifi} label="Kapasitas Port">
                             <div className="flex items-center justify-between">
                               <span>
-                                {portUsed ?? "-"} terpakai dari {point.jumlah_port ?? "-"} ({point.stok_port ?? "-"} tersisa)
+                                {portUsed ?? "-"} terpakai dari {point.jumlah_port ?? "-"} ({availablePorts ?? "-"} tersisa)
                               </span>
                             </div>
                             {portPercent !== null && (

@@ -28,17 +28,23 @@ export default async function PopPage({
   // Hanya Admin yang bisa delete POP
   const canDelete = currentRole === "ADMIN";
 
-const pops = rawPops.map((pop) => ({
-  ...pop,
-  latitude: Number(pop.latitude),
-  longitude: Number(pop.longitude),
-}));
+  const currentUser = {
+    id_user: Number(session.user.id_user),
+    nama: session.user.nama,
+    role: currentRole,
+  };
+
+  const pops = rawPops.map((pop) => ({
+    ...pop,
+    latitude: Number(pop.latitude),
+    longitude: Number(pop.longitude),
+  }));
 
   // Hanya Admin dan Leader yang bisa export
   const canExport = currentRole === "ADMIN" || currentRole === "LEADER";
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <PageHeader
         title="Data POP"
         description="Kelola Point of Presence (POP) di setiap area"
@@ -49,7 +55,7 @@ const pops = rawPops.map((pop) => ({
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="text-sm text-white/80">Total POP</p>
-              <h2 className="mt-2 text-4xl font-bold">{total}</h2>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{total}</h2>
               <p className="mt-1 text-sm text-white/80">Perangkat Terdaftar</p>
             </div>
 
@@ -65,6 +71,7 @@ const pops = rawPops.map((pop) => ({
         areas={areas}
         defaultValue={search}
         canDelete={canDelete}
+        currentUser={currentUser}
         actions={canExport ? <ExportButton apiUrl="/api/pop/export" filenamePrefix="Export_POP" /> : null}
       />
     </div>

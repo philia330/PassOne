@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Select,
   SelectContent,
@@ -143,28 +144,17 @@ export const OntFormDialog = ({
                 POP
               </label>
 
-              <Select value={popValue} onValueChange={handlePopChange}>
-                <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 hover:scale-105 active:scale-95 transition-all dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
-                  <SelectValue placeholder="Pilih POP">
-                    {(value: string) =>
-                      pops.find((pop) => String(pop.id_pop) === value)?.nama_pop ??
-                      "Pilih POP"
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-
-                <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                  {pops.map((pop) => (
-                    <SelectItem
-                      key={pop.id_pop}
-                      value={String(pop.id_pop)}
-                      className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
-                    >
-                      {pop.nama_pop}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={popValue}
+                onValueChange={handlePopChange}
+                options={pops.map((pop) => ({
+                  value: String(pop.id_pop),
+                  label: pop.nama_pop,
+                }))}
+                placeholder="Pilih POP"
+                searchPlaceholder="Cari nama POP..."
+                emptyText="POP tidak ditemukan"
+              />
 
               <input type="hidden" name="id_pop" value={popValue} required />
             </div>
@@ -174,28 +164,17 @@ export const OntFormDialog = ({
                 ODP
               </label>
 
-              <Select value={odpValue} onValueChange={handleOdpChange}>
-                <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 hover:scale-105 active:scale-95 transition-all dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
-                  <SelectValue placeholder="Pilih ODP">
-                    {(value: string) =>
-                      odps.find((odp) => String(odp.id_odp) === value)?.nama_odp ??
-                      "Pilih ODP"
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-
-                <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                  {odps.map((odp) => (
-                    <SelectItem
-                      key={odp.id_odp}
-                      value={String(odp.id_odp)}
-                      className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
-                    >
-                      {odp.nama_odp}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={odpValue}
+                onValueChange={handleOdpChange}
+                options={odps.map((odp) => ({
+                  value: String(odp.id_odp),
+                  label: odp.nama_odp,
+                }))}
+                placeholder="Pilih ODP"
+                searchPlaceholder="Cari nama ODP..."
+                emptyText="ODP tidak ditemukan"
+              />
 
               <input type="hidden" name="id_odp" value={odpValue} required />
             </div>

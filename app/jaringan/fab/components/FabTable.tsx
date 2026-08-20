@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback, ReactNode } from "react";
+import { useMemo, useState, useEffect, ReactNode, useCallback } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   Search,
@@ -8,13 +8,22 @@ import {
   Phone,
   ArrowUp,
   ArrowDown,
-  ArrowUpDown,
   ImageIcon,
   Filter,
   X,
   Loader2,
+  IdCard,
+  Router,
+  Package,
+  UserRound,
+  Calendar,
+  Trash2,
+  Download,
+  Check,
 } from "lucide-react";
 import { FabActionsDropdown } from "./FabActionsDropdown";
+import { FabViewDialog } from "./FabViewDialog";
+import { FabDeleteDialog } from "./FabDeleteDialog";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +45,8 @@ import {
 } from "@/components/ui/select";
 import { FabPagination } from "@/app/jaringan/fab/components/FabPagination";
 import { FabDialog } from "./FabDialog";
+import { PageSizeSelector } from "@/components/ui/page-size-selector";
+import { toast } from "sonner";
 import type {
   FabData,
   AreaOption,
@@ -64,26 +75,6 @@ function SkeletonRow({ colCount = 13 }: { colCount?: number }) {
   );
 }
 
-function SkeletonCard({ key }: { key: number }) {
-  return (
-    <div
-      key={key}
-      className="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-800/40"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="space-y-1.5">
-          <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-          <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-        </div>
-        <div className="h-8 w-8 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-700" />
-      </div>
-      <div className="h-3 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-      <div className="h-3 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-      <div className="h-3 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-    </div>
-  );
-}
-
 interface FabTableProps {
   data: FabData[];
   areaOptions: AreaOption[];
@@ -100,6 +91,11 @@ const PAGE_SIZE = 5;
 const STATUS_TEXT_STYLE: Record<StatusFab, string> = {
   OPEN: "text-sky-600 dark:text-sky-400",
   AKTIF: "text-green-600 dark:text-green-400",
+};
+
+const STATUS_BADGE_STYLE: Record<StatusFab, string> = {
+  OPEN: "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400",
+  AKTIF: "bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400",
 };
 
 const STATUS_LABEL: Record<StatusFab, string> = {
@@ -167,8 +163,18 @@ export const FabTable = ({
   const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Selection state for bulk actions
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [deleteItem, setDeleteItem] = useState<FabData | null>(null);
+  const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [selectAllPage, setSelectAllPage] = useState(false);
+  const [viewItem, setViewItem] = useState<FabData | null>(null);
 
   // Detect when navigation happens (e.g., after router.refresh())
   useEffect(() => {
@@ -185,6 +191,53 @@ export const FabTable = ({
   const [filterPenginput, setFilterPenginput] = useState<string>(() => {
     return isSalesOrTeknisi ? String(currentUser.id_user) : "all";
   });
+
+  // Filter bulan - default ke bulan berjalan
+  const getCurrentYear = () => new Date().getFullYear();
+  const getCurrentMonth = () => String(new Date().getMonth() + 1).padStart(2, "0");
+
+  const getMonthName = (monthKey: string) => {
+    if (monthKey === "all") return "Semua";
+    const date = new Date(2024, parseInt(monthKey) - 1);
+    return date.toLocaleDateString("id-ID", { month: "short" });
+  };
+
+  const getYearLabel = (year: string) => {
+    if (year === "all") return "Semua Tahun";
+    return year;
+  };
+
+  const [filterTahun, setFilterTahun] = useState<string>(() => String(getCurrentYear()));
+  const [filterBulan, setFilterBulan] = useState<string>(() => getCurrentMonth());
+
+  // Clear selection when filters/search change
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setSelectAllPage(false);
+  }, [search, filterPenginput, filterTahun, filterBulan]);
+
+  // Generate year options (current year - 2 to current year)
+  const yearOptions = useMemo(() => {
+    const current = getCurrentYear();
+    return ["all", String(current - 2), String(current - 1), String(current)];
+  }, []);
+
+  // Month options
+  const monthOptions = [
+    { key: "all", label: "Semua" },
+    { key: "01", label: "Jan" },
+    { key: "02", label: "Feb" },
+    { key: "03", label: "Mar" },
+    { key: "04", label: "Apr" },
+    { key: "05", label: "Mei" },
+    { key: "06", label: "Jun" },
+    { key: "07", label: "Jul" },
+    { key: "08", label: "Agt" },
+    { key: "09", label: "Sep" },
+    { key: "10", label: "Okt" },
+    { key: "11", label: "Nov" },
+    { key: "12", label: "Des" },
+  ];
 
   const toggleSort = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -212,12 +265,21 @@ export const FabTable = ({
       const penginputId = item.penginput?.id_user;
       const matchesPenginput = filterPenginput === "all" || penginputId === Number(filterPenginput);
 
-      return matchesSearch && matchesPenginput;
-    });
-  }, [sortedData, search, filterPenginput]);
+      // Filter berdasarkan tahun dan bulan
+      const itemDate = new Date(item.createdAt);
+      const itemYear = String(itemDate.getFullYear());
+      const itemMonth = String(itemDate.getMonth() + 1).padStart(2, "0");
+      const matchesTahun = filterTahun === "all" || itemYear === filterTahun;
+      const matchesBulan = filterBulan === "all" || itemMonth === filterBulan;
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+      return matchesSearch && matchesPenginput && matchesTahun && matchesBulan;
+    });
+  }, [sortedData, search, filterPenginput, filterTahun, filterBulan]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  // Selection persists across pages but does NOT auto-select on page change
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -234,91 +296,334 @@ export const FabTable = ({
     setPage(1);
   };
 
+  const clearBulanFilter = () => {
+    setFilterBulan("all");
+    setPage(1);
+  };
+
+  const clearTahunFilter = () => {
+    setFilterTahun("all");
+    setPage(1);
+  };
+
   const canEdit = (item: FabData) => {
     if (currentUser.role !== "SALES" && currentUser.role !== "TEKNISI") return true;
     return item.penginput?.id_user === currentUser.id_user;
   };
 
-  // Hanya Admin dan Leader yang bisa hapus
-  const canDelete = currentUser.role === "ADMIN" || currentUser.role === "LEADER";
+  // Hanya Admin yang bisa hapus
+  const canDelete = currentUser.role === "ADMIN";
+
+  // Toggle single item selection
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Toggle all visible items (per page)
+  const toggleSelectAll = () => {
+    const allSelected = paginated.every((item) => selectedIds.has(item.id_fab));
+    if (selectAllPage && allSelected) {
+      // Uncheck all on current page only
+      setSelectAllPage(false);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        paginated.forEach((item) => next.delete(item.id_fab));
+        return next;
+      });
+    } else {
+      // Select all on current page and enable auto-select mode
+      setSelectAllPage(true);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        paginated.forEach((item) => next.add(item.id_fab));
+        return next;
+      });
+    }
+  };
+
+  // Bulk delete handler
+  const handleBulkDelete = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) {
+      toast.error("Pilih item yang ingin dihapus");
+      return;
+    }
+    setBulkDeleteIds(ids);
+    setBulkDeleteOpen(true);
+  };
+
+  // Bulk export handler
+  const handleBulkExport = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) {
+      toast.error("Pilih item yang ingin diekspor");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const response = await fetch(`/api/fab/export?ids=${ids.join(",")}`);
+
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.message || "Gagal mengekspor data");
+        return;
+      }
+
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const filename = contentDisposition
+        ? contentDisposition.split("filename=")[1]?.replace(/"/g, "")
+        : `Export_FAB_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+      const urlBlob = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = urlBlob;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(urlBlob);
+
+      toast.success(`Berhasil mengekspor ${ids.length} data FAB`);
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Terjadi kesalahan saat mengekspor data");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Handle delete success
+  const handleDeleteSuccess = () => {
+    setSelectedIds(new Set());
+    setSelectAllPage(false);
+    setBulkDeleteOpen(false);
+    setBulkDeleteIds([]);
+  };
 
   const showFilterDropdown = isSalesOrTeknisi ? true : penginputOptions.length > 0;
 
   return (
     <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
-      <div className="space-y-6 p-4 sm:p-6">
-        {/* Search bar + Filter + Tambah */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-full max-w-xs">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
-              <Input
-                type="text"
-                placeholder="Cari kode FAB / nama pelanggan / NIK..."
-                value={search}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="h-11 rounded-2xl border-slate-200 pl-11 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
+      <div className="space-y-4 p-4 sm:p-6">
+        {/* Bulk Action Bar - muncul saat ada item terpilih */}
+        {selectedIds.size > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl bg-purple-50 p-3 sm:p-4 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30">
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500 text-white font-bold text-sm">
+                {selectedIds.size}
+              </span>
+              <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">
+                item dipilih
+              </span>
             </div>
-
-            {/* Filter Dropdown - hanya tampil jika ada opsi atau role yang sesuai */}
-            {showFilterDropdown && (
-              <div className="flex items-center gap-2">
-                <Select value={filterPenginput} onValueChange={handleFilterChange}>
-                  <SelectTrigger className="h-11 w-[180px] rounded-2xl border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-                    <Filter className="h-4 w-4 mr-2 text-slate-400" />
-                    <SelectValue placeholder="Filter penginput">
-                      {(value: string) => {
-                        if (value === "all") return "Semua";
-                        if (isSalesOrTeknisi && value === String(currentUser.id_user)) {
-                          return `Saya (${currentUser.nama})`;
-                        }
-                        const opt = penginputOptions.find((o) => String(o.id_user) === value);
-                        return opt?.nama ?? "Filter penginput";
-                      }}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isSalesOrTeknisi && (
-                      <SelectItem value={String(currentUser.id_user)}>
-                        Saya ({currentUser.nama})
-                      </SelectItem>
-                    )}
-                    <SelectItem value="all">Semua</SelectItem>
-                    {penginputOptions.map((opt) => (
-                      <SelectItem key={opt.id_user} value={String(opt.id_user)}>
-                        {opt.nama}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {/* Clear filter button */}
-                {filterPenginput !== "all" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearFilter}
-                    className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
-                  >
-                    <X className="h-4 w-4 text-slate-500" />
-                  </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {canDelete && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleBulkDelete}
+                  className="h-9 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
+                >
+                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  Hapus
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleBulkExport}
+                disabled={isExporting}
+                className="h-9 rounded-xl text-green-600 hover:bg-green-50 hover:text-green-700 dark:text-green-400 dark:hover:bg-green-500/10"
+              >
+                {isExporting ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-1.5 h-4 w-4" />
                 )}
-              </div>
-            )}
+                Export Excel
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => { setSelectedIds(new Set()); setSelectAllPage(false); }}
+                className="h-9 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="mr-1.5 h-4 w-4" />
+                Batal
+              </Button>
+            </div>
           </div>
+        )}
 
-          <div className="flex items-center gap-2">
-            {actions}
-            <FabDialog
-              mode="create"
-              kodeOtomatis={kodeOtomatis}
-              areaOptions={areaOptions}
-              paketOptions={paketOptions}
-              salesOptions={salesOptions}
-              currentUser={currentUser}
-            />
-          </div>
+        {/* Baris 1: Search (kiri) + Sort mobile & Aksi & Tambah (kanan) */}
+<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <div className="relative w-full max-w-xs">
+    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
+    <Input
+      type="text"
+      placeholder="Cari kode FAB / nama pelanggan / NIK..."
+      value={search}
+      onChange={(e) => handleSearchChange(e.target.value)}
+      className="h-11 rounded-2xl border-slate-200 pl-11 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+    />
+  </div>
+
+  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+    <button
+      type="button"
+      onClick={toggleSort}
+      className="md:hidden inline-flex h-11 items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors flex-shrink-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-800/70"
+    >
+      {sortOrder === "asc" ? (
+        <ArrowUp size={16} className="text-purple-500" />
+      ) : (
+        <ArrowDown size={16} className="text-purple-500" />
+      )}
+      <span>{sortOrder === "asc" ? "Terlama" : "Terbaru"}</span>
+    </button>
+
+    {actions}
+    <FabDialog
+      mode="create"
+      kodeOtomatis={kodeOtomatis}
+      areaOptions={areaOptions}
+      paketOptions={paketOptions}
+      salesOptions={salesOptions}
+      currentUser={currentUser}
+    />
+  </div>
+</div>
+
+        {/* Baris 2: Filter Penginput + Filter Bulan + Page Size Selector */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Filter Dropdown Penginput - hanya tampil jika ada opsi atau role yang sesuai */}
+          {showFilterDropdown && (
+            <div className="flex items-center gap-2">
+              <Select value={filterPenginput} onValueChange={handleFilterChange}>
+                <SelectTrigger className="h-11 w-[190px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+                  <Filter className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+                  <SelectValue placeholder="Filter penginput">
+                    {(value: string) => {
+                      if (value === "all") return "Semua";
+                      if (isSalesOrTeknisi && value === String(currentUser.id_user)) {
+                        return `Saya (${currentUser.nama})`;
+                      }
+                      const opt = penginputOptions.find((o) => String(o.id_user) === value);
+                      return opt?.nama ?? "Filter penginput";
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="max-h-64 overflow-y-auto rounded-2xl border-slate-200 p-1.5 shadow-lg dark:border-slate-700">
+                  {isSalesOrTeknisi && (
+                    <SelectItem
+                      value={String(currentUser.id_user)}
+                      className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                    >
+                      <UserRound className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                      <span className="font-medium">Saya ({currentUser.nama})</span>
+                    </SelectItem>
+                  )}
+                  <SelectItem
+                    value="all"
+                    className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                  >
+                    <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>Semua</span>
+                  </SelectItem>
+                  {penginputOptions.map((opt) => (
+                    <SelectItem
+                      key={opt.id_user}
+                      value={String(opt.id_user)}
+                      className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                    >
+                      <UserRound className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>{opt.nama}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Clear filter button */}
+              {filterPenginput !== "all" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilter}
+                  className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+                >
+                  <X className="h-4 w-4 text-slate-500" />
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Filter Dropdown Tahun */}
+          <Select value={filterTahun} onValueChange={(value) => { if (value) { setFilterTahun(value); setPage(1); } }}>
+            <SelectTrigger className="h-11 w-[130px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+              <Calendar className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+              <SelectValue>
+                {filterTahun === "all" ? (
+                  <span>Semua Thn</span>
+                ) : (
+                  <span>{filterTahun}</span>
+                )}
+              </SelectValue>
+            </SelectTrigger>
+             <SelectContent
+    side="bottom"
+    alignItemWithTrigger={false}
+    className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]"
+  >
+  {yearOptions.map((year) => (<SelectItem key={year} value={year} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"><span className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" /><span>{year === "all" ? "Semua" : year}</span></span></SelectItem>))}
+</SelectContent>
+          </Select>
+
+          {/* Filter Dropdown Bulan */}
+          <Select value={filterBulan} onValueChange={(value) => { if (value) { setFilterBulan(value); setPage(1); } }}>
+            <SelectTrigger className="h-11 w-[110px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+              <Calendar className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+              <SelectValue>
+                {filterBulan === "all" ? (
+                  <span>Semua</span>
+                ) : (
+                  <span>{getMonthName(filterBulan)}</span>
+                )}
+              </SelectValue>
+            </SelectTrigger>
+              <SelectContent
+    side="bottom"
+    alignItemWithTrigger={false}
+    className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]"
+  >
+  {monthOptions.map((opt) => (
+                <SelectItem key={opt.key} value={opt.key} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                  <span className="flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>{opt.key === "all" ? "Semua" : opt.label}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Page Size Selector */}
+          <PageSizeSelector
+            value={pageSize}
+            onValueChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+          />
         </div>
 
         {/* ====================================================== */}
@@ -328,6 +633,26 @@ export const FabTable = ({
           <Table>
             <TableHeader>
               <TableRow className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/50">
+                <TableHead className="w-12 text-center dark:text-slate-300">
+                  <button
+                    type="button"
+                    onClick={toggleSelectAll}
+                    className="inline-flex items-center justify-center"
+                    title={selectAllPage ? "Batalkan pilih semua halaman ini" : "Pilih semua halaman ini"}
+                  >
+                    <div
+                      className={`flex h-4 w-4 items-center justify-center rounded border-2 transition-colors ${
+                        paginated.length > 0 && paginated.every((item) => selectedIds.has(item.id_fab))
+                          ? "border-purple-500 bg-purple-500"
+                          : "border-slate-300 dark:border-slate-600 hover:border-purple-400"
+                      }`}
+                    >
+                      {paginated.length > 0 && paginated.every((item) => selectedIds.has(item.id_fab)) && (
+                        <Check className="h-3 w-3 text-white" />
+                      )}
+                    </div>
+                  </button>
+                </TableHead>
                 <TableHead className="dark:text-slate-300">
                   <button
                     type="button"
@@ -360,17 +685,16 @@ export const FabTable = ({
 
             <TableBody>
               {isLoading ? (
-                // Skeleton loading rows
                 <>
-                  <SkeletonRow colCount={13} />
-                  <SkeletonRow colCount={13} />
-                  <SkeletonRow colCount={13} />
-                  <SkeletonRow colCount={13} />
-                  <SkeletonRow colCount={13} />
+                  <SkeletonRow colCount={14} />
+                  <SkeletonRow colCount={14} />
+                  <SkeletonRow colCount={14} />
+                  <SkeletonRow colCount={14} />
+                  <SkeletonRow colCount={14} />
                 </>
               ) : paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} className="py-10 text-center text-slate-400 dark:text-slate-500">
+                  <TableCell colSpan={14} className="py-10 text-center text-slate-400 dark:text-slate-500">
                     {search
                       ? "Tidak ada data FAB yang cocok dengan pencarian"
                       : "Belum ada data FAB"}
@@ -380,15 +704,44 @@ export const FabTable = ({
                 paginated.map((item) => (
                   <TableRow
                     key={item.id_fab}
-                    className="border-b border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                    className={`border-b border-slate-200 dark:border-slate-800 transition-colors cursor-pointer ${
+                      selectedIds.has(item.id_fab)
+                        ? "bg-purple-50 dark:bg-purple-500/10"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    }`}
+                    onDoubleClick={() => setViewItem(item)}
                   >
+                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelect(item.id_fab);
+                        }}
+                        className="inline-flex items-center justify-center"
+                      >
+                        <div
+                          className={`flex h-4 w-4 items-center justify-center rounded border-2 transition-colors ${
+                            selectedIds.has(item.id_fab)
+                              ? "border-purple-500 bg-purple-500"
+                              : "border-slate-300 dark:border-slate-600 hover:border-purple-400"
+                          }`}
+                        >
+                          {selectedIds.has(item.id_fab) && (
+                            <Check className="h-3 w-3 text-white" />
+                          )}
+                        </div>
+                      </button>
+                    </TableCell>
                     <TableCell className="font-medium dark:text-slate-200">
                       {item.kode_fab}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <FabFotoButton foto={item.foto} namaPelanggan={item.nama_pelanggan} />
                     </TableCell>
-                    <TableCell className="dark:text-slate-300">{item.nama_pelanggan}</TableCell>
+                    <TableCell className="dark:text-slate-300">
+                      {item.nama_pelanggan}
+                    </TableCell>
                     <TableCell className="dark:text-slate-300">{item.nik}</TableCell>
                     <TableCell className="dark:text-slate-300">{item.no_hp}</TableCell>
                     <TableCell className="max-w-[180px] truncate text-slate-500 dark:text-slate-400">
@@ -408,7 +761,7 @@ export const FabTable = ({
                     <TableCell className="text-slate-500 dark:text-slate-400">
                       {formatTanggal(item.createdAt)}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center gap-1">
                         <FabActionsDropdown
                           fab={item}
@@ -428,107 +781,139 @@ export const FabTable = ({
           </Table>
         </div>
 
-        {/* MOBILE: toggle sort */}
+        {/* MOBILE: cards */}
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
           </div>
         ) : (
-          <>
-            <div className="md:hidden flex justify-end">
-              <button
-                type="button"
-                onClick={toggleSort}
-                className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:text-purple-600 hover:border-purple-200 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-              >
-                <ArrowUpDown size={16} />
-                {sortOrder === "asc" ? "Terlama dulu" : "Terbaru dulu"}
-              </button>
-            </div>
-
-            {/* ====================================================== */}
-            {/* Versi Card - hanya muncul di HP (di bawah breakpoint md:) */}
-            {/* ====================================================== */}
-            <div className="grid gap-3 md:hidden">
-              {paginated.length === 0 ? (
-                <div className="rounded-2xl border border-slate-200 py-10 text-center text-slate-400 dark:border-slate-800 dark:text-slate-500">
-                  {search
-                    ? "Tidak ada data FAB yang cocok dengan pencarian"
-                    : "Belum ada data FAB"}
-                </div>
-              ) : (
-                paginated.map((item) => (
-                  <div
-                    key={item.id_fab}
-                    className="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-800/40"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-semibold text-slate-900 dark:text-slate-100">
+          <div className="grid gap-3 md:hidden">
+            {paginated.length === 0 ? (
+              <div className="rounded-2xl border border-slate-200 py-10 text-center text-slate-400 dark:border-slate-800 dark:text-slate-500">
+                {search
+                  ? "Tidak ada data FAB yang cocok dengan pencarian"
+                  : "Belum ada data FAB"}
+              </div>
+            ) : (
+              paginated.map((item) => (
+                <div
+                  key={item.id_fab}
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-800/40 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                  onDoubleClick={() => setViewItem(item)}
+                >
+                  {/* Header: kode + nama + status + aksi */}
+                  <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <FabFotoButton foto={item.foto} namaPelanggan={item.nama_pelanggan} />
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-900 dark:text-slate-100">
                           {item.nama_pelanggan}
                         </p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                          {item.kode_fab}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <FabFotoButton foto={item.foto} namaPelanggan={item.nama_pelanggan} />
-                        <FabActionsDropdown
-                          fab={item}
-                          areaOptions={areaOptions}
-                          paketOptions={paketOptions}
-                          salesOptions={salesOptions}
-                          currentUser={currentUser}
-                          canEdit={canEdit(item)}
-                          canDelete={canDelete}
-                        />
+                        <p className="text-xs text-slate-400 dark:text-slate-500">{item.kode_fab}</p>
                       </div>
                     </div>
 
-                    <p className="text-xs text-slate-500 dark:text-slate-400">NIK: {item.nik}</p>
+                    <div className="flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_BADGE_STYLE[item.status]}`}
+                      >
+                        {STATUS_LABEL[item.status]}
+                      </span>
+                      <FabActionsDropdown
+                        fab={item}
+                        areaOptions={areaOptions}
+                        paketOptions={paketOptions}
+                        salesOptions={salesOptions}
+                        currentUser={currentUser}
+                        canEdit={canEdit(item)}
+                        canDelete={canDelete}
+                      />
+                    </div>
+                  </div>
 
-                    <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
-                      <Phone size={12} className="text-slate-400 dark:text-slate-500" />
+                  {/* Body: detail kontak & alamat */}
+                  <div className="space-y-2 p-4 text-sm">
+                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                      <IdCard size={14} className="shrink-0 text-slate-400 dark:text-slate-500" />
+                      <span className="font-mono text-xs">{item.nik}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                      <Phone size={14} className="shrink-0 text-slate-400 dark:text-slate-500" />
                       {item.no_hp}
                     </div>
 
-                    <div className="flex items-start gap-1 text-sm text-slate-600 dark:text-slate-300">
-                      <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
+                    <div className="flex items-start gap-2 text-slate-600 dark:text-slate-300">
+                      <MapPin size={14} className="mt-0.5 shrink-0 text-slate-400 dark:text-slate-500" />
                       <span className="line-clamp-2">{item.alamat}</span>
                     </div>
-
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Area: {item.area?.nama_area ?? "-"} &middot; Paket: {item.paket?.nama_paket ?? "-"}
-                    </p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Sales: {item.users?.nama ?? "-"}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <DiinputOlehCell item={item} />
-                      <span className={`text-sm font-semibold ${STATUS_TEXT_STYLE[item.status]}`}>
-                        {STATUS_LABEL[item.status]}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">
-                      Dibuat: {formatTanggal(item.createdAt)}
-                    </p>
                   </div>
-                ))
-              )}
-            </div>
-          </>
+
+                  {/* Footer: area/paket/sales/diinput/tanggal */}
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-slate-100 bg-slate-50/60 p-4 text-xs dark:border-slate-800 dark:bg-slate-900/40">
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                      <Router size={12} className="shrink-0" />
+                      <span className="truncate">{item.area?.nama_area ?? "-"}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                      <Package size={12} className="shrink-0" />
+                      <span className="truncate">{item.paket?.nama_paket ?? "-"}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                      <UserRound size={12} className="shrink-0" />
+                      <span className="truncate">Sales: {item.users?.nama ?? "-"}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                      <Calendar size={12} className="shrink-0" />
+                      {formatTanggal(item.createdAt)}
+                    </div>
+                    <div className="col-span-2 flex items-center gap-1.5 pt-1 border-t border-slate-200/70 dark:border-slate-700/50">
+                      <span className="text-slate-400 dark:text-slate-500">Diinput:</span>
+                      <DiinputOlehCell item={item} />
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         )}
 
+        {/* Pagination -- didorong ke kanan */}
         <div className="flex justify-end">
           <FabPagination
             page={page}
             totalPages={totalPages}
             totalItems={filtered.length}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             onPageChange={setPage}
           />
         </div>
       </div>
+
+      {/* Bulk Delete Dialog */}
+      {bulkDeleteOpen && bulkDeleteIds.length > 0 && (
+        <FabDeleteDialog
+          bulkIds={bulkDeleteIds}
+          open={bulkDeleteOpen}
+          onOpenChange={(isOpen) => {
+            setBulkDeleteOpen(isOpen);
+            if (!isOpen) {
+              handleDeleteSuccess();
+            }
+          }}
+        />
+      )}
+
+      {/* View Detail Dialog - triggered by double-click */}
+      {viewItem && (
+        <FabViewDialog
+          fab={viewItem}
+          open={!!viewItem}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setViewItem(null);
+          }}
+        />
+      )}
     </Card>
   );
 };

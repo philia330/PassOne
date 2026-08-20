@@ -26,13 +26,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type {
   FabData,
   AreaOption,
@@ -532,20 +525,17 @@ export const FabForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <Building2 size={13} className="text-purple-500" /> Area
         </Label>
-        <Select value={idArea} onValueChange={(v) => setIdArea(v ?? "")}>
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-            <SelectValue placeholder="Pilih area">
-              {idArea ? getAreaName(idArea) : "Pilih area"}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {areaOptions.map((a) => (
-              <SelectItem key={a.id_area} value={String(a.id_area)}>
-                {a.nama_area}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={idArea}
+          onValueChange={(v) => setIdArea(v)}
+          options={areaOptions.map((a) => ({
+            value: String(a.id_area),
+            label: a.nama_area,
+          }))}
+          placeholder="Pilih area"
+          searchPlaceholder="Cari nama area..."
+          emptyText="Area tidak ditemukan"
+        />
         <input type="hidden" name="id_area" value={idArea} required />
       </div>
 
@@ -553,20 +543,17 @@ export const FabForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <Package size={13} className="text-purple-500" /> Paket Internet
         </Label>
-        <Select value={idPaket} onValueChange={(v) => setIdPaket(v ?? "")}>
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-            <SelectValue placeholder="Pilih paket">
-              {idPaket ? getPaketName(idPaket) : "Pilih paket"}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {paketOptions.map((p) => (
-              <SelectItem key={p.id_paket} value={String(p.id_paket)}>
-                {p.nama_paket}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={idPaket}
+          onValueChange={(v) => setIdPaket(v)}
+          options={paketOptions.map((p) => ({
+            value: String(p.id_paket),
+            label: p.nama_paket,
+          }))}
+          placeholder="Pilih paket"
+          searchPlaceholder="Cari nama paket..."
+          emptyText="Paket tidak ditemukan"
+        />
         <input type="hidden" name="id_paket" value={idPaket} required />
       </div>
 

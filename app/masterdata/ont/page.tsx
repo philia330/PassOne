@@ -23,6 +23,12 @@ export default async function OntPage({
   // Hanya Admin yang bisa delete ONT
   const canDelete = currentRole === "ADMIN";
 
+  const currentUser = {
+    id_user: Number(session.user.id_user),
+    nama: session.user.nama,
+    role: currentRole,
+  };
+
   const [{ data: onts, total, totalPages }, pops, odps] = await Promise.all([
     getOnts(search, page),
     getPops(),
@@ -33,7 +39,7 @@ export default async function OntPage({
   const canExport = currentRole === "ADMIN" || currentRole === "LEADER";
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <PageHeader
         title="Data ONT"
         description="Kelola perangkat Optical Network Terminal (ONT) pelanggan"
@@ -45,7 +51,7 @@ export default async function OntPage({
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="text-sm text-white/80">Total ONT</p>
-              <h2 className="mt-2 text-4xl font-bold">{total}</h2>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{total}</h2>
               <p className="mt-1 text-sm text-white/80">Perangkat Terdaftar</p>
             </div>
 
@@ -62,6 +68,7 @@ export default async function OntPage({
         odps={odps}
         defaultValue={search}
         canDelete={canDelete}
+        currentUser={currentUser}
         actions={canExport ? <ExportButton apiUrl="/api/ont/export" filenamePrefix="Export_ONT" /> : null}
       />
     </div>

@@ -70,17 +70,18 @@ export const getOdps = async () => {
 export const createPortPon = async (formData: FormData) => {
   const nomor_port = parseInt(formData.get("nomor_port") as string, 10) || 0;
   const tipe_kartu = (formData.get("tipe_kartu") as string) || "";
-  const status = (formData.get("status") as portpon_status) || "TERSEDIA"; // ✅ Menggunakan portpon_status
+  const status = (formData.get("status") as portpon_status) || "TERSEDIA";
   const id_olt = parseInt(formData.get("id_olt") as string, 10);
+  const id_odp_raw = formData.get("id_odp") as string;
+  const id_odp = parseInt(id_odp_raw, 10);
 
   if (!id_olt) {
     throw new Error("OLT wajib dipilih");
   }
 
-  // Konversi string kosong ("") menjadi null
-  const id_odp_raw = formData.get("id_odp") as string;
-  const id_odp =
-    id_odp_raw && id_odp_raw.trim() !== "" ? parseInt(id_odp_raw, 10) : null;
+  if (!id_odp) {
+    throw new Error("ODP wajib dipilih");
+  }
 
   await prisma.portPon.create({
     data: { nomor_port, tipe_kartu, status, id_olt, id_odp },
@@ -95,17 +96,18 @@ export const createPortPon = async (formData: FormData) => {
 export const updatePortPon = async (id: number, formData: FormData) => {
   const nomor_port = parseInt(formData.get("nomor_port") as string, 10) || 0;
   const tipe_kartu = (formData.get("tipe_kartu") as string) || "";
-  const status = (formData.get("status") as portpon_status) || "TERSEDIA"; // ✅ Menggunakan portpon_status
+  const status = (formData.get("status") as portpon_status) || "TERSEDIA";
   const id_olt = parseInt(formData.get("id_olt") as string, 10);
+  const id_odp_raw = formData.get("id_odp") as string;
+  const id_odp = parseInt(id_odp_raw, 10);
 
   if (!id_olt) {
     throw new Error("OLT wajib dipilih");
   }
 
-  // Konversi string kosong ("") menjadi null
-  const id_odp_raw = formData.get("id_odp") as string;
-  const id_odp =
-    id_odp_raw && id_odp_raw.trim() !== "" ? parseInt(id_odp_raw, 10) : null;
+  if (!id_odp) {
+    throw new Error("ODP wajib dipilih");
+  }
 
   await prisma.portPon.update({
     where: { id_port: id },

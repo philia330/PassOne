@@ -8,17 +8,29 @@ export async function GET(request: Request) {
   try {
     const session = await auth();
 
-    // Only ADMIN and LOGISTIK can export
-    const allowedRoles = [Role.ADMIN, Role.LOGISTIK];
-    if (!session || !allowedRoles.includes(session.user?.role as Role)) {
+    // Only ADMIN and LEADER can export
+    if (!session || (session.user?.role !== Role.ADMIN && session.user?.role !== Role.LEADER)) {
       return NextResponse.json(
-        { success: false, message: "Akses ditolak. Hanya Admin atau Logistik yang dapat mengekspor data." },
+        { success: false, message: "Akses ditolak. Hanya Admin atau Leader yang dapat mengekspor data." },
         { status: 403 }
       );
     }
 
-    // Ambil semua data Paket
+    // Parse query params untuk filter by IDs
+    const { searchParams } = new URL(request.url);
+    const idsParam = searchParams.get("ids");
+    let whereClause: any = {};
+
+    if (idsParam) {
+      const ids = idsParam.split(",").map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+      if (ids.length > 0) {
+        whereClause = { id_paket: { in: ids } };
+      }
+    }
+
+    // Ambil data Paket
     const allPakets = await prisma.paket.findMany({
+      where: whereClause,
       orderBy: { createdAt: "desc" },
     });
 

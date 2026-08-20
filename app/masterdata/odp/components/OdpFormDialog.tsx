@@ -18,13 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 import { createOdp, updateOdp } from "../actions";
 
@@ -191,26 +185,17 @@ export const OdpFormDialog = ({
           <div className="space-y-2">
             <label className="text-sm font-medium">OLT</label>
 
-            <Select value={oltValue} onValueChange={handleOltChange}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 hover:scale-105 active:scale-95 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                <SelectValue placeholder="Pilih OLT">
-                  {(value: string) =>
-                    olts.find((olt) => String(olt.id_olt) === value)?.nama_olt ?? "Pilih OLT"
-                  }
-                </SelectValue>
-              </SelectTrigger>
-
-              <SelectContent>
-                {olts.map((olt) => (
-                  <SelectItem
-                    key={olt.id_olt}
-                    value={String(olt.id_olt)}
-                  >
-                    {olt.nama_olt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={oltValue}
+              onValueChange={handleOltChange}
+              options={olts.map((olt) => ({
+                value: String(olt.id_olt),
+                label: olt.nama_olt,
+              }))}
+              placeholder="Pilih OLT"
+              searchPlaceholder="Cari nama OLT..."
+              emptyText="OLT tidak ditemukan"
+            />
 
             <input type="hidden" name="id_olt" value={oltValue} required />
           </div>
@@ -240,16 +225,16 @@ export const OdpFormDialog = ({
           {/* Jumlah Port - setelah Alamat, sebelum Peta */}
           <div className="space-y-2">
             <label className="text-sm font-medium">
-              Jumlah Port{" "}
-              <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
+              Jumlah Port
             </label>
             <Input
               name="jumlah_port"
               type="number"
-              min={0}
+              min={1}
               value={jumlahPort}
               onChange={(e) => setJumlahPort(e.target.value)}
               placeholder="Contoh: 16"
+              required
               className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>

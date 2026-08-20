@@ -17,8 +17,21 @@ export async function GET(request: Request) {
       );
     }
 
-    // Ambil semua data Port PON dengan relasi
+    // Parse query params untuk filter by IDs
+    const { searchParams } = new URL(request.url);
+    const idsParam = searchParams.get("ids");
+    let whereClause: any = {};
+
+    if (idsParam) {
+      const ids = idsParam.split(",").map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+      if (ids.length > 0) {
+        whereClause = { id_port: { in: ids } };
+      }
+    }
+
+    // Ambil data Port PON dengan relasi
     const allPorts = await prisma.portPon.findMany({
+      where: whereClause,
       include: {
         olt: true,
         odp: true,

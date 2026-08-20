@@ -258,6 +258,63 @@ export async function getMaterialTotal() {
   return prisma.material.count();
 }
 
+/**
+ * ======================================
+ * GET BAA USAGE FOR A MATERIAL
+ * ======================================
+ */
+export async function getMaterialBaaUsage(id_material: number) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  // Ambil semua detail BAA yang menggunakan material ini
+  const baaDetails = await prisma.baadetail.findMany({
+    where: { id_material },
+    include: {
+      baa: {
+        include: {
+          fab: {
+            select: {
+              nama_pelanggan: true,
+            },
+          },
+          users: {
+            select: {
+              nama: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      baa: {
+        tanggal_instalasi: "desc",
+      },
+    },
+  });
+
+  // Format data penggunaan
+  const usageData = baaDetails.map((detail) => ({
+    id_baa: detail.baa.id_baa,
+    kode_baa: detail.baa.kode_baa,
+    tanggal_instalasi: detail.baa.tanggal_instalasi,
+    nama_pelanggan: detail.baa.fab.nama_pelanggan,
+    jumlah: detail.jumlah,
+    keterangan: detail.keterangan,
+    teknisi_utama: detail.baa.users.nama,
+  }));
+
+  // Total jumlah yang digunakan
+  const totalDigunakan = usageData.reduce((sum, item) => sum + item.jumlah, 0);
+
+  return {
+    usageData,
+    totalDigunakan,
+  };
+}
+
 export async function getMaterials(search: string, page: number) {
   const pageSize = 5;
   const skip = (page - 1) * pageSize;

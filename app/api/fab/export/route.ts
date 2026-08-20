@@ -8,16 +8,29 @@ export async function GET(request: Request) {
   try {
     const session = await auth();
 
-    // Only ADMIN can export
-    if (!session || session.user?.role !== Role.ADMIN) {
+    // Only ADMIN and LEADER can export
+    if (!session || (session.user?.role !== Role.ADMIN && session.user?.role !== Role.LEADER)) {
       return NextResponse.json(
-        { success: false, message: "Akses ditolak. Hanya Admin yang dapat mengekspor data." },
+        { success: false, message: "Akses ditolak. Hanya Admin atau Leader yang dapat mengekspor data." },
         { status: 403 }
       );
     }
 
-    // Ambil semua data FAB dengan relasi
+    // Parse query params untuk filter by IDs
+    const { searchParams } = new URL(request.url);
+    const idsParam = searchParams.get("ids");
+    let whereClause: any = {};
+
+    if (idsParam) {
+      const ids = idsParam.split(",").map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+      if (ids.length > 0) {
+        whereClause = { id_fab: { in: ids } };
+      }
+    }
+
+    // Ambil data FAB dengan relasi
     const allFab = await prisma.fab.findMany({
+      where: whereClause,
       include: {
         area: true,
         paket: true,

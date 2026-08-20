@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Sidebar from "@/components/dashboard/sidebar";
 import Navbar from "@/components/dashboard/navbar";
+import Footer from "@/components/dashboard/Footer";
 
 type Settings = {
   app_name: string;
   app_subtitle: string;
+  footer_text: string;
 };
 
 export default function DashboardShell({
@@ -19,7 +21,7 @@ export default function DashboardShell({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen flex-col overflow-hidden">
       {/* Overlay gelap di belakang sidebar, cuma muncul di mobile pas sidebar terbuka */}
       {sidebarOpen && (
         <div
@@ -28,14 +30,18 @@ export default function DashboardShell({
         />
       )}
 
-      <Sidebar settings={settings} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar settings={settings} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Navbar settings={settings} onMenuClick={() => setSidebarOpen(true)} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Navbar settings={settings} onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto bg-slate-100 p-4 dark:bg-slate-950 sm:p-6 lg:p-8">
-          {children}
-        </main>
+          <main className="flex-1 overflow-y-auto bg-slate-100 p-4 dark:bg-slate-950 sm:p-6 lg:p-8">
+            {children}
+          </main>
+
+          <Footer settings={settings} />
+        </div>
       </div>
     </div>
   );

@@ -16,8 +16,21 @@ export async function GET(request: Request) {
       );
     }
 
-    // Ambil semua data ODP dengan relasi
+    // Parse query params untuk filter by IDs
+    const { searchParams } = new URL(request.url);
+    const idsParam = searchParams.get("ids");
+    let whereClause: any = {};
+
+    if (idsParam) {
+      const ids = idsParam.split(",").map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+      if (ids.length > 0) {
+        whereClause = { id_odp: { in: ids } };
+      }
+    }
+
+    // Ambil data ODP dengan relasi
     const allOdps = await prisma.odp.findMany({
+      where: whereClause,
       include: {
         olt: {
           include: {
@@ -55,9 +68,9 @@ export async function GET(request: Request) {
       "POP": odp.olt?.pop?.nama_pop || "",
       "Area": odp.olt?.pop?.area?.nama_area || "",
       "Jumlah Port": odp.jumlah_port || 0,
-      "Stok Port": odp.stok_port || 0,
+      "Port Terpakai": odp._count?.baa || 0,
+      "Port Tersedia": (odp.jumlah_port || 0) - (odp._count?.baa || 0),
       "ONT Terpasang": odp._count?.ont || 0,
-      "BAA": odp._count?.baa || 0,
       "Latitude": odp.latitude ? Number(odp.latitude) : "",
       "Longitude": odp.longitude ? Number(odp.longitude) : "",
       "Tanggal Dibuat": odp.createdAt ? new Date(odp.createdAt).toLocaleDateString("id-ID") : "",
@@ -77,9 +90,9 @@ export async function GET(request: Request) {
       { wch: 20 },  // POP
       { wch: 20 },  // Area
       { wch: 10 },  // Jumlah Port
-      { wch: 10 },  // Stok Port
+      { wch: 12 },  // Port Terpakai
+      { wch: 12 },  // Port Tersedia
       { wch: 12 },  // ONT Terpasang
-      { wch: 8 },   // BAA
       { wch: 15 },  // Latitude
       { wch: 15 },  // Longitude
       { wch: 15 },  // Tanggal Dibuat

@@ -14,11 +14,12 @@
     AlertDialogCancel,
     AlertDialogAction,
   } from "@/components/ui/alert-dialog";
-  import { deleteBaa } from "@/app/jaringan/baa/actions";
+  import { deleteBaa, deleteMultipleBaa } from "@/app/jaringan/baa/actions";
 
   interface BaaDeleteDialogProps {
-    id: number;
-    kodeBaa: string;
+    id?: number;
+    kodeBaa?: string;
+    bulkIds?: number[];
     // ============================================================
     // MODE TERKONTROL (dipakai dari BaaTable/dropdown aksi) --
     // kalau "open" dikasih, tombol trigger sendiri (ikon sampah) TIDAK
@@ -31,6 +32,7 @@
   export const BaaDeleteDialog = ({
     id,
     kodeBaa,
+    bulkIds,
     open: openProp,
     onOpenChange: onOpenChangeProp,
   }: BaaDeleteDialogProps) => {
@@ -42,9 +44,16 @@
 
     const [isPending, startTransition] = useTransition();
 
+    const isBulk = bulkIds && bulkIds.length > 0;
+    const itemCount = isBulk ? bulkIds.length : 1;
+
     const handleConfirm = () => {
       startTransition(async () => {
-        await deleteBaa(id);
+        if (isBulk && bulkIds) {
+          await deleteMultipleBaa(bulkIds);
+        } else if (id) {
+          await deleteBaa(id);
+        }
         setOpen(false);
       });
     };
@@ -84,12 +93,21 @@
             </div>
 
             <AlertDialogTitle className="w-full text-lg font-bold text-slate-900 text-center">
-              Hapus data BAA ini?
+              {isBulk ? `Hapus ${itemCount} data BAA?` : "Hapus data BAA ini?"}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full text-sm text-slate-500 leading-relaxed text-center">
-              Kamu akan menghapus BAA{" "}
-              <strong className="text-slate-700">&quot;{kodeBaa}&quot;</strong> beserta seluruh
-              daftar material di dalamnya. Data yang sudah dihapus tidak bisa dikembalikan.
+              {isBulk ? (
+                <>
+                  Kamu akan menghapus <strong className="text-slate-700">{itemCount} data BAA</strong>{" "}
+                  beserta seluruh daftar material di dalamnya. Data yang sudah dihapus tidak bisa dikembalikan.
+                </>
+              ) : (
+                <>
+                  Kamu akan menghapus BAA{" "}
+                  <strong className="text-slate-700">&quot;{kodeBaa}&quot;</strong> beserta seluruh
+                  daftar material di dalamnya. Data yang sudah dihapus tidak bisa dikembalikan.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
 

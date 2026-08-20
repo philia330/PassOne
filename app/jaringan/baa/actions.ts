@@ -153,10 +153,15 @@ async function validateMaterialStock(details: ParsedDetail[], restoredStockMap?:
  * ======================================
  */
 async function validateOdpStock(id_odp: number) {
-  const odp = await prisma.odp.findUnique({ where: { id_odp } });
+  const odp = await prisma.odp.findUnique({
+    where: { id_odp },
+    include: { _count: { select: { baa: true } } },
+  });
   if (!odp) throw new Error("ODP tidak ditemukan");
-  if (odp.stok_port !== null && odp.stok_port <= 0) {
-    throw new Error(`Port ODP "${odp.nama_odp}" sudah habis (stok_port: ${odp.stok_port})`);
+  const usedPorts = odp._count.baa;
+  const availablePorts = (odp.jumlah_port ?? 0) - usedPorts;
+  if (availablePorts <= 0) {
+    throw new Error(`Port ODP "${odp.nama_odp}" sudah habis (tersedia: ${availablePorts})`);
   }
 }
 
@@ -184,25 +189,6 @@ async function validateOntAvailability(id_ont: number, excludeBaaId?: number) {
     throw new Error(
       `ONT ini sudah dipakai oleh BAA "${existing.kode_baa}". Pilih ONT lain yang masih tersedia.`
     );
-  }
-}
-
-/**
- * ======================================
- * HELPER: Sesuaikan stok_port ODP
- * ======================================
- */
-async function adjustOdpStokPort(
-  tx: Prisma.TransactionClient,
-  id_odp: number,
-  delta: number
-) {
-  const odp = await tx.odp.findUnique({ where: { id_odp }, select: { stok_port: true } });
-  if (odp && odp.stok_port !== null) {
-    await tx.odp.update({
-      where: { id_odp },
-      data: { stok_port: { increment: delta } },
-    });
   }
 }
 
@@ -431,6 +417,11 @@ export async function createBaa(formData: FormData) {
 
   const details = parseBaaDetails(formData.get("baa_details") as string | null);
 
+  // Validasi material WAJIB ADA minimal 1
+  if (details.length === 0) {
+    throw new Error("Minimal harus ada 1 material yang dipakai pada instalasi ini.");
+  }
+
   // Validasi stok SEBELUM ada perubahan
   await validateMaterialStock(details);
   await validateOdpStock(id_odp);
@@ -482,9 +473,6 @@ export async function createBaa(formData: FormData) {
         data: { stok: { decrement: d.jumlah } },
       });
     }
-
-    // Kurangi stok_port ODP
-    await adjustOdpStokPort(tx, id_odp, -1);
 
     // Update status FAB ke AKTIF
     await tx.fab.update({
@@ -552,6 +540,12 @@ export async function updateBaa(id: number, formData: FormData) {
   }
 
   const details = parseBaaDetails(formData.get("baa_details") as string | null);
+
+  // Validasi material WAJIB ADA minimal 1
+  if (details.length === 0) {
+    throw new Error("Minimal harus ada 1 material yang dipakai pada instalasi ini.");
+  }
+
   const existingFoto = (formData.get("foto_instalasi_existing") as string | null) || null;
   const foto_instalasi = await saveFotoInstalasi(formData, existingFoto);
 
@@ -619,12 +613,6 @@ export async function updateBaa(id: number, formData: FormData) {
         where: { id_material: d.id_material },
         data: { stok: { decrement: d.jumlah } },
       });
-    }
-
-    // Kalau ODP berubah
-    if (oldBaa.id_odp !== id_odp) {
-      await adjustOdpStokPort(tx, oldBaa.id_odp, 1);
-      await adjustOdpStokPort(tx, id_odp, -1);
     }
 
     // Tangani perubahan ONT
@@ -698,9 +686,6 @@ export async function deleteBaa(id: number) {
       });
     }
 
-    // Kembalikan stok_port ODP
-    await adjustOdpStokPort(tx, baa.id_odp, 1);
-
     // Kembalikan status ONT ke TERSEDIA (jika BAA memang punya ONT)
     if (baa.id_ont !== null) {
       await tx.ont.update({
@@ -716,6 +701,71 @@ export async function deleteBaa(id: number) {
 
   await renumberKodeBaa();
   await logActivity("BAA_DELETED", `BAA #${baa.kode_baa} dihapus oleh ${session.user.nama}`);
+
+  revalidatePath("/jaringan/baa");
+  revalidatePath("/masterdata/material");
+  revalidatePath("/masterdata/odp");
+  revalidatePath("/masterdata/ont");
+}
+
+/**
+ * ======================================
+ * DELETE MULTIPLE BAA
+ * ======================================
+ */
+export async function deleteMultipleBaa(ids: number[]) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  if (session.user.role !== "ADMIN" && session.user.role !== "LEADER") {
+    throw new Error("Hanya Admin atau Leader yang bisa menghapus BAA.");
+  }
+
+  if (!ids || ids.length === 0) {
+    throw new Error("Tidak ada data BAA yang dipilih.");
+  }
+
+  // Ambil semua BAA yang akan dihapus
+  const baas = await prisma.baa.findMany({
+    where: { id_baa: { in: ids } },
+    include: { baadetail: true },
+  });
+
+  if (baas.length !== ids.length) {
+    throw new Error("Beberapa data BAA tidak ditemukan.");
+  }
+
+  // Delete semua dalam transaction
+  await prisma.$transaction(async (tx) => {
+    for (const baa of baas) {
+      // Kembalikan stok material
+      for (const d of baa.baadetail) {
+        await tx.material.update({
+          where: { id_material: d.id_material },
+          data: { stok: { increment: d.jumlah } },
+        });
+      }
+
+      // Kembalikan status ONT ke TERSEDIA
+      if (baa.id_ont !== null) {
+        await tx.ont.update({
+          where: { id_ont: baa.id_ont },
+          data: { status: "TERSEDIA" as const },
+        });
+      }
+
+      await tx.baateknisi.deleteMany({ where: { id_baa: baa.id_baa } });
+      await tx.baadetail.deleteMany({ where: { id_baa: baa.id_baa } });
+    }
+
+    // Delete semua BAA
+    await tx.baa.deleteMany({ where: { id_baa: { in: ids } } });
+  });
+
+  await renumberKodeBaa();
+  await logActivity("BAA_DELETED", `${ids.length} BAA dihapus oleh ${session.user.nama}`);
 
   revalidatePath("/jaringan/baa");
   revalidatePath("/masterdata/material");

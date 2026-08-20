@@ -8,18 +8,45 @@ export async function GET(request: Request) {
   try {
     const session = await auth();
 
-    // Only ADMIN and LOGISTIK can export
-    const allowedRoles = [Role.ADMIN, Role.LOGISTIK];
-    if (!session || !allowedRoles.includes(session.user?.role as Role)) {
+    // Only ADMIN and LEADER can export
+    if (!session || (session.user?.role !== Role.ADMIN && session.user?.role !== Role.LEADER)) {
       return NextResponse.json(
-        { success: false, message: "Akses ditolak. Hanya Admin atau Logistik yang dapat mengekspor data." },
+        { success: false, message: "Akses ditolak. Hanya Admin atau Leader yang dapat mengekspor data." },
         { status: 403 }
       );
     }
 
-    // Ambil semua data Material
+    // Parse query params untuk filter by IDs
+    const { searchParams } = new URL(request.url);
+    const idsParam = searchParams.get("ids");
+    let whereClause: any = {};
+
+    if (idsParam) {
+      const ids = idsParam.split(",").map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+      if (ids.length > 0) {
+        whereClause = { id_material: { in: ids } };
+      }
+    }
+
+    // Ambil data Material dengan data BAA usage
     const allMaterials = await prisma.material.findMany({
+      where: whereClause,
       orderBy: { createdAt: "desc" },
+      include: {
+        baadetail: {
+          include: {
+            baa: {
+              include: {
+                fab: {
+                  select: {
+                    nama_pelanggan: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     if (allMaterials.length === 0) {
@@ -29,19 +56,33 @@ export async function GET(request: Request) {
       );
     }
 
-    // Format data untuk Excel
-    const exportData = allMaterials.map((material, index) => ({
-      No: index + 1,
-      "Kode Material": material.kode_material,
-      "Nama Material": material.nama_material,
-      "Satuan": material.satuan,
-      "Stok": material.stok,
-      "Minimal Stok": material.minimal_stok,
-      "Harga": material.harga ? Number(material.harga) : 0,
-      "Kondisi": material.kondisi,
-      "Keterangan": material.keterangan || "",
-      "Tanggal Dibuat": material.createdAt ? new Date(material.createdAt).toLocaleDateString("id-ID") : "",
-    }));
+    // Format data untuk Excel dengan informasi BAA usage
+    const exportData = allMaterials.map((material, index) => {
+      // Aggregate BAA usage
+      const totalDigunakan = material.baadetail.reduce((sum, detail) => sum + detail.jumlah, 0);
+      const jumlahBaa = material.baadetail.length;
+
+      // Create list of BAA codes used
+      const baaList = material.baadetail
+        .map((detail) => `${detail.baa.kode_baa} (${detail.jumlah} ${material.satuan})`)
+        .join("; ");
+
+      return {
+        No: index + 1,
+        "Kode Material": material.kode_material,
+        "Nama Material": material.nama_material,
+        "Satuan": material.satuan,
+        "Stok": material.stok,
+        "Minimal Stok": material.minimal_stok,
+        "Harga": material.harga ? Number(material.harga) : 0,
+        "Kondisi": material.kondisi,
+        "Keterangan": material.keterangan || "",
+        "Total Digunakan": totalDigunakan,
+        "Jumlah BAA": jumlahBaa,
+        "Daftar BAA (Kode - Jumlah)": baaList || "-",
+        "Tanggal Dibuat": material.createdAt ? new Date(material.createdAt).toLocaleDateString("id-ID") : "",
+      };
+    });
 
     // Buat workbook dan worksheet
     const workbook = XLSX.utils.book_new();
@@ -58,6 +99,9 @@ export async function GET(request: Request) {
       { wch: 15 },  // Harga
       { wch: 10 },  // Kondisi
       { wch: 30 },  // Keterangan
+      { wch: 15 },  // Total Digunakan
+      { wch: 12 },  // Jumlah BAA
+      { wch: 50 },  // Daftar BAA
       { wch: 15 },  // Tanggal Dibuat
     ];
 

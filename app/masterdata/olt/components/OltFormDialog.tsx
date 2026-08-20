@@ -17,13 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { createOlt, updateOlt } from "../actions";
 
 const OltMapPicker = dynamic(
@@ -211,23 +205,17 @@ export const OltFormDialog = ({
           {/* POP - paling atas */}
           <div className="space-y-2">
             <label className="text-sm font-medium">POP</label>
-            <Select value={popValue} onValueChange={handlePopChange}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 hover:scale-105 active:scale-95 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                <SelectValue placeholder="Pilih POP">
-                  {() =>
-                    pops.find((p) => String(p.id_pop) === popValue)?.nama_pop ??
-                    "Pilih POP"
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {pops.map((pop) => (
-                  <SelectItem key={pop.id_pop} value={String(pop.id_pop)}>
-                    {pop.nama_pop}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={popValue}
+              onValueChange={handlePopChange}
+              options={pops.map((pop) => ({
+                value: String(pop.id_pop),
+                label: pop.nama_pop,
+              }))}
+              placeholder="Pilih POP"
+              searchPlaceholder="Cari nama POP..."
+              emptyText="POP tidak ditemukan"
+            />
             <input type="hidden" name="id_pop" value={popValue} required />
           </div>
 

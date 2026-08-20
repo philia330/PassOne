@@ -14,16 +14,23 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
-import { deleteFab } from "@/app/jaringan/fab/actions";
+import { deleteFab, deleteMultipleFab } from "@/app/jaringan/fab/actions";
 
 interface FabDeleteDialogProps {
-  id: number;
-  namaPelanggan: string;
+  id?: number;
+  kodeFab?: string;
+  bulkIds?: number[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
-export const FabDeleteDialog = ({ id, namaPelanggan, open: openProp, onOpenChange }: FabDeleteDialogProps) => {
+export const FabDeleteDialog = ({
+  id,
+  kodeFab,
+  bulkIds,
+  open: openProp,
+  onOpenChange
+}: FabDeleteDialogProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -33,11 +40,18 @@ export const FabDeleteDialog = ({ id, namaPelanggan, open: openProp, onOpenChang
   const open = isControlled ? openProp : internalOpen;
   const setOpen = isControlled ? (onOpenChange ?? (() => {})) : setInternalOpen;
 
+  const isBulk = bulkIds && bulkIds.length > 0;
+  const itemCount = isBulk ? bulkIds.length : 1;
+
   const handleConfirm = () => {
     setErrorMsg(null);
     startTransition(async () => {
       try {
-        await deleteFab(id);
+        if (isBulk && bulkIds) {
+          await deleteMultipleFab(bulkIds);
+        } else if (id) {
+          await deleteFab(id);
+        }
         setOpen(false);
       } catch (err: unknown) {
         const error = err as Error;
@@ -74,12 +88,21 @@ export const FabDeleteDialog = ({ id, namaPelanggan, open: openProp, onOpenChang
           </div>
 
           <AlertDialogTitle className="w-full text-lg font-bold text-slate-900 text-center">
-            Hapus data FAB ini?
+            {isBulk ? `Hapus ${itemCount} data FAB?` : "Hapus data FAB ini?"}
           </AlertDialogTitle>
           <AlertDialogDescription className="w-full text-sm text-slate-500 leading-relaxed text-center">
-            Kamu akan menghapus pengajuan FAB milik{" "}
-            <strong className="text-slate-700">&quot;{namaPelanggan}&quot;</strong>. Data yang
-            sudah dihapus tidak bisa dikembalikan.
+            {isBulk ? (
+              <>
+                Kamu akan menghapus <strong className="text-slate-700">{itemCount} data FAB</strong>.
+                Data yang sudah dihapus tidak bisa dikembalikan.
+              </>
+            ) : (
+              <>
+                Kamu akan menghapus pengajuan FAB{" "}
+                <strong className="text-slate-700">&quot;{kodeFab}&quot;</strong>. Data yang
+                sudah dihapus tidak bisa dikembalikan.
+              </>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
 

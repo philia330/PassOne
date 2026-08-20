@@ -16,8 +16,21 @@ export async function GET(request: Request) {
       );
     }
 
-    // Ambil semua data POP dengan relasi
+    // Parse query params untuk filter by IDs
+    const { searchParams } = new URL(request.url);
+    const idsParam = searchParams.get("ids");
+    let whereClause: any = {};
+
+    if (idsParam) {
+      const ids = idsParam.split(",").map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+      if (ids.length > 0) {
+        whereClause = { id_pop: { in: ids } };
+      }
+    }
+
+    // Ambil data POP dengan relasi
     const allPops = await prisma.pop.findMany({
+      where: whereClause,
       include: {
         area: true,
       },
