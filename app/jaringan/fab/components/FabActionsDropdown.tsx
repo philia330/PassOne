@@ -170,7 +170,7 @@ export function FabActionsDropdown({
       {canDelete && (
         <FabDeleteDialog
           id={fab.id_fab}
-          namaPelanggan={fab.nama_pelanggan}
+          kodeFab={fab.kode_fab}
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
         />

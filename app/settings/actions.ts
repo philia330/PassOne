@@ -23,6 +23,7 @@ export async function updateSettings(formData: FormData) {
   const loginSubtitle = formData.get("login_subtitle") as string;
   const appFont = formData.get("app_font") as string;
   const appFontSize = formData.get("app_font_size") as string;
+  const footerText = formData.get("footer_text") as string;
   const logoFile = formData.get("logo") as File | null;
 
   const updates: { key: string; value: string }[] = [
@@ -32,6 +33,7 @@ export async function updateSettings(formData: FormData) {
     { key: "login_subtitle", value: loginSubtitle },
     { key: "app_font", value: appFont },
     { key: "app_font_size", value: appFontSize },
+    { key: "footer_text", value: footerText },
   ];
 
   // Kalau ada file logo baru diupload

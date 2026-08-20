@@ -19,19 +19,38 @@ import { deleteMaterial } from "@/app/masterdata/material/actions";
 interface MaterialDeleteDialogProps {
   id: number;
   namaMaterial: string;
+  bulkIds?: number[];
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const MaterialDeleteDialog = ({ id, namaMaterial }: MaterialDeleteDialogProps) => {
-  const [open, setOpen] = useState(false);
+export const MaterialDeleteDialog = ({ id, namaMaterial, bulkIds, open: controlledOpen, onOpenChange }: MaterialDeleteDialogProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const isControlled = controlledOpen !== undefined;
+  const isOpen = isControlled ? controlledOpen : internalOpen;
+  const setIsOpen = isControlled ? onOpenChange! : setInternalOpen;
+
+  const isBulk = bulkIds && bulkIds.length > 0;
 
   const handleConfirm = () => {
     setErrorMsg(null);
     startTransition(async () => {
       try {
-        await deleteMaterial(id);
-        setOpen(false);
+        if (isBulk && bulkIds) {
+          const response = await fetch(`/api/material/bulk-delete?ids=${bulkIds.join(",")}`, {
+            method: "DELETE",
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || "Gagal menghapus data");
+          }
+        } else {
+          await deleteMaterial(id);
+        }
+        setIsOpen(false);
       } catch (err: unknown) {
         const error = err as Error;
         setErrorMsg(error.message ?? "Gagal menghapus data, coba lagi.");
@@ -40,8 +59,8 @@ export const MaterialDeleteDialog = ({ id, namaMaterial }: MaterialDeleteDialogP
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={(isOpen) => {
-      setOpen(isOpen);
+    <AlertDialog open={isOpen} onOpenChange={(isOpen) => {
+      setIsOpen(isOpen);
       if (!isOpen) setErrorMsg(null);
     }}>
       <AlertDialogTrigger
@@ -75,12 +94,14 @@ export const MaterialDeleteDialog = ({ id, namaMaterial }: MaterialDeleteDialogP
           </div>
 
           <AlertDialogTitle className="w-full text-lg font-bold text-slate-900 text-center">
-            Hapus material ini?
+            {isBulk ? `Hapus ${bulkIds?.length} Material ini?` : "Hapus material ini?"}
           </AlertDialogTitle>
           <AlertDialogDescription className="w-full text-sm text-slate-500 leading-relaxed text-center">
-            Kamu akan menghapus material{" "}
-            <strong className="text-slate-700">&quot;{namaMaterial}&quot;</strong>. Data yang
-            sudah dihapus tidak bisa dikembalikan.
+            {isBulk ? (
+              <>Kamu akan menghapus <strong className="text-slate-700">{bulkIds?.length} Material</strong> yang dipilih. Data yang sudah dihapus tidak bisa dikembalikan.</>
+            ) : (
+              <>Kamu akan menghapus material <strong className="text-slate-700">&quot;{namaMaterial}&quot;</strong>. Data yang sudah dihapus tidak bisa dikembalikan.</>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
 

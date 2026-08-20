@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth";
 import { getUsers } from "./actions";
 import { UserSortableTable } from "./components/UserSortableTable";
 import EmptyState from "@/components/shared/empty-state";
- 
+
 export default async function UserPage({
   searchParams,
 }: {
@@ -16,30 +16,36 @@ export default async function UserPage({
   }>;
 }) {
   const session = await auth();
- 
+
   if (!session?.user || session.user.role !== "ADMIN") {
     redirect("/dashboard");
   }
- 
+
   const params = await searchParams;
- 
+
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
- 
+
   const {
     data: users,
     total,
     totalPages,
   } = await getUsers(search, page);
- 
+
+  const currentUser = {
+    id_user: Number(session.user.id_user),
+    nama: session.user.nama ?? "",
+    role: session.user.role,
+  };
+
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
- 
+    <div className="space-y-6 p-4 sm:p-6">
+
       <PageHeader
         title="Data User"
         description="Kelola data pengguna PASSNET"
       />
- 
+
       {/* Statistik */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="rounded-3xl border-0 bg-gradient-to-r from-indigo-600 via-violet-500 to-sky-500 text-white shadow-lg">
@@ -55,7 +61,7 @@ export default async function UserPage({
           </CardContent>
         </Card>
       </div>
- 
+
       {users.length === 0 ? (
         <EmptyState
           icon={Users}
@@ -67,7 +73,7 @@ export default async function UserPage({
           }
         />
       ) : (
-        <UserSortableTable initialData={users} defaultValue={search} />
+        <UserSortableTable initialData={users} defaultValue={search} currentUser={currentUser} />
       )}
     </div>
   );

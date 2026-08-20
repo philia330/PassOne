@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Select,
   SelectContent,
@@ -149,64 +150,39 @@ export const PortPonFormDialog = ({
                 OLT
               </label>
 
-              <Select value={oltValue} onValueChange={handleOltChange}>
-                <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 hover:scale-105 active:scale-95 transition-all dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
-                  <SelectValue placeholder="Pilih OLT">
-                    {(value: string) =>
-                      olts.find((olt) => String(olt.id_olt) === value)?.nama_olt ??
-                      "Pilih OLT"
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-
-                <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                  {olts.map((olt) => (
-                    <SelectItem
-                      key={olt.id_olt}
-                      value={String(olt.id_olt)}
-                      className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
-                    >
-                      {olt.nama_olt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={oltValue}
+                onValueChange={handleOltChange}
+                options={olts.map((olt) => ({
+                  value: String(olt.id_olt),
+                  label: olt.nama_olt,
+                }))}
+                placeholder="Pilih OLT"
+                searchPlaceholder="Cari nama OLT..."
+                emptyText="OLT tidak ditemukan"
+              />
 
               <input type="hidden" name="id_olt" value={oltValue} required />
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                ODP Terhubung{" "}
-                <span className="font-normal text-slate-400 dark:text-slate-500">
-                  (opsional)
-                </span>
+                ODP Terhubung
               </label>
 
-              <Select value={odpValue} onValueChange={handleOdpChange}>
-                <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 hover:scale-105 active:scale-95 transition-all dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100">
-                  <SelectValue placeholder="Pilih ODP (opsional)">
-                    {(value: string) =>
-                      odps.find((odp) => String(odp.id_odp) === value)?.nama_odp ??
-                      "Pilih ODP (opsional)"
-                    }
-                  </SelectValue>
-                </SelectTrigger>
+              <SearchableSelect
+                value={odpValue}
+                onValueChange={handleOdpChange}
+                options={odps.map((odp) => ({
+                  value: String(odp.id_odp),
+                  label: odp.nama_odp,
+                }))}
+                placeholder="Pilih ODP"
+                searchPlaceholder="Cari nama ODP..."
+                emptyText="ODP tidak ditemukan"
+              />
 
-                <SelectContent className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                  {odps.map((odp) => (
-                    <SelectItem
-                      key={odp.id_odp}
-                      value={String(odp.id_odp)}
-                      className="dark:text-slate-200 dark:focus:bg-slate-800 dark:focus:text-slate-100"
-                    >
-                      {odp.nama_odp}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <input type="hidden" name="id_odp" value={odpValue} />
+              <input type="hidden" name="id_odp" value={odpValue} required />
             </div>
           </div>
 
@@ -294,7 +270,7 @@ export const PortPonFormDialog = ({
 
             <Button
               type="submit"
-              disabled={isSubmitting || !oltValue}
+              disabled={isSubmitting || !oltValue || !odpValue}
               className="cursor-pointer rounded-2xl h-11 font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-md hover:opacity-90 active:scale-95 hover:scale-105 transition-transform"
             >
               {isSubmitting ? "Menyimpan..." : "Simpan"}

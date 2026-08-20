@@ -447,22 +447,17 @@ export const BaaForm = ({
         <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <Router size={13} className="text-purple-500" /> OLT
         </Label>
-        <Select
+        <SearchableSelect
           value={idOlt}
           onValueChange={handleOltChange}
-          items={oltOptions.map((o) => ({ value: String(o.id_olt), label: o.nama_olt }))}
-        >
-          <SelectTrigger className="rounded-2xl h-12 border-slate-200 focus:ring-purple-500 w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-            <SelectValue placeholder="Pilih OLT" />
-          </SelectTrigger>
-          <SelectContent>
-            {oltOptions.map((o) => (
-              <SelectItem key={o.id_olt} value={String(o.id_olt)}>
-                {o.nama_olt}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          options={oltOptions.map((o) => ({
+            value: String(o.id_olt),
+            label: o.nama_olt,
+          }))}
+          placeholder="Pilih OLT"
+          searchPlaceholder="Cari nama OLT..."
+          emptyText="OLT tidak ditemukan"
+        />
         <input type="hidden" name="id_olt" value={idOlt} required />
       </div>
 
@@ -754,9 +749,12 @@ export const BaaForm = ({
       {/* DAFTAR MATERIAL */}
       <div className="col-span-1 md:col-span-2 space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-3 gap-2">
-          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            <Boxes size={13} className="text-purple-500" /> Material yang Dipakai
-          </Label>
+          <div className="flex items-center gap-2">
+            <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <Boxes size={13} className="text-purple-500" /> Material yang Dipakai
+            </Label>
+            <span className="text-xs text-red-500 font-medium">*Wajib diisi</span>
+          </div>
           <Button
             type="button"
             size="sm"
@@ -769,9 +767,8 @@ export const BaaForm = ({
         </div>
 
         {materialRows.length === 0 ? (
-          <p className="text-xs text-slate-400 italic bg-slate-50 rounded-xl px-3 py-3 text-center dark:text-slate-500 dark:bg-slate-800/50">
-            Belum ada material ditambahkan. Klik &quot;Tambah Material&quot; kalau ada material
-            yang dipakai pada instalasi ini.
+          <p className="text-xs text-red-500 italic bg-red-50 rounded-xl px-3 py-3 text-center dark:text-red-400 dark:bg-red-900/20">
+            Minimal harus ada 1 material yang dipakai pada instalasi ini. Klik &quot;Tambah Material&quot; di atas untuk menambahkan.
           </p>
         ) : (
           <div className="space-y-2">
@@ -781,25 +778,17 @@ export const BaaForm = ({
                 className="flex flex-col sm:flex-row items-start sm:items-center gap-2 rounded-2xl border border-slate-200 p-3 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50"
               >
                 <div className="flex-1 w-full sm:w-auto space-y-1.5">
-                  <Select
+                  <SearchableSelect
                     value={row.id_material}
                     onValueChange={(v) => handleMaterialChange(row.rowId, v)}
-                    items={materialOptions.map((m) => ({
+                    options={materialOptions.map((m) => ({
                       value: String(m.id_material),
                       label: `${m.nama_material} (${m.satuan})`,
                     }))}
-                  >
-                    <SelectTrigger className="rounded-xl h-10 border-slate-200 bg-white text-sm w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                      <SelectValue placeholder="Pilih material" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {materialOptions.map((m) => (
-                        <SelectItem key={m.id_material} value={String(m.id_material)}>
-                          {m.nama_material} ({m.satuan})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Pilih material"
+                    searchPlaceholder="Cari nama material..."
+                    emptyText="Material tidak ditemukan"
+                  />
                 </div>
 
                 <div className="w-full sm:w-20 space-y-1.5">

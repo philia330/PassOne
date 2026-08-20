@@ -143,18 +143,20 @@ export const createOdp = async (formData: FormData) => {
   const id_olt = parseInt(formData.get("id_olt") as string, 10);
 
   const jumlahPortRaw = formData.get("jumlah_port") as string;
-  const stokPortRaw = formData.get("stok_port") as string;
 
   if (!nama_odp || !alamat || isNaN(id_olt)) {
     throw new Error("Nama ODP, alamat, dan OLT wajib diisi.");
+  }
+
+  if (!jumlahPortRaw || isNaN(parseInt(jumlahPortRaw, 10))) {
+    throw new Error("Jumlah Port wajib diisi.");
   }
 
   if (isNaN(latitude) || isNaN(longitude)) {
     throw new Error("Latitude dan longitude tidak valid.");
   }
 
-  const jumlah_port = jumlahPortRaw ? parseInt(jumlahPortRaw, 10) : null;
-  const stok_port = stokPortRaw ? parseInt(stokPortRaw, 10) : jumlah_port;
+  const jumlah_port = parseInt(jumlahPortRaw, 10);
 
   const kode_odp = await generateKodeOdp();
 
@@ -168,7 +170,6 @@ export const createOdp = async (formData: FormData) => {
         longitude,
         id_olt,
         jumlah_port,
-        stok_port,
       },
     });
   });
@@ -197,18 +198,20 @@ export const updateOdp = async (id: number, formData: FormData) => {
   const id_olt = parseInt(formData.get("id_olt") as string, 10);
 
   const jumlahPortRaw = formData.get("jumlah_port") as string;
-  const stokPortRaw = formData.get("stok_port") as string;
 
   if (!nama_odp || !alamat || isNaN(id_olt)) {
     throw new Error("Nama ODP, alamat, dan OLT wajib diisi.");
+  }
+
+  if (!jumlahPortRaw || isNaN(parseInt(jumlahPortRaw, 10))) {
+    throw new Error("Jumlah Port wajib diisi.");
   }
 
   if (isNaN(latitude) || isNaN(longitude)) {
     throw new Error("Latitude dan longitude tidak valid.");
   }
 
-  const jumlah_port = jumlahPortRaw ? parseInt(jumlahPortRaw, 10) : null;
-  const stok_port = stokPortRaw ? parseInt(stokPortRaw, 10) : existing.stok_port;
+  const jumlah_port = parseInt(jumlahPortRaw, 10);
 
   await prisma.odp.update({
     where: { id_odp: id },
@@ -219,7 +222,6 @@ export const updateOdp = async (id: number, formData: FormData) => {
       longitude,
       id_olt,
       jumlah_port,
-      stok_port,
     },
   });
 

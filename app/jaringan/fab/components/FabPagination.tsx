@@ -42,17 +42,18 @@ export const FabPagination = ({
   // ✅ Baru setelah useMemo, baru conditional return
   if (totalPages <= 1) return null;
 
-  return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+    return (
+    <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       {/* Info total data */}
       {totalItems !== undefined && (
-        <div className="text-sm text-slate-500">
+        <div className="whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
           Menampilkan {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, totalItems)} dari {totalItems} data
         </div>
       )}
 
-      <Pagination>
-        <PaginationContent className="flex-wrap justify-center gap-1">
+      <div className="overflow-x-auto">
+        <Pagination>
+          <PaginationContent className="justify-center gap-1">
           {/* Previous Button */}
           <PaginationItem>
             <PaginationPrevious
@@ -128,7 +129,8 @@ export const FabPagination = ({
             />
           </PaginationItem>
         </PaginationContent>
-      </Pagination>
+        </Pagination>
+      </div>
     </div>
   );
 };

@@ -319,3 +319,57 @@ export async function deleteFab(id: number) {
   await logActivity("FAB_DELETED", `FAB "${fab.nama_pelanggan}" (NIK: ${fab.nik}) dihapus oleh ${session.user.nama}`);
   revalidatePath("/jaringan/fab");
 }
+
+/**
+ * ======================================
+ * DELETE MULTIPLE FAB
+ * ======================================
+ */
+export async function deleteMultipleFab(ids: number[]) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  if (session.user.role === "SALES" || session.user.role === "TEKNISI") {
+    throw new Error("Anda tidak memiliki akses untuk menghapus data FAB.");
+  }
+
+  if (!ids || ids.length === 0) {
+    throw new Error("Tidak ada data FAB yang dipilih.");
+  }
+
+  // Cek semua FAB yang akan dihapus
+  const fabs = await prisma.fab.findMany({
+    where: { id_fab: { in: ids } },
+    select: { id_fab: true, nama_pelanggan: true },
+  });
+
+  if (fabs.length !== ids.length) {
+    throw new Error("Beberapa data FAB tidak ditemukan.");
+  }
+
+  // Cek apakah ada yang masih memiliki BAA
+  const fabsWithBaa = await Promise.all(
+    fabs.map(async (fab) => {
+      const count = await prisma.baa.count({ where: { id_fab: fab.id_fab } });
+      return count > 0 ? fab : null;
+    })
+  );
+
+  const fabsWithBaaFiltered = fabsWithBaa.filter(Boolean);
+  if (fabsWithBaaFiltered.length > 0) {
+    throw new Error(
+      `${fabsWithBaaFiltered.length} FAB tidak bisa dihapus karena masih memiliki data BAA.`
+    );
+  }
+
+  // Delete semua
+  await prisma.$transaction(async (tx) => {
+    await tx.fab.deleteMany({ where: { id_fab: { in: ids } } });
+  });
+
+  await renumberKodeFab();
+  await logActivity("FAB_DELETED", `${ids.length} FAB dihapus oleh ${session.user.nama}`);
+  revalidatePath("/jaringan/fab");
+}

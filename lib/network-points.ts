@@ -30,7 +30,7 @@ export type NetworkPoint = {
   no_hp?: string;
   nik?: string;
   jumlah_port?: number | null;
-  stok_port?: number | null;
+  port_terpakai?: number | null;
   createdAt?: string;
   // Kredensial OLT (cuma ada kalau type === "OLT")
   ip_olt?: string | null;
@@ -77,8 +77,10 @@ export async function getNetworkPoints(): Promise<NetworkPoint[]> {
         kode_odp: true,
         alamat: true,
         jumlah_port: true,
-        stok_port: true,
         createdAt: true,
+        _count: {
+          select: { baa: true },
+        },
       },
     }),
     prisma.fab.findMany({
@@ -171,7 +173,8 @@ export async function getNetworkPoints(): Promise<NetworkPoint[]> {
       kode: o.kode_odp,
       alamat: o.alamat,
       jumlah_port: o.jumlah_port,
-      stok_port: o.stok_port,
+      // Port terpakai dihitung dari jumlah BAA yang terhubung
+      port_terpakai: o._count.baa,
       createdAt: o.createdAt.toISOString(),
     })),
     ...fabs.map((f) => ({

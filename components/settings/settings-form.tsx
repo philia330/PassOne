@@ -13,6 +13,7 @@ import {
   Upload,
   TextCursorInput,
   LayoutDashboard,
+  LayoutTemplate,
 } from "lucide-react";
 
 import { updateSettings } from "@/app/settings/actions";
@@ -25,6 +26,7 @@ type Settings = {
   login_logo: string | null;
   app_font: string;
   app_font_size: number;
+  footer_text: string;
 };
 
 const FONT_OPTIONS = [
@@ -37,9 +39,10 @@ const FONT_OPTIONS = [
 ];
 
 const TABS = [
-  { id: "identitas", label: "Identitas Aplikasi", icon: LayoutDashboard, color: "indigo" },
-  { id: "login", label: "Halaman Login", icon: Type, color: "fuchsia" },
-  { id: "tipografi", label: "Tipografi", icon: TextCursorInput, color: "emerald" },
+  { id: "identitas", label: "Identitas", icon: LayoutDashboard, color: "indigo" },
+  { id: "login", label: "Login", icon: Type, color: "fuchsia" },
+  { id: "tipografi", label: "Font", icon: TextCursorInput, color: "emerald" },
+  { id: "footer", label: "Footer", icon: LayoutTemplate, color: "amber" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -135,6 +138,8 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
                       ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
                       : tab.color === "fuchsia"
                       ? "border-fuchsia-600 text-fuchsia-600 dark:text-fuchsia-400"
+                      : tab.color === "amber"
+                      ? "border-amber-600 text-amber-600 dark:text-amber-400"
                       : "border-emerald-600 text-emerald-600 dark:text-emerald-400"
                     : "border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                 }`}
@@ -307,6 +312,36 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
                   <span>Sedang (16px)</span>
                   <span>Besar (20px)</span>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          {/* TAB 4: Footer */}
+          <section className={activeTab === "footer" ? "block" : "hidden"}>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <LayoutTemplate size={14} className="text-amber-500" />
+                  Teks Footer
+                </label>
+                <textarea
+                  name="footer_text"
+                  defaultValue={initialSettings.footer_text}
+                  rows={3}
+                  placeholder="© 2024 PASSNET. All rights reserved."
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm transition focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-amber-500 dark:focus:ring-amber-500/20"
+                />
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Teks yang akan ditampilkan di bagian bawah halaman.
+                </p>
+              </div>
+
+              {/* Preview */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+                <p className="mb-2 text-xs font-medium text-slate-400 dark:text-slate-500">Preview:</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {initialSettings.footer_text || "© 2024 PASSNET. All rights reserved."}
+                </p>
               </div>
             </div>
           </section>

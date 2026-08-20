@@ -16,5 +16,6 @@ export async function getSettings() {
     login_logo: map.login_logo ?? null,
     app_font: map.app_font ?? "inter",
     app_font_size: Number(map.app_font_size ?? 16),
+    footer_text: map.footer_text ?? "© 2024 PASSNET. All rights reserved.",
   };
 }

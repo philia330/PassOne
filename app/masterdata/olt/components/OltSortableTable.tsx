@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, ReactNode } from "react";
-import { ArrowUp, ArrowDown, Lock } from "lucide-react";
+import { useState, useMemo, ReactNode, useEffect } from "react";
+import { ArrowUp, ArrowDown, Lock, Check, Trash2, Download, X, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -19,6 +19,8 @@ import { OltMapDialog } from "./OltMapDialog";
 import { OpenGoogleMaps } from "@/components/ui/OpenGoogleMaps";
 import { OltSecretCell } from "./OltSecretCell";
 import { OltImageDialog } from "./OltImageDialog";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type Olt = {
   id_olt: number;
@@ -34,6 +36,12 @@ type Olt = {
   foto_olt?: string | null;
   pop?: { nama_pop: string } | null;
   createdAt: Date;
+};
+
+type CurrentUser = {
+  id_user: number;
+  nama: string;
+  role: string;
 };
 
 const PAGE_SIZE = 10;
@@ -56,18 +64,36 @@ export function OltSortableTable({
   defaultValue,
   currentRole,
   actions,
+  currentUser,
 }: {
   initialData: Olt[];
   pops: { id_pop: number; nama_pop: string; alamat: string }[];
   defaultValue: string;
   currentRole: string;
   actions?: ReactNode;
+  currentUser?: CurrentUser;
 }) {
   const canViewSecret = currentRole === "ADMIN" || currentRole === "LEADER";
 
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  // Selection state for bulk actions
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [selectAllPage, setSelectAllPage] = useState(false);
+
+  const isAdmin = currentUser?.role === "ADMIN";
+  const canBulkDelete = isAdmin;
+
+  // Clear selection when filters/search change
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setSelectAllPage(false);
+  }, [search]);
 
   const toggleSort = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -95,9 +121,156 @@ export function OltSortableTable({
   const totalPagesCalc = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  // Selection functions
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const allSelected = paginated.every((item) => selectedIds.has(item.id_olt));
+    if (selectAllPage && allSelected) {
+      setSelectAllPage(false);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        paginated.forEach((item) => next.delete(item.id_olt));
+        return next;
+      });
+    } else {
+      setSelectAllPage(true);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        paginated.forEach((item) => next.add(item.id_olt));
+        return next;
+      });
+    }
+  };
+
+  // Bulk export handler
+  const handleBulkExport = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) {
+      toast.error("Pilih item yang ingin diekspor");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const url = ids.length === sorted.length
+        ? `/api/olt/export`
+        : `/api/olt/export?ids=${ids.join(",")}`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.message || "Gagal mengekspor data");
+        return;
+      }
+
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const filename = contentDisposition
+        ? contentDisposition.split("filename=")[1]?.replace(/"/g, "")
+        : `Export_OLT_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+      const urlBlob = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = urlBlob;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(urlBlob);
+
+      toast.success(`Berhasil mengekspor ${ids.length} data OLT`);
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Terjadi kesalahan saat mengekspor data");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Bulk delete handler
+  const handleBulkDelete = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) {
+      toast.error("Pilih item yang ingin dihapus");
+      return;
+    }
+    setBulkDeleteIds(ids);
+    setBulkDeleteOpen(true);
+  };
+
+  // Handle delete success
+  const handleDeleteSuccess = () => {
+    setSelectedIds(new Set());
+    setSelectAllPage(false);
+    setBulkDeleteOpen(false);
+    setBulkDeleteIds([]);
+  };
+
   return (
     <Card className="rounded-3xl border shadow-xl transition-all duration-300 hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
       <CardContent className="space-y-6 p-4 sm:p-6">
+        {/* Bulk Action Bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl bg-purple-50 p-3 sm:p-4 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30">
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500 text-white font-bold text-sm">
+                {selectedIds.size}
+              </span>
+              <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">
+                item dipilih
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {canBulkDelete && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleBulkDelete}
+                  className="h-9 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
+                >
+                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  Hapus
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleBulkExport}
+                disabled={isExporting}
+                className="h-9 rounded-xl text-green-600 hover:bg-green-50 hover:text-green-700 dark:text-green-400 dark:hover:bg-green-500/10"
+              >
+                {isExporting ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-1.5 h-4 w-4" />
+                )}
+                Export Excel
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => { setSelectedIds(new Set()); setSelectAllPage(false); }}
+                className="h-9 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="mr-1.5 h-4 w-4" />
+                Batal
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <OltSearch defaultValue={search} />
           <div className="flex items-center gap-2">
@@ -111,6 +284,26 @@ export function OltSortableTable({
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                <TableHead className="w-12 text-center dark:text-slate-300">
+                  <button
+                    type="button"
+                    onClick={toggleSelectAll}
+                    className="inline-flex items-center justify-center"
+                    title={selectAllPage ? "Batalkan pilih semua halaman ini" : "Pilih semua halaman ini"}
+                  >
+                    <div
+                      className={`flex h-4 w-4 items-center justify-center rounded border-2 transition-colors ${
+                        paginated.length > 0 && paginated.every((item) => selectedIds.has(item.id_olt))
+                          ? "border-purple-500 bg-purple-500"
+                          : "border-slate-300 dark:border-slate-600 hover:border-purple-400"
+                      }`}
+                    >
+                      {paginated.length > 0 && paginated.every((item) => selectedIds.has(item.id_olt)) && (
+                        <Check className="h-3 w-3 text-white" />
+                      )}
+                    </div>
+                  </button>
+                </TableHead>
                 <TableHead className="dark:text-slate-300">
                   <button
                     type="button"
@@ -140,7 +333,7 @@ export function OltSortableTable({
             <TableBody>
               {paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="py-10 text-center text-slate-400 dark:text-slate-500">
+                  <TableCell colSpan={11} className="py-10 text-center text-slate-400 dark:text-slate-500">
                     {search ? "Tidak ada data OLT yang cocok" : "Belum ada data OLT"}
                   </TableCell>
                 </TableRow>
@@ -148,46 +341,72 @@ export function OltSortableTable({
                 paginated.map((olt) => (
                   <TableRow
                     key={olt.id_olt}
-                    className="border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40 transition-colors duration-200"
+                    className={`border-b border-slate-100 transition-colors ${
+                      selectedIds.has(olt.id_olt)
+                        ? "bg-purple-50 dark:bg-purple-500/10"
+                        : "hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40"
+                    }`}
                   >
+                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelect(olt.id_olt);
+                        }}
+                        className="inline-flex items-center justify-center"
+                      >
+                        <div
+                          className={`flex h-4 w-4 items-center justify-center rounded border-2 transition-colors ${
+                            selectedIds.has(olt.id_olt)
+                              ? "border-purple-500 bg-purple-500"
+                              : "border-slate-300 dark:border-slate-600 hover:border-purple-400"
+                          }`}
+                        >
+                          {selectedIds.has(olt.id_olt) && (
+                            <Check className="h-3 w-3 text-white" />
+                          )}
+                        </div>
+                      </button>
+                    </TableCell>
                     <TableCell className="font-medium text-slate-900 dark:text-slate-100">
                       {olt.kode_olt}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <OltImageDialog fotoUrl={olt.foto_olt} namaOlt={olt.nama_olt} />
                     </TableCell>
                     <TableCell className="dark:text-slate-300">{olt.nama_olt}</TableCell>
                     <TableCell className="dark:text-slate-300">{olt.lokasi}</TableCell>
                     <TableCell className="dark:text-slate-300">{olt.pop?.nama_pop}</TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       {canViewSecret ? (
                         <OltSecretCell value={olt.ip_olt ?? null} />
                       ) : (
                         <LockedCell />
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       {canViewSecret ? (
                         <OltSecretCell value={olt.username_olt ?? null} />
                       ) : (
                         <LockedCell />
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       {canViewSecret ? (
                         <OltSecretCell value={olt.password_olt ?? null} />
                       ) : (
                         <LockedCell />
                       )}
                     </TableCell>
-                    <TableCell className="text-slate-500 dark:text-slate-400">
+                    <TableCell className="text-slate-500 dark:text-slate-400" onClick={(e) => e.stopPropagation()}>
                       {new Date(olt.createdAt).toLocaleDateString("id-ID", {
                         day: "2-digit",
                         month: "short",
                         year: "numeric",
                       })}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center gap-1 group/action">
                         <OltMapDialog nama={olt.nama_olt} lat={Number(olt.latitude)} lng={Number(olt.longitude)} />
                         <OpenGoogleMaps lat={Number(olt.latitude)} lng={Number(olt.longitude)} name={olt.nama_olt} />
@@ -210,15 +429,34 @@ export function OltSortableTable({
             </div>
           ) : (
             paginated.map((olt) => (
-              <div key={olt.id_olt} className="space-y-2 rounded-2xl border p-4 dark:border-slate-800 dark:bg-slate-900/50">
+              <div
+                key={olt.id_olt}
+                className={`space-y-2 rounded-2xl border p-4 dark:border-slate-800 dark:bg-slate-900/50 ${
+                  selectedIds.has(olt.id_olt) ? "border-purple-300 bg-purple-50 dark:bg-purple-500/10" : ""
+                }`}
+              >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <OltImageDialog fotoUrl={olt.foto_olt} namaOlt={olt.nama_olt} />
+                  <button
+                    type="button"
+                    onClick={() => toggleSelect(olt.id_olt)}
+                    className="flex items-center gap-3"
+                  >
+                    <div
+                      className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
+                        selectedIds.has(olt.id_olt)
+                          ? "border-purple-500 bg-purple-500"
+                          : "border-slate-300 dark:border-slate-600 hover:border-purple-400"
+                      }`}
+                    >
+                      {selectedIds.has(olt.id_olt) && (
+                        <Check className="h-3.5 w-3.5 text-white" />
+                      )}
+                    </div>
                     <div>
                       <p className="font-semibold dark:text-slate-100">{olt.nama_olt}</p>
                       <p className="text-sm text-slate-500 dark:text-slate-400">{olt.kode_olt}</p>
                     </div>
-                  </div>
+                  </button>
                   <div className="flex shrink-0 gap-1">
                     <OpenGoogleMaps lat={Number(olt.latitude)} lng={Number(olt.longitude)} name={olt.nama_olt} />
                     <OltFormDialog mode="edit" pops={pops} data={{ id_olt: olt.id_olt, nama_olt: olt.nama_olt, lokasi: olt.lokasi, latitude: String(olt.latitude), longitude: String(olt.longitude), id_pop: olt.id_pop, ip_olt: olt.ip_olt, username_olt: olt.username_olt, password_olt: olt.password_olt, foto_olt: olt.foto_olt }} />
@@ -263,6 +501,22 @@ export function OltSortableTable({
           <OltPagination page={page} totalPages={totalPagesCalc} />
         </div>
       </CardContent>
+
+      {/* Bulk Delete Dialog */}
+      {bulkDeleteOpen && bulkDeleteIds.length > 0 && (
+        <DeleteOltDialog
+          id={bulkDeleteIds[0]}
+          namaOlt={`${bulkDeleteIds.length} OLT`}
+          bulkIds={bulkDeleteIds}
+          open={bulkDeleteOpen}
+          onOpenChange={(isOpen) => {
+            setBulkDeleteOpen(isOpen);
+            if (!isOpen) {
+              handleDeleteSuccess();
+            }
+          }}
+        />
+      )}
     </Card>
   );
 }
