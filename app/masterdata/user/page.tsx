@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { getUsers } from "./actions";
+import { prisma } from "@/lib/prisma";
 import { UserSortableTable } from "./components/UserSortableTable";
 import EmptyState from "@/components/shared/empty-state";
 
@@ -13,6 +14,7 @@ export default async function UserPage({
   searchParams: Promise<{
     search?: string;
     page?: string;
+    highlight?: string;
   }>;
 }) {
   const session = await auth();
@@ -25,12 +27,13 @@ export default async function UserPage({
 
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
+  const highlightId = params?.highlight ? Number(params.highlight) : null;
 
-  const {
-    data: users,
-    total,
-    totalPages,
-  } = await getUsers(search, page);
+  // Hitung total SEMUA data (tanpa filter) untuk card statistik
+  const [totalCount, { data: users, total, totalPages }] = await Promise.all([
+    prisma.user.count(),
+    getUsers(search, page, highlightId),
+  ]);
 
   const currentUser = {
     id_user: Number(session.user.id_user),
@@ -52,7 +55,7 @@ export default async function UserPage({
           <CardContent className="flex items-center justify-between p-5 sm:p-6">
             <div>
               <p className="text-sm text-white/80">Total User</p>
-              <h2 className="mt-2 text-4xl font-bold sm:text-5xl">{total}</h2>
+              <h2 className="mt-2 text-4xl font-bold sm:text-5xl">{totalCount}</h2>
               <p className="mt-1 text-sm text-white/80">User Terdaftar</p>
             </div>
             <div className="rounded-2xl bg-white/20 p-3 sm:p-4">

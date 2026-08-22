@@ -6,9 +6,16 @@ import { FabDialog } from "@/app/jaringan/fab/components/FabDialog";
 import { FabTable } from "@/app/jaringan/fab/components/FabTable";
 import { ExportButton } from "@/components/ui/ExportButton";
 import { StatCardsDropdown } from "@/components/dashboard/StatCardsDropdown";
+import { getFabs } from "./actions";
 
-export default async function FabPage() {
+export default async function FabPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ highlight?: string }>;
+}) {
   const session = await auth();
+  const params = await searchParams;
+  const highlightId = params?.highlight ? Number(params.highlight) : null;
 
   const currentUser = {
     id_user: Number(session!.user.id_user),
@@ -17,15 +24,7 @@ export default async function FabPage() {
   };
 
   const [rawFab, areaList, paketList, salesList, penginputListRaw, fabStats] = await Promise.all([
-    prisma.fab.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        area: true,
-        paket: true,
-        users: true,
-        penginput: true,
-      },
-    }),
+    getFabs(highlightId),
     prisma.area.findMany({
       orderBy: { nama_area: "asc" },
       select: { id_area: true, nama_area: true },

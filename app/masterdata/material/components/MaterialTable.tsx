@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { Inbox, Layers, AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,26 +20,35 @@ import type { MaterialData } from "@/types/material";
 
 interface MaterialTableProps {
   data: MaterialData[];
-  search: string;
+  initialSearch?: string;
   page: number;
   total: number;
   totalPages: number;
+  onSearchChange?: (search: string) => void;
 }
 
 const PAGE_SIZE = 5;
 
 export const MaterialTable = ({
   data,
-  search,
+  initialSearch = "",
   page,
   total,
   totalPages,
+  onSearchChange,
 }: MaterialTableProps) => {
+  const [search, setSearch] = useState(initialSearch);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    onSearchChange?.(value);
+  };
+
   return (
     <div className="space-y-6">
       {/* Search bar + Total Material */}
       <Card className="flex-row rounded-3xl shadow-xl border bg-white p-4 flex items-center justify-between gap-4 flex-wrap dark:border-slate-800 dark:bg-slate-900">
-        <MaterialSearch defaultValue={search} />
+        <MaterialSearch value={search} onChange={handleSearchChange} />
 
         <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 px-4 py-2.5 text-white shadow-md shadow-purple-200 flex-shrink-0 dark:shadow-purple-950/40">
           <Layers size={18} className="text-white/90" />

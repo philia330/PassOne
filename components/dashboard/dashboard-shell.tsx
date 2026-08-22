@@ -4,6 +4,7 @@ import { useState } from "react";
 import Sidebar from "@/components/dashboard/sidebar";
 import Navbar from "@/components/dashboard/navbar";
 import Footer from "@/components/dashboard/Footer";
+import { CommandPaletteWrapper } from "@/components/command-palette";
 
 type Settings = {
   app_name: string;
@@ -22,6 +23,9 @@ export default function DashboardShell({
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
+      {/* Command Palette - available globally */}
+      <CommandPaletteWrapper />
+
       {/* Overlay gelap di belakang sidebar, cuma muncul di mobile pas sidebar terbuka */}
       {sidebarOpen && (
         <div

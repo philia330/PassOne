@@ -368,3 +368,101 @@ button svg,
 .dark .dropdown-scroll::-webkit-scrollbar-thumb:hover {
   background-color: rgb(100 116 139); /* slate-500 */
 }
+
+/* ============================================
+   Global Custom Scrollbar (Light Mode)
+   Otomatis berlaku untuk semua elemen scroll
+   ============================================ */
+
+/* Light mode - scrollbar global */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(241 245 249); /* slate-100 */
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgb(203 213 225); /* slate-300 */
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(148 163 184); /* slate-400 */
+}
+
+/* Firefox - light mode */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(203 213 225) rgb(241 245 249); /* thumb / track */
+}
+
+/* ============================================
+   Global Custom Scrollbar (Dark Mode)
+   Otomatis berlaku untuk semua elemen scroll
+   ============================================ */
+
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: rgb(30 41 59); /* slate-800 */
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: rgb(71 85 105); /* slate-600 */
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(100 116 139); /* slate-500 */
+}
+
+/* Firefox - dark mode */
+.dark * {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(71 85 105) rgb(30 41 59); /* thumb / track */
+}
+
+/* ============================================
+   Scrollbar Global untuk Container Tertentu
+   ============================================ */
+
+/* Table container scrollbar */
+.table-container::-webkit-scrollbar,
+.dark .table-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-container::-webkit-scrollbar-track,
+.dark .table-container::-webkit-scrollbar-track {
+  background: rgb(241 245 249); /* slate-100 */
+}
+
+.table-container::-webkit-scrollbar-thumb,
+.dark .table-container::-webkit-scrollbar-thumb {
+  background-color: rgb(203 213 225); /* slate-300 */
+}
+
+.dark .table-container::-webkit-scrollbar-track {
+  background: rgb(30 41 59); /* slate-800 */
+}
+
+.dark .table-container::-webkit-scrollbar-thumb {
+  background-color: rgb(71 85 105); /* slate-600 */
+}
+
+/* Chart scroll-x global override untuk dark mode */
+.chart-scroll-x::-webkit-scrollbar-thumb {
+  background-color: rgb(203 213 225); /* slate-300 - light mode */
+}
+
+.dark .chart-scroll-x::-webkit-scrollbar-thumb {
+  background-color: rgb(71 85 105); /* slate-600 - dark mode */
+}

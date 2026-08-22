@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, ReactNode, useEffect } from "react";
+import { useState, useMemo, ReactNode, useEffect, useRef } from "react";
 import { ArrowUp, ArrowDown, AlertTriangle, Check, Trash2, Download, X, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -72,6 +72,12 @@ export function MaterialSortableTable({
   const [isExporting, setIsExporting] = useState(false);
   const [selectAllPage, setSelectAllPage] = useState(false);
 
+  // Highlight state untuk Command Palette
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const highlightHandled = useRef(false);
+  const lastHighlightId = useRef<string | null>(null);
+  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
+
   const canDelete = currentUser.role === "ADMIN";
 
   // Clear selection when filters/search change
@@ -79,6 +85,73 @@ export function MaterialSortableTable({
     setSelectedIds(new Set());
     setSelectAllPage(false);
   }, [search]);
+
+  // Handle highlight dari Command Palette (query param: highlight=<id_material>)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlightId = params.get("highlight");
+
+    // Reset highlightHandled jika nilai highlight berubah (软导航后新值)
+    if (highlightId !== lastHighlightId.current) {
+      highlightHandled.current = false;
+      lastHighlightId.current = highlightId;
+    }
+
+    if (!highlightId || highlightHandled.current) return;
+
+    const targetId = Number(highlightId);
+    if (Number.isNaN(targetId)) return;
+
+    const item = initialData.find((material) => material.id_material === targetId);
+    if (!item) return;
+
+    highlightHandled.current = true;
+
+    // Set search ke nama material - ini akan sync ke MaterialSearch via onChange
+    setSearch(item.nama_material);
+    setPage(1);
+
+    // Update URL search param agar sinkron dengan state
+    const urlTimer = window.setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("search", item.nama_material);
+      url.searchParams.delete("highlight");
+      url.searchParams.set("page", "1");
+      window.history.replaceState({}, "", url.toString());
+    }, 100);
+
+    // Tunggu React merender hasil filter sebelum mencari row di DOM.
+    const highlightTimer = window.setTimeout(() => {
+      setHighlightedId(targetId);
+
+      const scrollTimer = window.setTimeout(() => {
+        const row = rowRefs.current.get(targetId);
+
+        if (row) {
+          row.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+
+        const fadeTimer = window.setTimeout(() => {
+          setHighlightedId(null);
+        }, 3000);
+
+        return () => window.clearTimeout(fadeTimer);
+      }, 100);
+
+      return () => window.clearTimeout(scrollTimer);
+    }, 200);
+
+    return () => {
+      window.clearTimeout(highlightTimer);
+      window.clearTimeout(urlTimer);
+    };
+  // initialData diperlukan agar target tetap bisa diproses setelah data tersedia.
+  // highlightHandled mencegah effect menjalankan proses yang sama berulang kali.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
 
   const toggleSort = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -256,7 +329,7 @@ export function MaterialSortableTable({
         )}
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <MaterialSearch defaultValue={search} />
+          <MaterialSearch value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
             {actions}
             <MaterialDialog mode="create" kodeOtomatis={kodeOtomatis} />
@@ -325,10 +398,21 @@ export function MaterialSortableTable({
                   return (
                     <TableRow
                       key={item.id_material}
+                      ref={(el) => {
+                        if (el) {
+                          rowRefs.current.set(item.id_material, el);
+                        } else {
+                          rowRefs.current.delete(item.id_material);
+                        }
+                      }}
                       className={`border-b border-slate-200 dark:border-slate-800 transition-colors ${
                         selectedIds.has(item.id_material)
                           ? "bg-purple-50 dark:bg-purple-500/10"
                           : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                      } ${
+                        highlightedId === item.id_material
+                          ? "bg-yellow-100 dark:bg-yellow-500/20 ring-2 ring-yellow-400 dark:ring-yellow-500"
+                          : ""
                       }`}
                     >
                       <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
@@ -397,6 +481,10 @@ export function MaterialSortableTable({
                 key={item.id_material}
                 className={`space-y-2 rounded-2xl border p-4 dark:border-slate-800 dark:bg-slate-800/40 ${
                   selectedIds.has(item.id_material) ? "border-purple-300 bg-purple-50 dark:bg-purple-500/10" : ""
+                } ${
+                  highlightedId === item.id_material
+                    ? "border-yellow-400 bg-yellow-100 ring-2 ring-yellow-400 dark:border-yellow-500 dark:bg-yellow-500/20 dark:ring-yellow-500"
+                    : ""
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">

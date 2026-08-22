@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowUp, ArrowDown, MessageCircle, Check, Trash2, Download, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +19,7 @@ import { UserSearch } from "./UserSearch";
 import { UserPagination } from "./UserPagination";
 import ImagePreview from "@/components/shared/image-preview";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type CurrentUser = {
   id_user: number;
@@ -70,6 +72,12 @@ export function UserSortableTable({
   const [isExporting, setIsExporting] = useState(false);
   const [selectAllPage, setSelectAllPage] = useState(false);
 
+  // Highlight state untuk Command Palette
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const highlightHandled = useRef(false);
+  const lastHighlightId = useRef<string | null>(null);
+  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
+
   const isAdmin = currentUser?.role === "ADMIN";
   const canBulkDelete = isAdmin;
 
@@ -78,6 +86,59 @@ export function UserSortableTable({
     setSelectedIds(new Set());
     setSelectAllPage(false);
   }, [search]);
+
+  // Handle highlight dari Command Palette (query param: highlight=<id_user>)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlightId = params.get("highlight");
+
+    // Reset highlightHandled jika nilai highlight berubah (软导航后新值)
+    if (highlightId !== lastHighlightId.current) {
+      highlightHandled.current = false;
+      lastHighlightId.current = highlightId;
+    }
+
+    if (!highlightId || highlightHandled.current) return;
+    highlightHandled.current = true;
+
+    const targetId = Number(highlightId);
+    if (isNaN(targetId)) return;
+
+    // Cari item di data
+    const item = initialData.find((u) => u.id_user === targetId);
+    if (!item) return;
+
+    // Set search ke nama user - ini akan sync ke UserSearch via onChange
+    setSearch(item.nama);
+    setPage(1);
+
+    // Update URL search param agar sinkron dengan state
+    const timer = setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("search", item.nama);
+      url.searchParams.delete("highlight");
+      url.searchParams.set("page", "1");
+      window.history.replaceState({}, "", url.toString());
+    }, 100);
+
+    // Highlight baris setelah render
+    setTimeout(() => {
+      setHighlightedId(targetId);
+
+      // Scroll ke baris
+      setTimeout(() => {
+        const row = rowRefs.current.get(targetId);
+        if (row) {
+          row.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        // Hapus highlight setelah 3 detik
+        setTimeout(() => setHighlightedId(null), 3000);
+      }, 100);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
 
   const toggleSort = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -256,7 +317,7 @@ export function UserSortableTable({
         )}
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <UserSearch defaultValue={search} />
+          <UserSearch value={search} onChange={setSearch} />
           <div className="add-button">
             <UserFormDialog mode="create" />
           </div>
@@ -323,11 +384,14 @@ export function UserSortableTable({
                 paginated.map((user) => (
                   <TableRow
                     key={user.id_user}
-                    className={`hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 transition-colors ${
+                    ref={(el) => { if (el) rowRefs.current.set(user.id_user, el); else rowRefs.current.delete(user.id_user); }}
+                    className={cn(
+                      "hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 transition-colors",
                       selectedIds.has(user.id_user)
                         ? "bg-purple-50 dark:bg-purple-500/10"
-                        : ""
-                    }`}
+                        : "",
+                      highlightedId === user.id_user && "bg-yellow-100 dark:bg-yellow-500/20 ring-2 ring-yellow-400 dark:ring-yellow-500"
+                    )}
                   >
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <button

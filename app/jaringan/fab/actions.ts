@@ -373,3 +373,25 @@ export async function deleteMultipleFab(ids: number[]) {
   await logActivity("FAB_DELETED", `${ids.length} FAB dihapus oleh ${session.user.nama}`);
   revalidatePath("/jaringan/fab");
 }
+
+/**
+ * ======================================
+ * GET DATA
+ * ======================================
+ */
+export async function getFabs(highlightId?: number | null) {
+  const where = highlightId
+    ? { id_fab: highlightId }
+    : {};
+
+  return prisma.fab.findMany({
+    where,
+    include: {
+      area: true,
+      paket: true,
+      users: true,
+      penginput: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}

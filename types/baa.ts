@@ -16,8 +16,8 @@ export interface BaaTeknisiData {
     // ← user → users
     id_user: number;
     nama: string;
-    username?: string;
-    email?: string;
+    username?: string | null;
+    email?: string | null;
   };
 }
 

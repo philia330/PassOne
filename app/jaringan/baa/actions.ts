@@ -778,15 +778,24 @@ export async function deleteMultipleBaa(ids: number[]) {
  * GET DATA
  * ======================================
  */
-export async function getBaaData() {
+export async function getBaaData(highlightId?: number | null) {
+  const where = highlightId
+    ? { id_baa: highlightId }
+    : {};
+
   return await prisma.baa.findMany({
+    where,
     include: {
       fab: true,
       users: true,
       olt: true,
       odp: true,
       ont: true,
-      baadetail: true,
+      baadetail: {
+        include: {
+          material: true,
+        },
+      },
       teknisiTambahan: {
         include: {
           users: true,

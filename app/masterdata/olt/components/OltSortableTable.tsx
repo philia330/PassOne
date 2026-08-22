@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, ReactNode, useEffect } from "react";
+import { useState, useMemo, ReactNode, useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 import { ArrowUp, ArrowDown, Lock, Check, Trash2, Download, X, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -86,6 +87,12 @@ export function OltSortableTable({
   const [isExporting, setIsExporting] = useState(false);
   const [selectAllPage, setSelectAllPage] = useState(false);
 
+  // Highlight state untuk Command Palette
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const highlightHandled = useRef(false);
+  const lastHighlightId = useRef<string | null>(null);
+  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
+
   const isAdmin = currentUser?.role === "ADMIN";
   const canBulkDelete = isAdmin;
 
@@ -94,6 +101,59 @@ export function OltSortableTable({
     setSelectedIds(new Set());
     setSelectAllPage(false);
   }, [search]);
+
+  // Handle highlight dari Command Palette (query param: highlight=<id_olt>)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlightId = params.get("highlight");
+
+    // Reset highlightHandled jika nilai highlight berubah (软导航后新值)
+    if (highlightId !== lastHighlightId.current) {
+      highlightHandled.current = false;
+      lastHighlightId.current = highlightId;
+    }
+
+    if (!highlightId || highlightHandled.current) return;
+    highlightHandled.current = true;
+
+    const targetId = Number(highlightId);
+    if (isNaN(targetId)) return;
+
+    // Cari item di data
+    const item = initialData.find((o) => o.id_olt === targetId);
+    if (!item) return;
+
+    // Set search ke nama OLT - ini akan sync ke OltSearch via onChange
+    setSearch(item.nama_olt);
+    setPage(1);
+
+    // Update URL search param agar sinkron dengan state
+    const timer = setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("search", item.nama_olt);
+      url.searchParams.delete("highlight");
+      url.searchParams.set("page", "1");
+      window.history.replaceState({}, "", url.toString());
+    }, 100);
+
+    // Highlight baris setelah render
+    setTimeout(() => {
+      setHighlightedId(targetId);
+
+      // Scroll ke baris
+      setTimeout(() => {
+        const row = rowRefs.current.get(targetId);
+        if (row) {
+          row.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        // Hapus highlight setelah 3 detik
+        setTimeout(() => setHighlightedId(null), 3000);
+      }, 100);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
 
   const toggleSort = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -272,7 +332,7 @@ export function OltSortableTable({
         )}
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <OltSearch defaultValue={search} />
+          <OltSearch value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
             {actions}
             <OltFormDialog mode="create" pops={pops} />
@@ -341,11 +401,14 @@ export function OltSortableTable({
                 paginated.map((olt) => (
                   <TableRow
                     key={olt.id_olt}
-                    className={`border-b border-slate-100 transition-colors ${
+                    ref={(el) => { if (el) rowRefs.current.set(olt.id_olt, el); else rowRefs.current.delete(olt.id_olt); }}
+                    className={cn(
+                      "border-b border-slate-100 transition-colors",
                       selectedIds.has(olt.id_olt)
                         ? "bg-purple-50 dark:bg-purple-500/10"
-                        : "hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40"
-                    }`}
+                        : "hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40",
+                      highlightedId === olt.id_olt && "bg-yellow-100 dark:bg-yellow-500/20 ring-2 ring-yellow-400 dark:ring-yellow-500"
+                    )}
                   >
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <button

@@ -1,23 +1,41 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-export const OltSearch = ({ defaultValue }: { defaultValue: string }) => {
+interface OltSearchProps {
+  value: string;
+  onChange: (value: string) => void;
+}
+
+export const OltSearch = ({ value, onChange }: OltSearchProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [value, setValue] = useState(defaultValue);
+  const [isPending, startTransition] = useTransition();
+
+  const pathnameRef = useRef(pathname);
+  const searchParamsRef = useRef(searchParams);
 
   useEffect(() => {
-    if (value === (searchParams.get("search") ?? "")) {
-      return;
-    }
+    pathnameRef.current = pathname;
+    searchParamsRef.current = searchParams;
+  });
 
+  // Sinkronisasi jika URL berubah dari luar (misal: highlight dari Command Palette)
+  useEffect(() => {
+    const urlSearch = searchParams.get("search") ?? "";
+    if (value !== urlSearch) {
+      onChange(urlSearch);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  useEffect(() => {
     const timeout = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParamsRef.current.toString());
 
       if (value.trim()) {
         params.set("search", value.trim());
@@ -27,7 +45,11 @@ export const OltSearch = ({ defaultValue }: { defaultValue: string }) => {
 
       params.set("page", "1");
 
-      router.replace(`${pathname}?${params.toString()}`);
+      startTransition(() => {
+        router.replace(`${pathnameRef.current}?${params.toString()}`, {
+          scroll: false,
+        });
+      });
     }, 400);
 
     return () => clearTimeout(timeout);
@@ -39,8 +61,9 @@ export const OltSearch = ({ defaultValue }: { defaultValue: string }) => {
       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
       <Input
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         placeholder="Cari kode, nama, atau lokasi..."
+        disabled={isPending}
         className="h-11 rounded-2xl border-slate-200 bg-white pl-9 placeholder:text-slate-500 focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
       />
     </div>

@@ -5,12 +5,20 @@ import { auth } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { BaaTable } from "@/app/jaringan/baa/components/BaaTable";
 import { StatCardsDropdown } from "@/components/dashboard/StatCardsDropdown";
+import { getBaaData } from "./actions";
 
-export default async function BaaPage() {
+export default async function BaaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ highlight?: string }>;
+}) {
   const session = await auth();
   if (!session?.user) {
     redirect("/login");
   }
+
+  const params = await searchParams;
+  const highlightId = params?.highlight ? Number(params.highlight) : null;
 
   const currentUser = {
     id_user: Number(session.user.id_user),
@@ -20,32 +28,7 @@ export default async function BaaPage() {
 
   const [rawBaa, fabList, teknisiList, oltList, odpList, ontList, materialList] =
     await Promise.all([
-      prisma.baa.findMany({
-        orderBy: { createdAt: "desc" },
-        include: {
-          fab: true,
-          users: true,
-          olt: true,
-          odp: true,
-          ont: true,
-          baadetail: {
-            include: {
-              material: true,
-            },
-          },
-          teknisiTambahan: {
-            include: {
-              users: {
-                select: {
-                  id_user: true,
-                  nama: true,
-                  username: true,
-                },
-              },
-            },
-          },
-        },
-      }),
+      getBaaData(highlightId),
       prisma.fab.findMany({
         where: { status: "OPEN" },
         orderBy: { nama_pelanggan: "asc" },

@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Cable } from "lucide-react";
 import { getPortPons, getOlts, getOdps } from "./actions";
+import { prisma } from "@/lib/prisma";
 import { PortPonSortableTable } from "./components/PortPonSortableTable";
 import { requirePageAccess } from "@/lib/auth/guards";
 import { ExportButton } from "@/components/ui/ExportButton";
@@ -9,16 +10,19 @@ import { ExportButton } from "@/components/ui/ExportButton";
 export default async function PortPonPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; page?: string }>;
+  searchParams: Promise<{ search?: string; page?: string; highlight?: string }>;
 }) {
   const session = await requirePageAccess(["ADMIN", "TEKNISI"]);
 
   const params = await searchParams;
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
+  const highlightId = params?.highlight ? Number(params.highlight) : null;
 
-  const [{ data: ports, total, totalPages }, olts, odps] = await Promise.all([
-    getPortPons(search, page),
+  // Hitung total SEMUA data (tanpa filter) untuk card statistik
+  const [totalCount, { data: ports, total, totalPages }, olts, odps] = await Promise.all([
+    prisma.portPon.count(),
+    getPortPons(search, page, highlightId),
     getOlts(),
     getOdps(),
   ]);
@@ -39,7 +43,7 @@ export default async function PortPonPage({
           <CardContent className="flex items-center justify-between p-5 sm:p-6">
             <div>
               <p className="text-sm text-white/80">Total Port PON</p>
-              <h2 className="mt-2 text-4xl font-bold sm:text-5xl">{total}</h2>
+              <h2 className="mt-2 text-4xl font-bold sm:text-5xl">{totalCount}</h2>
               <p className="mt-1 text-sm text-white/80">Port Terdaftar</p>
             </div>
             <div className="rounded-2xl bg-white/20 p-4">

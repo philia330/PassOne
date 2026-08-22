@@ -139,6 +139,8 @@ model fab {
   @@index([id_paket], map: "Fab_id_paket_fkey")
   @@index([id_user], map: "Fab_id_user_fkey")
   @@index([id_penginput], map: "Fab_id_penginput_fkey")
+  @@index([nama_pelanggan], map: "Fab_nama_pelanggan_idx")
+  @@index([status], map: "Fab_status_idx")
 
   @@map("fab")
 }
@@ -180,6 +182,7 @@ model olt {
   portpon      portPon[]
 
   @@index([id_pop], map: "Olt_id_pop_fkey")
+  @@index([nama_olt], map: "Olt_nama_olt_idx")
 
   @@map("olt")
 }
@@ -201,6 +204,7 @@ model odp {
   portpon     portPon[]
 
   @@index([id_olt], map: "Odp_id_olt_fkey")
+  @@index([nama_odp], map: "Odp_nama_odp_idx")
 
   @@map("odp")
 }
@@ -220,6 +224,7 @@ model ont {
 
   @@index([id_odp], map: "Ont_id_odp_fkey")
   @@index([id_pop], map: "Ont_id_pop_fkey")
+  @@index([pelanggan], map: "Ont_pelanggan_idx")
 
   @@map("ont")
 }

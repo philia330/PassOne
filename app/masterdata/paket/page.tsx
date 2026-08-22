@@ -12,6 +12,7 @@ export default async function PaketPage({
   searchParams: Promise<{
     search?: string;
     page?: string;
+    highlight?: string;
   }>;
 }) {
   const session = await requirePageAccess(["ADMIN", "LOGISTIK"]);
@@ -19,6 +20,7 @@ export default async function PaketPage({
   const params = (await searchParams) ?? {};
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
+  const highlightId = params?.highlight ? Number(params.highlight) : null;
 
   const currentRole = session.user.role;
   // Hanya Admin dan Leader yang bisa export
@@ -31,7 +33,7 @@ export default async function PaketPage({
   };
 
   const [{ data: paket, total, totalPages }, totalAll] = await Promise.all([
-    getPakets(search, page),
+    getPakets(search, page, highlightId),
     getPaketTotal(),
   ]);
 
@@ -50,7 +52,7 @@ export default async function PaketPage({
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="text-sm text-white/80">Total Paket</p>
-              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{total}</h2>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{totalAll}</h2>
               <p className="mt-1 text-sm text-white/80">Paket Terdaftar</p>
             </div>
 

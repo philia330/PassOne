@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Router } from "lucide-react";
 import { getOnts, getPops, getOdps } from "./actions";
+import { prisma } from "@/lib/prisma";
 import { OntSortableTable } from "./components/OntSortableTable";
 import { requirePageAccess } from "@/lib/auth/guards";
 import { ExportButton } from "@/components/ui/ExportButton";
@@ -9,13 +10,14 @@ import { ExportButton } from "@/components/ui/ExportButton";
 export default async function OntPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; page?: string }>;
+  searchParams: Promise<{ search?: string; page?: string; highlight?: string }>;
 }) {
   const session = await requirePageAccess(["ADMIN", "LOGISTIK", "TEKNISI"]);
 
   const params = await searchParams;
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
+  const highlightId = params?.highlight ? Number(params.highlight) : null;
 
   // getOnts, getPops, getOdps semuanya sudah di-`select`/`include` seperlunya
   // di actions.ts (tanpa field Decimal), jadi tidak perlu trik sanitize lagi di sini.
@@ -29,8 +31,10 @@ export default async function OntPage({
     role: currentRole,
   };
 
-  const [{ data: onts, total, totalPages }, pops, odps] = await Promise.all([
-    getOnts(search, page),
+  // Hitung total SEMUA data (tanpa filter) untuk card statistik
+  const [totalCount, { data: onts, total, totalPages }, pops, odps] = await Promise.all([
+    prisma.ont.count(),
+    getOnts(search, page, highlightId),
     getPops(),
     getOdps(),
   ]);
@@ -51,7 +55,7 @@ export default async function OntPage({
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="text-sm text-white/80">Total ONT</p>
-              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{total}</h2>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{totalCount}</h2>
               <p className="mt-1 text-sm text-white/80">Perangkat Terdaftar</p>
             </div>
 

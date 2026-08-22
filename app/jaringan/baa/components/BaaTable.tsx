@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import {
   Search,
@@ -316,6 +316,66 @@ export const BaaTable = ({
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [selectAllPage, setSelectAllPage] = useState(false);
+
+  // Highlight state untuk Command Palette
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const highlightHandled = useRef(false);
+  const lastHighlightId = useRef<string | null>(null);
+  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
+
+  // Handle highlight dari Command Palette (query param: highlight=<id_baa>)
+  useEffect(() => {
+    const highlightId = searchParams.get("highlight");
+
+    // Reset highlightHandled jika nilai highlight berubah (软导航后新值)
+    if (highlightId !== lastHighlightId.current) {
+      highlightHandled.current = false;
+      lastHighlightId.current = highlightId;
+    }
+
+    if (!highlightId || highlightHandled.current) return;
+    highlightHandled.current = true;
+
+    const targetId = Number(highlightId);
+    if (isNaN(targetId)) return;
+
+    // Cari item di data
+    const item = data.find((b) => b.id_baa === targetId);
+    if (!item) return;
+
+    // Set search ke nama pelanggan FAB dan reset filters
+    setSearch(item.fab?.nama_pelanggan || "");
+    setFilterTeknisi("all");
+    setFilterTahun("all");
+    setFilterBulan("all");
+    setFilterOlt("all");
+    setFilterOdp("all");
+    setPage(1);
+
+    // Highlight baris setelah render
+    setTimeout(() => {
+      setHighlightedId(targetId);
+
+      // Scroll ke baris
+      setTimeout(() => {
+        const row = rowRefs.current.get(targetId);
+        if (row) {
+          row.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        // Hapus highlight setelah 3 detik
+        setTimeout(() => setHighlightedId(null), 3000);
+      }, 100);
+    }, 200);
+
+    // Hapus highlight param dari URL
+    const timer = setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("highlight");
+      window.history.replaceState({}, "", url.toString());
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchParams, data]);
 
   // Detect when navigation happens (e.g., after router.refresh())
   useEffect(() => {
@@ -924,11 +984,17 @@ export const BaaTable = ({
                 paginated.map((item) => (
                   <TableRow
                     key={item.id_baa}
-                    className={`border-b border-slate-200 dark:border-slate-800 transition-colors cursor-pointer ${
+                    ref={(el) => {
+                      if (el) rowRefs.current.set(item.id_baa, el);
+                      else rowRefs.current.delete(item.id_baa);
+                    }}
+                    className={cn(
+                      "border-b border-slate-200 dark:border-slate-800 transition-colors cursor-pointer",
                       selectedIds.has(item.id_baa)
                         ? "bg-purple-50 dark:bg-purple-500/10"
-                        : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                    }`}
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
+                      highlightedId === item.id_baa && "bg-yellow-100 dark:bg-yellow-500/20 ring-2 ring-yellow-400 dark:ring-yellow-500"
+                    )}
                     onDoubleClick={() => router.push(`/workspace?view=baa&id_baa=${item.id_baa}`)}
                   >
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
