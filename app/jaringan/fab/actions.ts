@@ -7,8 +7,47 @@ import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { optimizeImageToWebP } from "@/lib/image-utils";
+import { z } from "zod";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "fab");
+
+// ======================================================
+// FAB VALIDATION SCHEMA
+// ======================================================
+
+const fabValidation = z.object({
+  nama_pelanggan: z
+    .string()
+    .min(1, "Nama pelanggan wajib diisi.")
+    .min(2, "Nama pelanggan minimal 2 karakter.")
+    .max(100, "Nama pelanggan maksimal 100 karakter."),
+  nik: z
+    .string()
+    .min(1, "NIK wajib diisi.")
+    .length(16, "NIK harus tepat 16 digit.")
+    .regex(/^\d+$/, "NIK hanya boleh berisi angka."),
+  no_hp: z
+    .string()
+    .min(1, "Nomor HP wajib diisi.")
+    .regex(/^(\+?62|0)[0-9]{9,14}$/, "Nomor HP tidak valid. Gunakan format: 08xxxxxxxxxx atau +62xxxxxxxxxxx")
+    .max(15, "Nomor HP maksimal 15 karakter."),
+  alamat: z
+    .string()
+    .min(1, "Alamat wajib diisi.")
+    .min(10, "Alamat minimal 10 karakter.")
+    .max(500, "Alamat maksimal 500 karakter."),
+  latitude: z
+    .number()
+    .min(-90, "Latitude tidak valid.")
+    .max(90, "Latitude tidak valid."),
+  longitude: z
+    .number()
+    .min(-180, "Longitude tidak valid.")
+    .max(180, "Longitude tidak valid."),
+  id_area: z.number().int().positive("Area wajib dipilih."),
+  id_paket: z.number().int().positive("Paket wajib dipilih."),
+  id_user: z.number().int().positive("Sales wajib dipilih."),
+});
 
 /**
  * ======================================
@@ -86,20 +125,32 @@ export async function createFab(formData: FormData) {
     throw new Error("Sesi tidak valid, silakan login ulang.");
   }
 
-  const nama_pelanggan = (formData.get("nama_pelanggan") as string)?.trim();
-  const nik = (formData.get("nik") as string)?.trim();
-  const no_hp = (formData.get("no_hp") as string)?.trim();
-  const alamat = (formData.get("alamat") as string)?.trim();
-  const latitude = Number(formData.get("latitude"));
-  const longitude = Number(formData.get("longitude"));
-  const id_area = Number(formData.get("id_area"));
-  const id_paket = Number(formData.get("id_paket"));
-  const fotoFile = formData.get("foto") as File | null;
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_pelanggan: (formData.get("nama_pelanggan") as string)?.trim() || "",
+    nik: (formData.get("nik") as string)?.trim() || "",
+    no_hp: (formData.get("no_hp") as string)?.trim() || "",
+    alamat: (formData.get("alamat") as string)?.trim() || "",
+    latitude: parseFloat(formData.get("latitude") as string) || 0,
+    longitude: parseFloat(formData.get("longitude") as string) || 0,
+    id_area: parseInt(formData.get("id_area") as string, 10) || 0,
+    id_paket: parseInt(formData.get("id_paket") as string, 10) || 0,
+    id_user: parseInt(formData.get("id_user") as string, 10) || 0,
+  };
 
-  // Validasi wajib
-  if (!nama_pelanggan || !nik || !no_hp || !alamat || !id_area || !id_paket) {
-    throw new Error("Semua field wajib diisi.");
+  // Parse validation
+  const parseResult = fabValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
   }
+
+  const validated = parseResult.data;
+
+  const fotoFile = formData.get("foto") as File | null;
 
   if (!fotoFile || fotoFile.size === 0) {
     throw new Error("Foto depan rumah wajib diisi.");
@@ -108,16 +159,16 @@ export async function createFab(formData: FormData) {
   // ======================================
   // CEK DUPLIKAT SEBELUM INSERT
   // ======================================
-  const isDuplicate = await checkNikDuplicate(nik);
+  const isDuplicate = await checkNikDuplicate(validated.nik);
   if (isDuplicate) {
-    throw new Error(`NIK "${nik}" sudah terdaftar. Gunakan NIK yang berbeda.`);
+    throw new Error(`NIK "${validated.nik}" sudah terdaftar. Gunakan NIK yang berbeda.`);
   }
 
   const status: "OPEN" | "AKTIF" = "OPEN";
   const id_penginput = Number(session.user.id_user);
   const id_user =
     session.user.role === "TEKNISI"
-      ? Number(formData.get("id_user"))
+      ? validated.id_user
       : id_penginput;
 
   if (session.user.role === "TEKNISI" && !id_user) {
@@ -138,25 +189,25 @@ export async function createFab(formData: FormData) {
     await prisma.$transaction(async (tx) => {
       // Double-check NIK di dalam transaction (paling akurat)
       const existingInTx = await tx.fab.findFirst({
-        where: { nik },
+        where: { nik: validated.nik },
       });
 
       if (existingInTx) {
-        throw new Error(`NIK "${nik}" sudah digunakan oleh data lain.`);
+        throw new Error(`NIK "${validated.nik}" sudah digunakan oleh data lain.`);
       }
 
       await tx.fab.create({
         data: {
           kode_fab: kodeSementara,
-          nama_pelanggan,
-          nik,
-          no_hp,
-          alamat,
-          latitude,
-          longitude,
+          nama_pelanggan: validated.nama_pelanggan,
+          nik: validated.nik,
+          no_hp: validated.no_hp,
+          alamat: validated.alamat,
+          latitude: validated.latitude,
+          longitude: validated.longitude,
           status,
-          id_area,
-          id_paket,
+          id_area: validated.id_area,
+          id_paket: validated.id_paket,
           id_user,
           id_penginput,
           foto: fotoPath,
@@ -171,7 +222,7 @@ export async function createFab(formData: FormData) {
   }
 
   await renumberKodeFab();
-  await logActivity("FAB_CREATED", `FAB "${nama_pelanggan}" (NIK: ${nik}) dibuat oleh ${session.user.nama}`);
+  await logActivity("FAB_CREATED", `FAB "${validated.nama_pelanggan}" (NIK: ${validated.nik}) dibuat oleh ${session.user.nama}`);
   revalidatePath("/jaringan/fab");
 }
 
@@ -201,36 +252,48 @@ export async function updateFab(id: number, formData: FormData) {
     throw new Error("Anda tidak memiliki akses untuk mengubah data FAB ini.");
   }
 
-  const nama_pelanggan = (formData.get("nama_pelanggan") as string)?.trim();
-  const nik = (formData.get("nik") as string)?.trim();
-  const no_hp = (formData.get("no_hp") as string)?.trim();
-  const alamat = (formData.get("alamat") as string)?.trim();
-  const latitude = Number(formData.get("latitude"));
-  const longitude = Number(formData.get("longitude"));
-  const id_area = Number(formData.get("id_area"));
-  const id_paket = Number(formData.get("id_paket"));
-  const fotoFile = formData.get("foto") as File | null;
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_pelanggan: (formData.get("nama_pelanggan") as string)?.trim() || "",
+    nik: (formData.get("nik") as string)?.trim() || "",
+    no_hp: (formData.get("no_hp") as string)?.trim() || "",
+    alamat: (formData.get("alamat") as string)?.trim() || "",
+    latitude: parseFloat(formData.get("latitude") as string) || 0,
+    longitude: parseFloat(formData.get("longitude") as string) || 0,
+    id_area: parseInt(formData.get("id_area") as string, 10) || 0,
+    id_paket: parseInt(formData.get("id_paket") as string, 10) || 0,
+    id_user: parseInt(formData.get("id_user") as string, 10) || 0,
+  };
 
-  if (!nama_pelanggan || !nik || !no_hp || !alamat || !id_area || !id_paket) {
-    throw new Error("Semua field wajib diisi.");
+  // Parse validation
+  const parseResult = fabValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
   }
+
+  const validated = parseResult.data;
 
   // ======================================
   // CEK DUPLIKAT NIK (jika berubah)
   // ======================================
-  if (nik !== existingFab.nik) {
-    const isDuplicate = await checkNikDuplicate(nik, id);
+  if (validated.nik !== existingFab.nik) {
+    const isDuplicate = await checkNikDuplicate(validated.nik, id);
     if (isDuplicate) {
-      throw new Error(`NIK "${nik}" sudah digunakan oleh data lain.`);
+      throw new Error(`NIK "${validated.nik}" sudah digunakan oleh data lain.`);
     }
   }
 
   const id_user =
     session.user.role === "TEKNISI"
-      ? Number(formData.get("id_user"))
+      ? validated.id_user
       : Number(session.user.id_user);
 
   let fotoPath: string | undefined;
+  const fotoFile = formData.get("foto") as File | null;
   if (fotoFile && fotoFile.size > 0) {
     fotoPath = await simpanFotoFab(fotoFile);
   }
@@ -238,27 +301,27 @@ export async function updateFab(id: number, formData: FormData) {
   try {
     await prisma.$transaction(async (tx) => {
       // Double-check NIK duplikat di dalam transaction
-      if (nik !== existingFab.nik) {
+      if (validated.nik !== existingFab.nik) {
         const existingInTx = await tx.fab.findFirst({
-          where: { nik, id_fab: { not: id } },
+          where: { nik: validated.nik, id_fab: { not: id } },
         });
 
         if (existingInTx) {
-          throw new Error(`NIK "${nik}" sudah digunakan oleh data lain.`);
+          throw new Error(`NIK "${validated.nik}" sudah digunakan oleh data lain.`);
         }
       }
 
       await tx.fab.update({
         where: { id_fab: id },
         data: {
-          nama_pelanggan,
-          nik,
-          no_hp,
-          alamat,
-          latitude,
-          longitude,
-          id_area,
-          id_paket,
+          nama_pelanggan: validated.nama_pelanggan,
+          nik: validated.nik,
+          no_hp: validated.no_hp,
+          alamat: validated.alamat,
+          latitude: validated.latitude,
+          longitude: validated.longitude,
+          id_area: validated.id_area,
+          id_paket: validated.id_paket,
           id_user,
           ...(fotoPath ? { foto: fotoPath } : {}),
         },
@@ -271,7 +334,7 @@ export async function updateFab(id: number, formData: FormData) {
     throw error;
   }
 
-  await logActivity("FAB_UPDATED", `FAB "${nama_pelanggan}" (NIK: ${nik}) diupdate oleh ${session.user.nama}`);
+  await logActivity("FAB_UPDATED", `FAB "${validated.nama_pelanggan}" (NIK: ${validated.nik}) diupdate oleh ${session.user.nama}`);
   revalidatePath("/jaringan/fab");
 }
 

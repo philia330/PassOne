@@ -5,8 +5,32 @@ import { revalidatePath } from "next/cache";
 import { ont_status } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { Role } from "@/lib/auth/roles";
+import { z } from "zod";
 
 const PAGE_SIZE = 10;
+
+// ======================================================
+// VALIDATION SCHEMA - ONT
+// ======================================================
+
+const ontValidation = z.object({
+  serial_number: z
+    .string()
+    .min(1, "Serial number wajib diisi.")
+    .min(5, "Serial number minimal 5 karakter.")
+    .max(50, "Serial number maksimal 50 karakter.")
+    .regex(/^[a-zA-Z0-9\-]+$/, "Serial number hanya boleh berisi huruf, angka, dan tanda hubung."),
+  model: z
+    .string()
+    .max(100, "Model maksimal 100 karakter.")
+    .optional()
+    .nullable(),
+  status: z.enum(["TERSEDIA", "RUSAK"], {
+    errorMap: () => ({ message: "Status wajib dipilih." }),
+  }),
+  id_pop: z.number().int().positive("POP wajib dipilih."),
+  id_odp: z.number().int().positive("ODP wajib dipilih."),
+});
 
 /**
  * ======================================
@@ -58,6 +82,7 @@ export const getOnts = async (search: string = "", page: number = 1) => {
         OR: [
           { serial_number: { contains: search } },
           { pelanggan: { contains: search } },
+          { model: { contains: search } },
           { pop: { nama_pop: { contains: search } } },
           { odp: { nama_odp: { contains: search } } },
         ],
@@ -106,39 +131,58 @@ export const getOdps = async () => {
 export const createOnt = async (formData: FormData) => {
   const session = await requireAccess();
 
-  const serial_number = (formData.get("serial_number") as string)?.trim();
-  const pelanggan = (formData.get("pelanggan") as string)?.trim();
-  const rawStatus = formData.get("status") as string | null;
-  const status = rawStatus === "TERPASANG" ? "TERSEDIA" : ((rawStatus as ont_status | null) || "TERSEDIA");
-  const id_pop = parseInt(formData.get("id_pop") as string, 10);
-  const id_odp = parseInt(formData.get("id_odp") as string, 10);
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    serial_number: (formData.get("serial_number") as string)?.trim() || "",
+    model: (formData.get("model") as string)?.trim() || undefined,
+    status: (formData.get("status") as string) || "TERSEDIA",
+    id_pop: parseInt(formData.get("id_pop") as string, 10) || 0,
+    id_odp: parseInt(formData.get("id_odp") as string, 10) || 0,
+  };
 
-  if (!serial_number || !pelanggan || isNaN(id_pop) || isNaN(id_odp)) {
-    throw new Error("Serial number, pelanggan, POP, dan ODP wajib diisi.");
+  // Parse validation
+  const parseResult = ontValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
   }
+
+  const validated = parseResult.data;
 
   // Cek duplikat serial number
   const existing = await prisma.ont.findUnique({
-    where: { serial_number },
+    where: { serial_number: validated.serial_number },
   });
 
   if (existing) {
-    throw new Error(`ONT dengan serial number "${serial_number}" sudah ada.`);
+    throw new Error(`ONT dengan serial number "${validated.serial_number}" sudah ada.`);
   }
 
   await prisma.$transaction(async (tx) => {
     // Double-check dalam transaction
-    const existingInTx = await tx.ont.findUnique({ where: { serial_number } });
+    const existingInTx = await tx.ont.findUnique({ where: { serial_number: validated.serial_number } });
     if (existingInTx) {
-      throw new Error(`ONT dengan serial number "${serial_number}" sudah ada.`);
+      throw new Error(`ONT dengan serial number "${validated.serial_number}" sudah ada.`);
     }
 
+    // pelanggan sengaja dikosongkan di sini -- baru terisi otomatis saat
+    // ONT ini dipakai di BAA (lihat sinkronisasi di app/jaringan/baa/actions.ts)
     await tx.ont.create({
-      data: { serial_number, pelanggan, status: status || "TERSEDIA", id_pop, id_odp },
+      data: {
+        serial_number: validated.serial_number,
+        pelanggan: "",
+        model: validated.model || "",
+        status: validated.status,
+        id_pop: validated.id_pop,
+        id_odp: validated.id_odp,
+      },
     });
   });
 
-  await logActivity("ONT_CREATED", `ONT "${serial_number}" (${pelanggan}) dibuat oleh ${session.user.nama}`);
+  await logActivity("ONT_CREATED", `ONT "${validated.serial_number}" dibuat oleh ${session.user.nama}`);
   revalidatePath("/masterdata/ont");
 };
 
@@ -155,48 +199,63 @@ export const updateOnt = async (id: number, formData: FormData) => {
     throw new Error("ONT tidak ditemukan.");
   }
 
-  const serial_number = (formData.get("serial_number") as string)?.trim();
-  const pelanggan = (formData.get("pelanggan") as string)?.trim();
-  const rawStatus = formData.get("status") as string | null;
-  const status =
-    rawStatus === "TERPASANG"
-      ? existing.status
-      : ((rawStatus as ont_status | null) || existing.status || "TERSEDIA");
-  const id_pop = parseInt(formData.get("id_pop") as string, 10);
-  const id_odp = parseInt(formData.get("id_odp") as string, 10);
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    serial_number: (formData.get("serial_number") as string)?.trim() || "",
+    model: (formData.get("model") as string)?.trim() || undefined,
+    status: (formData.get("status") as string) || existing.status || "TERSEDIA",
+    id_pop: parseInt(formData.get("id_pop") as string, 10) || 0,
+    id_odp: parseInt(formData.get("id_odp") as string, 10) || 0,
+  };
 
-  if (!serial_number || !pelanggan || isNaN(id_pop) || isNaN(id_odp)) {
-    throw new Error("Serial number, pelanggan, POP, dan ODP wajib diisi.");
+  // Parse validation
+  const parseResult = ontValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
   }
 
+  const validated = parseResult.data;
+
   // Cek duplikat jika serial berubah
-  if (serial_number !== existing.serial_number) {
+  if (validated.serial_number !== existing.serial_number) {
     const duplicate = await prisma.ont.findFirst({
-      where: { serial_number, id_ont: { not: id } },
+      where: { serial_number: validated.serial_number, id_ont: { not: id } },
     });
 
     if (duplicate) {
-      throw new Error(`ONT dengan serial number "${serial_number}" sudah ada.`);
+      throw new Error(`ONT dengan serial number "${validated.serial_number}" sudah ada.`);
     }
   }
 
   await prisma.$transaction(async (tx) => {
-    if (serial_number !== existing.serial_number) {
+    if (validated.serial_number !== existing.serial_number) {
       const existingInTx = await tx.ont.findFirst({
-        where: { serial_number, id_ont: { not: id } },
+        where: { serial_number: validated.serial_number, id_ont: { not: id } },
       });
       if (existingInTx) {
-        throw new Error(`ONT dengan serial number "${serial_number}" sudah ada.`);
+        throw new Error(`ONT dengan serial number "${validated.serial_number}" sudah ada.`);
       }
     }
 
+    // pelanggan TIDAK disentuh dari form Master Data -- nilainya cuma boleh
+    // berubah lewat sinkronisasi otomatis dari BAA (create/update/delete).
     await tx.ont.update({
       where: { id_ont: id },
-      data: { serial_number, pelanggan, status: status || "TERSEDIA", id_pop, id_odp },
+      data: {
+        serial_number: validated.serial_number,
+        model: validated.model || "",
+        status: validated.status,
+        id_pop: validated.id_pop,
+        id_odp: validated.id_odp,
+      },
     });
   });
 
-  await logActivity("ONT_UPDATED", `ONT "${serial_number}" (${pelanggan}) diupdate oleh ${session.user.nama}`);
+  await logActivity("ONT_UPDATED", `ONT "${validated.serial_number}" diupdate oleh ${session.user.nama}`);
   revalidatePath("/masterdata/ont");
 };
 
@@ -226,6 +285,6 @@ export const deleteOnt = async (id: number) => {
 
   await prisma.ont.delete({ where: { id_ont: id } });
 
-  await logActivity("ONT_DELETED", `ONT "${ont.serial_number}" (${ont.pelanggan}) dihapus oleh ${session.user.nama}`);
+  await logActivity("ONT_DELETED", `ONT "${ont.serial_number}" dihapus oleh ${session.user.nama}`);
   revalidatePath("/masterdata/ont");
 };

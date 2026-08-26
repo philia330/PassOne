@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { Role } from "@/lib/auth/roles";
+import { z } from "zod";
 
 /**
  * ======================================
@@ -44,6 +45,44 @@ async function requireAccess() {
   return session;
 }
 
+// ======================================================
+// VALIDATION SCHEMA - Material
+// ======================================================
+
+const materialValidation = z.object({
+  nama_material: z
+    .string()
+    .min(1, "Nama material wajib diisi.")
+    .min(2, "Nama material minimal 2 karakter.")
+    .max(100, "Nama material maksimal 100 karakter."),
+  stok: z
+    .number()
+    .int("Stok harus berupa angka bulat.")
+    .min(0, "Stok tidak boleh kurang dari 0.")
+    .max(999999, "Stok maksimal 999999."),
+  minimal_stok: z
+    .number()
+    .int("Minimal stok harus berupa angka bulat.")
+    .min(0, "Minimal stok tidak boleh kurang dari 0.")
+    .max(999999, "Minimal stok maksimal 999999."),
+  satuan: z
+    .string()
+    .min(1, "Satuan wajib diisi.")
+    .max(20, "Satuan maksimal 20 karakter."),
+  harga: z
+    .number()
+    .positive("Harga harus lebih dari 0.")
+    .max(999999999999, "Harga terlalu besar."),
+  kondisi: z.enum(["BAIK", "RUSAK"], {
+    errorMap: () => ({ message: "Kondisi wajib dipilih." }),
+  }),
+  keterangan: z
+    .string()
+    .max(500, "Keterangan maksimal 500 karakter.")
+    .optional()
+    .nullable(),
+});
+
 async function renumberKodeMaterial() {
   const semuaMaterial = await prisma.material.findMany({
     orderBy: { createdAt: "asc" },
@@ -68,30 +107,40 @@ async function renumberKodeMaterial() {
 export async function createMaterial(formData: FormData) {
   const session = await requireAccess();
 
-  const nama_material = (formData.get("nama_material") as string)?.trim();
-  const stok = Number(formData.get("stok"));
-  const minimal_stok = Number(formData.get("minimal_stok"));
-  const satuan = (formData.get("satuan") as string)?.trim();
-  const harga = Number(formData.get("harga"));
-  const kondisi = formData.get("kondisi") as "BAIK" | "RUSAK";
-  const keterangan = (formData.get("keterangan") as string)?.trim();
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_material: (formData.get("nama_material") as string)?.trim() || "",
+    stok: parseFloat(formData.get("stok") as string) || 0,
+    minimal_stok: parseFloat(formData.get("minimal_stok") as string) || 0,
+    satuan: (formData.get("satuan") as string)?.trim() || "",
+    harga: parseFloat(formData.get("harga") as string) || 0,
+    kondisi: (formData.get("kondisi") as string) || "BAIK",
+    keterangan: (formData.get("keterangan") as string)?.trim() || undefined,
+  };
 
-  if (!nama_material || !satuan || isNaN(harga) || harga <= 0) {
-    throw new Error("Nama material, satuan, dan harga wajib diisi dengan benar.");
+  // Parse validation
+  const parseResult = materialValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
   }
+
+  const validated = parseResult.data;
 
   // Cek duplikat nama material
   const existing = await prisma.material.findFirst({
     where: {
       nama_material: {
-        equals: nama_material,
-        
+        equals: validated.nama_material,
       },
     },
   });
 
   if (existing) {
-    throw new Error(`Material "${nama_material}" sudah ada. Gunakan nama yang berbeda.`);
+    throw new Error(`Material "${validated.nama_material}" sudah ada. Gunakan nama yang berbeda.`);
   }
 
   const kodeSementara = `TMP-${Date.now()}`;
@@ -101,32 +150,31 @@ export async function createMaterial(formData: FormData) {
     const existingInTx = await tx.material.findFirst({
       where: {
         nama_material: {
-          equals: nama_material,
-          
+          equals: validated.nama_material,
         },
       },
     });
 
     if (existingInTx) {
-      throw new Error(`Material "${nama_material}" sudah ada.`);
+      throw new Error(`Material "${validated.nama_material}" sudah ada.`);
     }
 
     await tx.material.create({
       data: {
         kode_material: kodeSementara,
-        nama_material,
-        stok: isNaN(stok) ? 0 : stok,
-        minimal_stok: isNaN(minimal_stok) ? 0 : minimal_stok,
-        satuan,
-        harga,
-        kondisi: kondisi || "BAIK",
-        keterangan: keterangan || null,
+        nama_material: validated.nama_material,
+        stok: validated.stok,
+        minimal_stok: validated.minimal_stok,
+        satuan: validated.satuan,
+        harga: validated.harga,
+        kondisi: validated.kondisi,
+        keterangan: validated.keterangan || null,
       },
     });
   });
 
   await renumberKodeMaterial();
-  await logActivity("MATERIAL_CREATED", `Material "${nama_material}" dibuat oleh ${session.user.nama}`);
+  await logActivity("MATERIAL_CREATED", `Material "${validated.nama_material}" dibuat oleh ${session.user.nama}`);
   revalidatePath("/masterdata/material");
 }
 
@@ -147,68 +195,77 @@ export async function updateMaterial(id: number, formData: FormData) {
     throw new Error("Material tidak ditemukan.");
   }
 
-  const nama_material = (formData.get("nama_material") as string)?.trim();
-  const stok = Number(formData.get("stok"));
-  const minimal_stok = Number(formData.get("minimal_stok"));
-  const satuan = (formData.get("satuan") as string)?.trim();
-  const harga = Number(formData.get("harga"));
-  const kondisi = formData.get("kondisi") as "BAIK" | "RUSAK";
-  const keterangan = (formData.get("keterangan") as string)?.trim();
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_material: (formData.get("nama_material") as string)?.trim() || "",
+    stok: parseFloat(formData.get("stok") as string) || 0,
+    minimal_stok: parseFloat(formData.get("minimal_stok") as string) || 0,
+    satuan: (formData.get("satuan") as string)?.trim() || "",
+    harga: parseFloat(formData.get("harga") as string) || 0,
+    kondisi: (formData.get("kondisi") as string) || "BAIK",
+    keterangan: (formData.get("keterangan") as string)?.trim() || undefined,
+  };
 
-  if (!nama_material || !satuan || isNaN(harga) || harga <= 0) {
-    throw new Error("Nama material, satuan, dan harga wajib diisi dengan benar.");
+  // Parse validation
+  const parseResult = materialValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
   }
 
+  const validated = parseResult.data;
+
   // Cek duplikat jika nama berubah
-  if (nama_material.toLowerCase() !== existing.nama_material.toLowerCase()) {
+  if (validated.nama_material.toLowerCase() !== existing.nama_material.toLowerCase()) {
     const duplicate = await prisma.material.findFirst({
       where: {
         nama_material: {
-          equals: nama_material,
-          
+          equals: validated.nama_material,
         },
         id_material: { not: id },
       },
     });
 
     if (duplicate) {
-      throw new Error(`Material "${nama_material}" sudah ada.`);
+      throw new Error(`Material "${validated.nama_material}" sudah ada.`);
     }
   }
 
   await prisma.$transaction(async (tx) => {
     // Double-check di dalam transaction
-    if (nama_material.toLowerCase() !== existing.nama_material.toLowerCase()) {
+    if (validated.nama_material.toLowerCase() !== existing.nama_material.toLowerCase()) {
       const existingInTx = await tx.material.findFirst({
         where: {
           nama_material: {
-            equals: nama_material,
-            
+            equals: validated.nama_material,
           },
           id_material: { not: id },
         },
       });
 
       if (existingInTx) {
-        throw new Error(`Material "${nama_material}" sudah ada.`);
+        throw new Error(`Material "${validated.nama_material}" sudah ada.`);
       }
     }
 
     await tx.material.update({
       where: { id_material: id },
       data: {
-        nama_material,
-        stok: isNaN(stok) ? 0 : stok,
-        minimal_stok: isNaN(minimal_stok) ? 0 : minimal_stok,
-        satuan,
-        harga,
-        kondisi: kondisi || "BAIK",
-        keterangan: keterangan || null,
+        nama_material: validated.nama_material,
+        stok: validated.stok,
+        minimal_stok: validated.minimal_stok,
+        satuan: validated.satuan,
+        harga: validated.harga,
+        kondisi: validated.kondisi,
+        keterangan: validated.keterangan || null,
       },
     });
   });
 
-  await logActivity("MATERIAL_UPDATED", `Material "${nama_material}" diupdate oleh ${session.user.nama}`);
+  await logActivity("MATERIAL_UPDATED", `Material "${validated.nama_material}" diupdate oleh ${session.user.nama}`);
   revalidatePath("/masterdata/material");
 }
 

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, ReactNode, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2 } from "lucide-react";
+import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2, Printer } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -18,6 +19,7 @@ import { OntSearch } from "./OntSearch";
 import { OntPagination } from "./OntPagination";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { OntQrDialog } from "./OntQrDialog";
 
 type Pop = { id_pop: number; nama_pop: string };
 type Odp = { id_odp: number; nama_odp: string };
@@ -38,6 +40,7 @@ type Ont = {
   id_ont: number;
   serial_number: string;
   pelanggan: string;
+  model: string;
   status: "TERSEDIA" | "TERPASANG" | "RUSAK";
   id_pop: number | null;
   id_odp: number | null;
@@ -65,6 +68,7 @@ export function OntSortableTable({
   actions?: ReactNode;
   currentUser?: CurrentUser;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -155,6 +159,7 @@ export function OntSortableTable({
       (ont) =>
         ont.serial_number.toLowerCase().includes(query) ||
         ont.pelanggan.toLowerCase().includes(query) ||
+        ont.model.toLowerCase().includes(query) ||
         (ont.pop?.nama_pop?.toLowerCase().includes(query) ?? false) ||
         (ont.odp?.nama_odp?.toLowerCase().includes(query) ?? false)
     );
@@ -259,6 +264,16 @@ export function OntSortableTable({
     setBulkDeleteOpen(true);
   };
 
+  // Bulk print labels handler
+  const handleBulkPrintLabels = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) {
+      toast.error("Pilih item yang ingin dicetak");
+      return;
+    }
+    router.push(`/masterdata/ont/print-labels?ids=${ids.join(",")}`);
+  };
+
   // Handle delete success
   const handleDeleteSuccess = () => {
     setSelectedIds(new Set());
@@ -306,6 +321,15 @@ export function OntSortableTable({
                   <Download className="mr-1.5 h-4 w-4" />
                 )}
                 Export Excel
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleBulkPrintLabels}
+                className="h-9 rounded-xl text-purple-600 hover:bg-purple-50 hover:text-purple-700 dark:text-purple-400 dark:hover:bg-purple-500/10"
+              >
+                <Printer className="mr-1.5 h-4 w-4" />
+                Cetak Label QR
               </Button>
               <Button
                 size="sm"
@@ -367,6 +391,7 @@ export function OntSortableTable({
                     )}
                   </button>
                 </TableHead>
+                <TableHead className="dark:text-slate-300">Model</TableHead>
                 <TableHead className="dark:text-slate-300">Pelanggan</TableHead>
                 <TableHead className="dark:text-slate-300">Status</TableHead>
                 <TableHead className="dark:text-slate-300">POP</TableHead>
@@ -379,7 +404,7 @@ export function OntSortableTable({
             <TableBody>
               {paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-slate-400 dark:text-slate-500">
+                  <TableCell colSpan={9} className="py-10 text-center text-slate-400 dark:text-slate-500">
                     {search ? "Tidak ada data ONT yang cocok" : "Belum ada data ONT"}
                   </TableCell>
                 </TableRow>
@@ -419,7 +444,10 @@ export function OntSortableTable({
                       </button>
                     </TableCell>
                     <TableCell className="font-medium dark:text-slate-200" onClick={(e) => e.stopPropagation()}>{ont.serial_number}</TableCell>
-                    <TableCell className="dark:text-slate-300" onClick={(e) => e.stopPropagation()}>{ont.pelanggan}</TableCell>
+                    <TableCell className="dark:text-slate-300" onClick={(e) => e.stopPropagation()}>{ont.model || "-"}</TableCell>
+                    <TableCell className="dark:text-slate-300" onClick={(e) => e.stopPropagation()}>
+                      {ont.pelanggan || <span className="text-slate-400 italic">Belum terpasang</span>}
+                    </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusBadge[ont.status]}`}>{ont.status}</span>
                     </TableCell>
@@ -430,7 +458,8 @@ export function OntSortableTable({
                     </TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center gap-1">
-                        <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />
+                        <OntQrDialog ont={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, status: ont.status }} />
+                        <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, model: ont.model, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />
                         {canDelete && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number ?? ""} />}
                       </div>
                     </TableCell>
@@ -469,11 +498,15 @@ export function OntSortableTable({
                   </div>
                   <div>
                     <p className="font-semibold dark:text-slate-100">{ont.serial_number}</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{ont.pelanggan}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{ont.model || "-"}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      {ont.pelanggan || <span className="italic">Belum terpasang</span>}
+                    </p>
                   </div>
                 </button>
                 <div className="flex shrink-0 gap-1">
-                  <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />
+                  <OntQrDialog ont={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, status: ont.status }} />
+                  <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, model: ont.model, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />
                   {canDelete && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number ?? ""} />}
                 </div>
               </div>

@@ -212,7 +212,8 @@ model odp {
 model ont {
   id_ont        Int        @id @default(autoincrement())
   serial_number String     @unique(map: "Ont_serial_number_key")
-  pelanggan     String
+  pelanggan     String     @default("")
+  model         String     @default("")
   status        ont_status @default(TERSEDIA)
   id_pop        Int
   id_odp        Int
@@ -225,6 +226,7 @@ model ont {
   @@index([id_odp], map: "Ont_id_odp_fkey")
   @@index([id_pop], map: "Ont_id_pop_fkey")
   @@index([pelanggan], map: "Ont_pelanggan_idx")
+  @@index([model], map: "Ont_model_idx")
 
   @@map("ont")
 }

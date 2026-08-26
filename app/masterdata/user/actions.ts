@@ -10,8 +10,50 @@ import path from "path";
 import fs from "fs/promises";
 import { requireRole } from "@/lib/auth/guards";
 import { optimizeImageToWebP } from "@/lib/image-utils";
+import { z } from "zod";
+import {
+  userNameSchema,
+  usernameSchema,
+  emailSchema,
+  noHpSchema,
+  passwordSchema,
+} from "@/lib/validations";
 
 const PAGE_SIZE = 10;
+
+// ======================================================
+// VALIDATION SCHEMAS - User specific
+// ======================================================
+
+const createUserValidation = z.object({
+  nama: userNameSchema,
+  username: usernameSchema,
+  password: z.string().min(1, "Password wajib diisi.").min(6, "Password minimal 6 karakter.").max(100, "Password maksimal 100 karakter."),
+  email: emailSchema,
+  no_hp: noHpSchema,
+  role: z.enum(["ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"], {
+    errorMap: () => ({ message: "Role wajib dipilih." }),
+  }),
+  jkl: z.enum(["LAKI_LAKI", "PEREMPUAN"], {
+    errorMap: () => ({ message: "Jenis kelamin wajib dipilih." }),
+  }),
+  status: z.boolean(),
+});
+
+const updateUserValidation = z.object({
+  nama: userNameSchema,
+  username: usernameSchema,
+  password: passwordSchema.optional().or(z.literal("")),
+  email: emailSchema,
+  no_hp: noHpSchema,
+  role: z.enum(["ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"], {
+    errorMap: () => ({ message: "Role wajib dipilih." }),
+  }),
+  jkl: z.enum(["LAKI_LAKI", "PEREMPUAN"], {
+    errorMap: () => ({ message: "Jenis kelamin wajib dipilih." }),
+  }),
+  status: z.boolean(),
+});
 
 // ======================================================
 // Generate Kode User
@@ -128,30 +170,52 @@ const uploadFoto = async (file: File | null): Promise<string | null> => {
 export const createUser = async (formData: FormData) => {
   const session = await requireRole(["ADMIN"]);
 
+  // ======================================================
+  // VALIDASI INPUT
+  // ======================================================
+  const rawData = {
+    nama: (formData.get("nama") as string)?.trim() || "",
+    username: (formData.get("username") as string)?.trim().toLowerCase() || "",
+    password: (formData.get("password") as string) || "",
+    email: (formData.get("email") as string)?.trim() || "",
+    no_hp: (formData.get("no_hp") as string)?.trim() || "",
+    role: formData.get("role") as string,
+    jkl: formData.get("jkl") as string,
+    status: formData.get("status") === "true",
+  };
+
+  // Parse validation
+  const parseResult = createUserValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
+  }
+
+  const validated = parseResult.data;
+
+  // ======================================================
+  // Generate kode user
+  // ======================================================
   const kode_user = await generateKodeUser();
 
-  const nama = formData.get("nama") as string;
-  const username = formData.get("username") as string;
-  const password = formData.get("password") as string;
-
+  // ======================================================
+  // Upload foto
+  // ======================================================
   const fotoFile = formData.get("foto") as File;
   const foto = await uploadFoto(fotoFile);
 
-  if (!password) {
-    throw new Error("Password wajib diisi");
-  }
+  // ======================================================
+  // Hash password
+  // ======================================================
+  const hashPassword = await bcrypt.hash(validated.password, 10);
 
-  const hashPassword = await bcrypt.hash(password, 10);
-
-  const email = (formData.get("email") as string) || null;
-  const no_hp = (formData.get("no_hp") as string) || null;
-  const role = formData.get("role") as Role;
-  const jkl = formData.get("jkl") as JenisKelamin;
-  const status = formData.get("status") === "true";
-
+  // ======================================================
+  // Cek duplikat username
+  // ======================================================
   const existingUser = await prisma.user.findFirst({
     where: {
-      username,
+      username: validated.username,
     },
   });
 
@@ -159,17 +223,20 @@ export const createUser = async (formData: FormData) => {
     throw new Error("Username sudah digunakan.");
   }
 
+  // ======================================================
+  // Create user
+  // ======================================================
   await prisma.user.create({
     data: {
       kode_user,
-      nama,
-      username,
+      nama: validated.nama,
+      username: validated.username,
       password: hashPassword,
-      email,
-      no_hp,
-      role,
-      jkl,
-      status,
+      email: validated.email,
+      no_hp: validated.no_hp,
+      role: validated.role,
+      jkl: validated.jkl,
+      status: validated.status,
       foto,
     },
   });
@@ -177,7 +244,7 @@ export const createUser = async (formData: FormData) => {
   // Catat aktivitas
   await logActivity(
     "USER_CREATED",
-    `User ${nama} (${kode_user}) ditambahkan.`,
+    `User ${validated.nama} (${kode_user}) ditambahkan.`,
     session.user.id_user
   );
 
@@ -191,14 +258,29 @@ export const createUser = async (formData: FormData) => {
 export const updateUser = async (id: number, formData: FormData) => {
   const session = await requireRole(["ADMIN"]);
 
-  const nama = formData.get("nama") as string;
-  const username = formData.get("username") as string;
-  const password = formData.get("password") as string;
-  const email = (formData.get("email") as string) || null;
-  const no_hp = (formData.get("no_hp") as string) || null;
-  const role = formData.get("role") as Role;
-  const jkl = formData.get("jkl") as JenisKelamin;
-  const status = formData.get("status") === "true";
+  // ======================================================
+  // VALIDASI INPUT
+  // ======================================================
+  const rawData = {
+    nama: (formData.get("nama") as string)?.trim() || "",
+    username: (formData.get("username") as string)?.trim().toLowerCase() || "",
+    password: (formData.get("password") as string) || "",
+    email: (formData.get("email") as string)?.trim() || "",
+    no_hp: (formData.get("no_hp") as string)?.trim() || "",
+    role: formData.get("role") as string,
+    jkl: formData.get("jkl") as string,
+    status: formData.get("status") === "true",
+  };
+
+  // Parse validation
+  const parseResult = updateUserValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
+  }
+
+  const validated = parseResult.data;
 
   // ======================================================
   // Cek Username Sudah Digunakan User Lain
@@ -206,7 +288,7 @@ export const updateUser = async (id: number, formData: FormData) => {
 
   const existingUsername = await prisma.user.findFirst({
     where: {
-      username,
+      username: validated.username,
       NOT: {
         id_user: id,
       },
@@ -217,6 +299,9 @@ export const updateUser = async (id: number, formData: FormData) => {
     throw new Error("Username sudah digunakan.");
   }
 
+  // ======================================================
+  // Upload foto
+  // ======================================================
   const fotoFile = formData.get("foto") as File;
   const foto = await uploadFoto(fotoFile);
 
@@ -244,13 +329,13 @@ export const updateUser = async (id: number, formData: FormData) => {
     status: boolean;
     foto: string | null;
   }> = {
-    nama,
-    username,
-    email,
-    no_hp,
-    role,
-    jkl,
-    status,
+    nama: validated.nama,
+    username: validated.username,
+    email: validated.email,
+    no_hp: validated.no_hp,
+    role: validated.role,
+    jkl: validated.jkl,
+    status: validated.status,
   };
 
   if (foto) {
@@ -267,8 +352,8 @@ export const updateUser = async (id: number, formData: FormData) => {
     data.foto = foto;
   }
 
-  if (password) {
-    data.password = await bcrypt.hash(password, 10);
+  if (validated.password) {
+    data.password = await bcrypt.hash(validated.password, 10);
   }
 
   await prisma.user.update({
@@ -281,7 +366,7 @@ export const updateUser = async (id: number, formData: FormData) => {
   // Catat aktivitas
   await logActivity(
     "USER_UPDATED",
-    `User ${nama} diperbarui.`,
+    `User ${validated.nama} diperbarui.`,
     session.user.id_user
   );
 

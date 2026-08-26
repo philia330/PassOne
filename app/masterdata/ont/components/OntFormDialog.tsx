@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 
 import { createOnt, updateOnt } from "../actions";
+import { validateSerialInput, validateTextInput } from "@/lib/validations/hooks";
 
 type Pop = { id_pop: number; nama_pop: string };
 type Odp = { id_odp: number; nama_odp: string };
@@ -35,6 +36,7 @@ type OntData = {
   id_ont: number;
   serial_number: string;
   pelanggan: string;
+  model: string;
   status: "TERSEDIA" | "TERPASANG" | "RUSAK";
   id_pop: number | null;
   id_odp: number | null;
@@ -69,6 +71,28 @@ export const OntFormDialog = ({
     data?.id_odp ? String(data.id_odp) : ""
   );
 
+  const [serialNumber, setSerialNumber] = useState(data?.serial_number ?? "");
+  const [model, setModel] = useState(data?.model ?? "");
+
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (open) {
+      if (mode === "edit" && data) {
+        setSerialNumber(data.serial_number ?? "");
+        setModel(data.model ?? "");
+        setPopValue(data.id_pop ? String(data.id_pop) : "");
+        setOdpValue(data.id_odp ? String(data.id_odp) : "");
+        setStatusValue(data.status === "TERPASANG" ? "TERSEDIA" : (data.status ?? "TERSEDIA"));
+      } else {
+        setSerialNumber("");
+        setModel("");
+        setPopValue("");
+        setOdpValue("");
+        setStatusValue("TERSEDIA");
+      }
+    }
+  }, [open, mode, data]);
+
   const handlePopChange = (value: string | null) => {
     setPopValue(value || "");
   };
@@ -77,10 +101,46 @@ export const OntFormDialog = ({
     setOdpValue(value || "");
   };
 
-  const [serialNumber, setSerialNumber] = useState(data?.serial_number ?? "");
-  const [pelanggan, setPelanggan] = useState(data?.pelanggan ?? "");
+  // Handle serial number - alphanumeric with hyphens only
+  const handleSerialNumberChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const sanitized = validateSerialInput(e.target.value, 50);
+      setSerialNumber(sanitized);
+    },
+    []
+  );
+
+  // Handle model - text with max length
+  const handleModelChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const sanitized = validateTextInput(e.target.value, 100);
+      setModel(sanitized);
+    },
+    []
+  );
 
   const handleSubmit = async (formData: FormData) => {
+    // Client-side validation
+    if (!popValue) {
+      toast.error("POP wajib dipilih.");
+      return;
+    }
+
+    if (!odpValue) {
+      toast.error("ODP wajib dipilih.");
+      return;
+    }
+
+    if (!serialNumber || serialNumber.trim().length < 5) {
+      toast.error("Serial number minimal 5 karakter.");
+      return;
+    }
+
+    if (serialNumber.length > 50) {
+      toast.error("Serial number maksimal 50 karakter.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -93,12 +153,15 @@ export const OntFormDialog = ({
       }
 
       setOpen(false);
-    } catch {
-      toast.error("Terjadi kesalahan, pastikan serial number belum terdaftar");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan, pastikan serial number belum terdaftar");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Check if form is valid for submit button
+  const isFormValid = popValue && odpValue && serialNumber.trim().length >= 5;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -132,7 +195,7 @@ export const OntFormDialog = ({
           </DialogTitle>
 
           <DialogDescription className="text-slate-500 dark:text-slate-400">
-            Lengkapi data ONT di bawah ini.
+            Lengkapi data ONT di bawah ini. Nama pelanggan akan terisi otomatis saat ONT ini dipakai di BAA.
           </DialogDescription>
         </DialogHeader>
 
@@ -141,7 +204,7 @@ export const OntFormDialog = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                POP
+                POP<span className="text-red-500 ml-1">*</span>
               </label>
 
               <SearchableSelect
@@ -161,7 +224,7 @@ export const OntFormDialog = ({
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                ODP
+                ODP<span className="text-red-500 ml-1">*</span>
               </label>
 
               <SearchableSelect
@@ -240,32 +303,53 @@ export const OntFormDialog = ({
           {/* 4. Serial Number */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Serial Number
+              Serial Number<span className="text-red-500 ml-1">*</span>
             </label>
             <Input
               name="serial_number"
               value={serialNumber}
-              onChange={(e) => setSerialNumber(e.target.value)}
+              onChange={handleSerialNumberChange}
               placeholder="Contoh: SN-HW-00123456"
+              maxLength={50}
               required
               className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
+            <p className="text-xs text-slate-400">
+              {serialNumber.length}/50 karakter. Hanya huruf, angka, dan tanda hubung (-).
+            </p>
           </div>
 
-          {/* 5. Nama Pelanggan */}
+          {/* 5. Model */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Nama Pelanggan
+              Model
+              <span className="text-slate-400 font-normal ml-1">(opsional)</span>
             </label>
             <Input
-              name="pelanggan"
-              value={pelanggan}
-              onChange={(e) => setPelanggan(e.target.value)}
-              placeholder="Contoh: Budi Santoso"
-              required
+              name="model"
+              value={model}
+              onChange={handleModelChange}
+              placeholder="Contoh: Huawei HG8245H"
+              maxLength={100}
               className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
+            <p className="text-xs text-slate-400">{model.length}/100 karakter</p>
           </div>
+
+          {/* Info Pelanggan -- read-only, disinkronkan otomatis dari BAA */}
+          {mode === "edit" && data?.pelanggan ? (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Pelanggan Saat Ini
+              </label>
+              <div className="flex h-12 items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 dark:border-slate-800 dark:bg-slate-800/50">
+                <span className="text-sm text-slate-600 dark:text-slate-300">{data.pelanggan}</span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Diisi otomatis dari BAA yang memakai ONT ini, tidak bisa diedit manual di sini.
+              </p>
+            </div>
+          ) : null}
 
           {/* Footer Actions */}
           <DialogFooter className="pt-2 gap-2">
@@ -280,7 +364,7 @@ export const OntFormDialog = ({
 
             <Button
               type="submit"
-              disabled={isSubmitting || !popValue || !odpValue}
+              disabled={isSubmitting || !isFormValid}
               className="cursor-pointer rounded-2xl h-11 font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-md hover:opacity-90 active:scale-95 hover:scale-105 transition-transform"
             >
               {isSubmitting ? "Menyimpan..." : "Simpan"}

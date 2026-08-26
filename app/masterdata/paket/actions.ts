@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { Role } from "@/lib/auth/roles";
+import { z } from "zod";
 
 /**
  * ======================================
@@ -44,6 +45,31 @@ async function requireAccess() {
   return session;
 }
 
+// ======================================================
+// VALIDATION SCHEMA - Paket
+// ======================================================
+
+const paketValidation = z.object({
+  nama_paket: z
+    .string()
+    .min(1, "Nama paket wajib diisi.")
+    .min(2, "Nama paket minimal 2 karakter.")
+    .max(100, "Nama paket maksimal 100 karakter."),
+  kecepatan: z
+    .string()
+    .min(1, "Kecepatan wajib diisi.")
+    .max(50, "Kecepatan maksimal 50 karakter."),
+  harga: z
+    .number()
+    .positive("Harga harus lebih dari 0.")
+    .max(999999999999, "Harga terlalu besar."),
+  keterangan: z
+    .string()
+    .max(255, "Keterangan maksimal 255 karakter.")
+    .optional()
+    .nullable(),
+});
+
 async function renumberKodePaket() {
   const semuaPaket = await prisma.paket.findMany({
     orderBy: { createdAt: "asc" },
@@ -68,27 +94,37 @@ async function renumberKodePaket() {
 export async function createPaket(formData: FormData) {
   const session = await requireAccess();
 
-  const nama_paket = (formData.get("nama_paket") as string)?.trim();
-  const kecepatan = (formData.get("kecepatan") as string)?.trim();
-  const harga = Number(formData.get("harga"));
-  const keterangan = (formData.get("keterangan") as string)?.trim();
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_paket: (formData.get("nama_paket") as string)?.trim() || "",
+    kecepatan: (formData.get("kecepatan") as string)?.trim() || "",
+    harga: parseFloat(formData.get("harga") as string) || 0,
+    keterangan: (formData.get("keterangan") as string)?.trim() || undefined,
+  };
 
-  if (!nama_paket || !kecepatan || isNaN(harga) || harga <= 0) {
-    throw new Error("Nama paket, kecepatan, dan harga wajib diisi dengan benar.");
+  // Parse validation
+  const parseResult = paketValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
   }
+
+  const validated = parseResult.data;
 
   // Cek duplikat nama paket
   const existing = await prisma.paket.findFirst({
     where: {
       nama_paket: {
-        equals: nama_paket,
-        
+        equals: validated.nama_paket,
       },
     },
   });
 
   if (existing) {
-    throw new Error(`Paket "${nama_paket}" sudah ada. Gunakan nama yang berbeda.`);
+    throw new Error(`Paket "${validated.nama_paket}" sudah ada. Gunakan nama yang berbeda.`);
   }
 
   const kodeSementara = `TMP-${Date.now()}`;
@@ -98,29 +134,28 @@ export async function createPaket(formData: FormData) {
     const existingInTx = await tx.paket.findFirst({
       where: {
         nama_paket: {
-          equals: nama_paket,
-          
+          equals: validated.nama_paket,
         },
       },
     });
 
     if (existingInTx) {
-      throw new Error(`Paket "${nama_paket}" sudah ada.`);
+      throw new Error(`Paket "${validated.nama_paket}" sudah ada.`);
     }
 
     await tx.paket.create({
       data: {
         kode_paket: kodeSementara,
-        nama_paket,
-        kecepatan,
-        harga,
-        keterangan: keterangan || null,
+        nama_paket: validated.nama_paket,
+        kecepatan: validated.kecepatan,
+        harga: validated.harga,
+        keterangan: validated.keterangan || null,
       },
     });
   });
 
   await renumberKodePaket();
-  await logActivity("PAKET_CREATED", `Paket "${nama_paket}" (${kecepatan}) dibuat oleh ${session.user.nama}`);
+  await logActivity("PAKET_CREATED", `Paket "${validated.nama_paket}" (${validated.kecepatan}) dibuat oleh ${session.user.nama}`);
   revalidatePath("/masterdata/paket");
 }
 
@@ -141,62 +176,71 @@ export async function updatePaket(id: number, formData: FormData) {
     throw new Error("Paket tidak ditemukan.");
   }
 
-  const nama_paket = (formData.get("nama_paket") as string)?.trim();
-  const kecepatan = (formData.get("kecepatan") as string)?.trim();
-  const harga = Number(formData.get("harga"));
-  const keterangan = (formData.get("keterangan") as string)?.trim();
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_paket: (formData.get("nama_paket") as string)?.trim() || "",
+    kecepatan: (formData.get("kecepatan") as string)?.trim() || "",
+    harga: parseFloat(formData.get("harga") as string) || 0,
+    keterangan: (formData.get("keterangan") as string)?.trim() || undefined,
+  };
 
-  if (!nama_paket || !kecepatan || isNaN(harga) || harga <= 0) {
-    throw new Error("Nama paket, kecepatan, dan harga wajib diisi dengan benar.");
+  // Parse validation
+  const parseResult = paketValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
   }
 
+  const validated = parseResult.data;
+
   // Cek duplikat jika nama berubah
-  if (nama_paket.toLowerCase() !== existing.nama_paket.toLowerCase()) {
+  if (validated.nama_paket.toLowerCase() !== existing.nama_paket.toLowerCase()) {
     const duplicate = await prisma.paket.findFirst({
       where: {
         nama_paket: {
-          equals: nama_paket,
-          
+          equals: validated.nama_paket,
         },
         id_paket: { not: id },
       },
     });
 
     if (duplicate) {
-      throw new Error(`Paket "${nama_paket}" sudah ada.`);
+      throw new Error(`Paket "${validated.nama_paket}" sudah ada.`);
     }
   }
 
   await prisma.$transaction(async (tx) => {
     // Double-check di dalam transaction
-    if (nama_paket.toLowerCase() !== existing.nama_paket.toLowerCase()) {
+    if (validated.nama_paket.toLowerCase() !== existing.nama_paket.toLowerCase()) {
       const existingInTx = await tx.paket.findFirst({
         where: {
           nama_paket: {
-            equals: nama_paket,
-            
+            equals: validated.nama_paket,
           },
           id_paket: { not: id },
         },
       });
 
       if (existingInTx) {
-        throw new Error(`Paket "${nama_paket}" sudah ada.`);
+        throw new Error(`Paket "${validated.nama_paket}" sudah ada.`);
       }
     }
 
     await tx.paket.update({
       where: { id_paket: id },
       data: {
-        nama_paket,
-        kecepatan,
-        harga,
-        keterangan: keterangan || null,
+        nama_paket: validated.nama_paket,
+        kecepatan: validated.kecepatan,
+        harga: validated.harga,
+        keterangan: validated.keterangan || null,
       },
     });
   });
 
-  await logActivity("PAKET_UPDATED", `Paket "${nama_paket}" diupdate oleh ${session.user.nama}`);
+  await logActivity("PAKET_UPDATED", `Paket "${validated.nama_paket}" diupdate oleh ${session.user.nama}`);
   revalidatePath("/masterdata/paket");
 }
 

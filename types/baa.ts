@@ -92,6 +92,7 @@ export interface BaaData {
   ont?: {
     id_ont: number;
     serial_number: string;
+    model?: string | null;
   } | null;
   
   // ================================================================
@@ -133,6 +134,8 @@ export interface OdpOption {
 export interface OntOption {
   id_ont: number;
   serial_number: string;
+  model?: string | null;
+  pelanggan?: string | null;
 }
 
 export interface MaterialOption {

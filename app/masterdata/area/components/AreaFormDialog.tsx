@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { createArea, updateArea } from "../actions";
+import { validateTextInput } from "@/lib/validations/hooks";
 
 type AreaData = {
   id_area: number;
@@ -34,8 +35,29 @@ export const AreaFormDialog = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [namaArea, setNamaArea] = useState(data?.nama_area ?? "");
+
+  // Handle nama area change with validation
+  const handleNamaAreaChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const sanitized = validateTextInput(e.target.value, 100);
+      setNamaArea(sanitized);
+    },
+    []
+  );
 
   const handleSubmit = async (formData: FormData) => {
+    // Client-side validation
+    if (!namaArea || namaArea.trim().length < 2) {
+      toast.error("Nama area minimal 2 karakter.");
+      return;
+    }
+
+    if (namaArea.length > 100) {
+      toast.error("Nama area maksimal 100 karakter.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -48,8 +70,9 @@ export const AreaFormDialog = ({
       }
 
       setOpen(false);
-    } catch {
-      toast.error("Terjadi kesalahan");
+      setNamaArea("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan");
     } finally {
       setIsSubmitting(false);
     }
@@ -93,27 +116,37 @@ export const AreaFormDialog = ({
 
         <form action={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium dark:text-slate-300">Nama Area</label>
+            <label htmlFor="nama_area" className="text-sm font-medium dark:text-slate-300">
+              Nama Area
+              <span className="text-red-500 ml-1">*</span>
+            </label>
             <Input
+              id="nama_area"
               name="nama_area"
-              defaultValue={data?.nama_area}
-              placeholder="Contoh: Tanggerang Selatan"
+              value={namaArea}
+              onChange={handleNamaAreaChange}
+              placeholder="Contoh: Tangerang Selatan"
+              maxLength={100}
               required
               className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
+            <p className="text-xs text-slate-400">{namaArea.length}/100 karakter</p>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium dark:text-slate-300">
+            <label htmlFor="keterangan" className="text-sm font-medium dark:text-slate-300">
               Keterangan{" "}
               <span className="font-normal text-slate-400 dark:text-slate-500">(opsional)</span>
             </label>
             <Input
+              id="keterangan"
               name="keterangan"
               defaultValue={data?.keterangan ?? ""}
               placeholder="Contoh: Mencakup wilayah Ciputat dan sekitarnya"
+              maxLength={255}
               className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
+            <p className="text-xs text-slate-400">Maksimal 255 karakter</p>
           </div>
 
           <DialogFooter className="gap-2">
@@ -128,7 +161,7 @@ export const AreaFormDialog = ({
 
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || namaArea.trim().length < 2}
               className="cursor-pointer rounded-2xl h-11 font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white active:scale-95 hover:scale-105 transition-transform"
             >
               {isSubmitting ? "Menyimpan..." : "Simpan"}

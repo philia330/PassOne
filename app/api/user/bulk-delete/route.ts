@@ -1,56 +1,79 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { parseIdsParam, requireRole, handleApiError } from "@/app/api/_lib/api-validation";
 import { Role } from "@/lib/auth/roles";
 
 export async function DELETE(request: Request) {
   try {
-    const session = await auth();
+    // ======================================
+    // VALIDATION: Auth & Permission
+    // ======================================
+    const authResult = await requireRole([Role.ADMIN]);
+    if (!authResult.ok) return authResult.response;
 
-    // Only ADMIN can delete
-    if (!session || session.user?.role !== Role.ADMIN) {
-      return NextResponse.json(
-        { success: false, message: "Akses ditolak. Hanya Admin yang dapat menghapus data." },
-        { status: 403 }
-      );
-    }
-
+    // ======================================
+    // VALIDATION: IDs Parameter
+    // ======================================
     const { searchParams } = new URL(request.url);
     const idsParam = searchParams.get("ids");
 
-    if (!idsParam) {
+    const idsResult = parseIdsParam(idsParam);
+    if (!idsResult.valid) return idsResult.error;
+
+    const { ids } = idsResult;
+
+    // ======================================
+    // VALIDATION: Check if any ID is the current user
+    // ======================================
+    const currentUserId = authResult.session.user.id_user;
+    if (ids.includes(currentUserId)) {
       return NextResponse.json(
-        { success: false, message: "ID tidak valid" },
+        { success: false, message: "Tidak dapat menghapus akun sendiri." },
         { status: 400 }
       );
     }
 
-    const ids = idsParam.split(",").map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+    // ======================================
+    // CHECK DEPENDENCIES
+    // ======================================
+    const users = await prisma.user.findMany({
+      where: { id_user: { in: ids } },
+      select: { id_user: true, nama: true, _count: { select: { fab: true, baa: true, baateknisi: true } } },
+    });
 
-    if (ids.length === 0) {
+    if (users.length !== ids.length) {
       return NextResponse.json(
-        { success: false, message: "Tidak ada data yang dipilih" },
+        { success: false, message: "Beberapa user tidak ditemukan." },
+        { status: 404 }
+      );
+    }
+
+    // Check for users with dependencies
+    const usersWithDeps = users.filter(
+      (u) => u._count.fab > 0 || u._count.baa > 0 || u._count.baateknisi > 0
+    );
+
+    if (usersWithDeps.length > 0) {
+      const names = usersWithDeps.map((u) => u.nama).join(", ");
+      return NextResponse.json(
+        { success: false, message: `User "${names}" tidak dapat dihapus karena masih memiliki data terkait.` },
         { status: 400 }
       );
     }
 
-    // Delete User
+    // ======================================
+    // DELETE
+    // ======================================
     await prisma.user.deleteMany({
-      where: {
-        id_user: { in: ids },
-      },
+      where: { id_user: { in: ids } },
     });
 
     return NextResponse.json({
       success: true,
-      message: `Berhasil menghapus ${ids.length} data User`,
+      message: `Berhasil menghapus ${ids.length} user.`,
     });
 
   } catch (error) {
-    console.error("BULK DELETE USER ERROR:", error);
-    return NextResponse.json(
-      { success: false, message: "Terjadi kesalahan saat menghapus data" },
-      { status: 500 }
-    );
+    return handleApiError(error, "USER_BULK_DELETE");
   }
 }

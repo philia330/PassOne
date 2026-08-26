@@ -5,7 +5,35 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { Role } from "@/lib/auth/roles";
 import { ActivityType } from "@prisma/client";
+import { z } from "zod";
+
 const PAGE_SIZE = 10;
+
+// ======================================================
+// VALIDATION SCHEMA - POP
+// ======================================================
+
+const popValidation = z.object({
+  nama_pop: z
+    .string()
+    .min(1, "Nama POP wajib diisi.")
+    .min(2, "Nama POP minimal 2 karakter.")
+    .max(100, "Nama POP maksimal 100 karakter."),
+  alamat: z
+    .string()
+    .min(1, "Alamat wajib diisi.")
+    .min(5, "Alamat minimal 5 karakter.")
+    .max(255, "Alamat maksimal 255 karakter."),
+  latitude: z
+    .number()
+    .min(-90, "Latitude tidak valid.")
+    .max(90, "Latitude tidak valid."),
+  longitude: z
+    .number()
+    .min(-180, "Longitude tidak valid.")
+    .max(180, "Longitude tidak valid."),
+  id_area: z.number().int().positive("Area wajib dipilih."),
+});
 
 /**
  * ======================================
@@ -119,25 +147,43 @@ export const getAreas = async () => {
 export const createPop = async (formData: FormData) => {
   const session = await requireAccess();
 
-  const nama_pop = (formData.get("nama_pop") as string)?.trim();
-  const alamat = (formData.get("alamat") as string)?.trim();
-  const id_area = parseInt(formData.get("id_area") as string, 10);
-  const latitude = parseFloat(formData.get("latitude") as string) || 0;
-  const longitude = parseFloat(formData.get("longitude") as string) || 0;
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_pop: (formData.get("nama_pop") as string)?.trim() || "",
+    alamat: (formData.get("alamat") as string)?.trim() || "",
+    id_area: parseInt(formData.get("id_area") as string, 10) || 0,
+    latitude: parseFloat(formData.get("latitude") as string) || 0,
+    longitude: parseFloat(formData.get("longitude") as string) || 0,
+  };
 
-  if (!nama_pop || !alamat || isNaN(id_area)) {
-    throw new Error("Nama POP, alamat, dan Area wajib diisi.");
+  // Parse validation
+  const parseResult = popValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
   }
+
+  const validated = parseResult.data;
 
   const kode_pop = await generateKodePop();
 
   await prisma.$transaction(async (tx) => {
     await tx.pop.create({
-      data: { kode_pop, nama_pop, alamat, id_area, latitude, longitude },
+      data: {
+        kode_pop,
+        nama_pop: validated.nama_pop,
+        alamat: validated.alamat,
+        id_area: validated.id_area,
+        latitude: validated.latitude,
+        longitude: validated.longitude,
+      },
     });
   });
 
-  await logActivity("POP_CREATED", `POP "${nama_pop}" (${kode_pop}) dibuat oleh ${session.user.nama}`);
+  await logActivity("POP_CREATED", `POP "${validated.nama_pop}" (${kode_pop}) dibuat oleh ${session.user.nama}`);
   revalidatePath("/masterdata/pop");
 };
 /**
@@ -153,22 +199,39 @@ export const updatePop = async (id: number, formData: FormData) => {
     throw new Error("POP tidak ditemukan.");
   }
 
-  const nama_pop = (formData.get("nama_pop") as string)?.trim();
-  const alamat = (formData.get("alamat") as string)?.trim();
-  const id_area = parseInt(formData.get("id_area") as string, 10);
-  const latitude = parseFloat(formData.get("latitude") as string) || 0;
-  const longitude = parseFloat(formData.get("longitude") as string) || 0;
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_pop: (formData.get("nama_pop") as string)?.trim() || "",
+    alamat: (formData.get("alamat") as string)?.trim() || "",
+    id_area: parseInt(formData.get("id_area") as string, 10) || 0,
+    latitude: parseFloat(formData.get("latitude") as string) || 0,
+    longitude: parseFloat(formData.get("longitude") as string) || 0,
+  };
 
-  if (!nama_pop || !alamat || isNaN(id_area)) {
-    throw new Error("Nama POP, alamat, dan Area wajib diisi.");
+  // Parse validation
+  const parseResult = popValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
   }
+
+  const validated = parseResult.data;
 
   await prisma.pop.update({
     where: { id_pop: id },
-    data: { nama_pop, alamat, id_area, latitude, longitude },
+    data: {
+      nama_pop: validated.nama_pop,
+      alamat: validated.alamat,
+      id_area: validated.id_area,
+      latitude: validated.latitude,
+      longitude: validated.longitude,
+    },
   });
 
-  await logActivity("POP_UPDATED", `POP "${nama_pop}" (${existing.kode_pop}) diupdate oleh ${session.user.nama}`);
+  await logActivity("POP_UPDATED", `POP "${validated.nama_pop}" (${existing.kode_pop}) diupdate oleh ${session.user.nama}`);
   revalidatePath("/masterdata/pop");
 };
 /**

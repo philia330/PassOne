@@ -4,8 +4,40 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { Role } from "@/lib/auth/roles";
+import { z } from "zod";
 
 const PAGE_SIZE = 10;
+
+// ======================================================
+// VALIDATION SCHEMA - ODP
+// ======================================================
+
+const odpValidation = z.object({
+  nama_odp: z
+    .string()
+    .min(1, "Nama ODP wajib diisi.")
+    .min(2, "Nama ODP minimal 2 karakter.")
+    .max(100, "Nama ODP maksimal 100 karakter."),
+  alamat: z
+    .string()
+    .min(1, "Alamat wajib diisi.")
+    .min(5, "Alamat minimal 5 karakter.")
+    .max(255, "Alamat maksimal 255 karakter."),
+  latitude: z
+    .number()
+    .min(-90, "Latitude tidak valid.")
+    .max(90, "Latitude tidak valid."),
+  longitude: z
+    .number()
+    .min(-180, "Longitude tidak valid.")
+    .max(180, "Longitude tidak valid."),
+  id_olt: z.number().int().positive("OLT wajib dipilih."),
+  jumlah_port: z
+    .number()
+    .int("Jumlah port harus berupa angka bulat.")
+    .min(1, "Jumlah port minimal 1.")
+    .max(256, "Jumlah port maksimal 256."),
+});
 
 /**
  * ======================================
@@ -136,27 +168,27 @@ export const getOlts = async () => {
 export const createOdp = async (formData: FormData) => {
   const session = await requireAccess();
 
-  const nama_odp = (formData.get("nama_odp") as string)?.trim();
-  const alamat = (formData.get("alamat") as string)?.trim();
-  const latitude = parseFloat(formData.get("latitude") as string);
-  const longitude = parseFloat(formData.get("longitude") as string);
-  const id_olt = parseInt(formData.get("id_olt") as string, 10);
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_odp: (formData.get("nama_odp") as string)?.trim() || "",
+    alamat: (formData.get("alamat") as string)?.trim() || "",
+    latitude: parseFloat(formData.get("latitude") as string) || 0,
+    longitude: parseFloat(formData.get("longitude") as string) || 0,
+    id_olt: parseInt(formData.get("id_olt") as string, 10) || 0,
+    jumlah_port: parseFloat(formData.get("jumlah_port") as string) || 0,
+  };
 
-  const jumlahPortRaw = formData.get("jumlah_port") as string;
+  // Parse validation
+  const parseResult = odpValidation.safeParse(rawData);
 
-  if (!nama_odp || !alamat || isNaN(id_olt)) {
-    throw new Error("Nama ODP, alamat, dan OLT wajib diisi.");
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
   }
 
-  if (!jumlahPortRaw || isNaN(parseInt(jumlahPortRaw, 10))) {
-    throw new Error("Jumlah Port wajib diisi.");
-  }
-
-  if (isNaN(latitude) || isNaN(longitude)) {
-    throw new Error("Latitude dan longitude tidak valid.");
-  }
-
-  const jumlah_port = parseInt(jumlahPortRaw, 10);
+  const validated = parseResult.data;
 
   const kode_odp = await generateKodeOdp();
 
@@ -164,17 +196,17 @@ export const createOdp = async (formData: FormData) => {
     await tx.odp.create({
       data: {
         kode_odp,
-        nama_odp,
-        alamat,
-        latitude,
-        longitude,
-        id_olt,
-        jumlah_port,
+        nama_odp: validated.nama_odp,
+        alamat: validated.alamat,
+        latitude: validated.latitude,
+        longitude: validated.longitude,
+        id_olt: validated.id_olt,
+        jumlah_port: validated.jumlah_port,
       },
     });
   });
 
-  await logActivity("ODP_CREATED", `ODP "${nama_odp}" (${kode_odp}) dibuat oleh ${session.user.nama}`);
+  await logActivity("ODP_CREATED", `ODP "${validated.nama_odp}" (${kode_odp}) dibuat oleh ${session.user.nama}`);
   revalidatePath("/masterdata/odp");
 };
 
@@ -191,41 +223,41 @@ export const updateOdp = async (id: number, formData: FormData) => {
     throw new Error("ODP tidak ditemukan.");
   }
 
-  const nama_odp = (formData.get("nama_odp") as string)?.trim();
-  const alamat = (formData.get("alamat") as string)?.trim();
-  const latitude = parseFloat(formData.get("latitude") as string);
-  const longitude = parseFloat(formData.get("longitude") as string);
-  const id_olt = parseInt(formData.get("id_olt") as string, 10);
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_odp: (formData.get("nama_odp") as string)?.trim() || "",
+    alamat: (formData.get("alamat") as string)?.trim() || "",
+    latitude: parseFloat(formData.get("latitude") as string) || 0,
+    longitude: parseFloat(formData.get("longitude") as string) || 0,
+    id_olt: parseInt(formData.get("id_olt") as string, 10) || 0,
+    jumlah_port: parseFloat(formData.get("jumlah_port") as string) || 0,
+  };
 
-  const jumlahPortRaw = formData.get("jumlah_port") as string;
+  // Parse validation
+  const parseResult = odpValidation.safeParse(rawData);
 
-  if (!nama_odp || !alamat || isNaN(id_olt)) {
-    throw new Error("Nama ODP, alamat, dan OLT wajib diisi.");
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
   }
 
-  if (!jumlahPortRaw || isNaN(parseInt(jumlahPortRaw, 10))) {
-    throw new Error("Jumlah Port wajib diisi.");
-  }
-
-  if (isNaN(latitude) || isNaN(longitude)) {
-    throw new Error("Latitude dan longitude tidak valid.");
-  }
-
-  const jumlah_port = parseInt(jumlahPortRaw, 10);
+  const validated = parseResult.data;
 
   await prisma.odp.update({
     where: { id_odp: id },
     data: {
-      nama_odp,
-      alamat,
-      latitude,
-      longitude,
-      id_olt,
-      jumlah_port,
+      nama_odp: validated.nama_odp,
+      alamat: validated.alamat,
+      latitude: validated.latitude,
+      longitude: validated.longitude,
+      id_olt: validated.id_olt,
+      jumlah_port: validated.jumlah_port,
     },
   });
 
-  await logActivity("ODP_UPDATED", `ODP "${nama_odp}" (${existing.kode_odp}) diupdate oleh ${session.user.nama}`);
+  await logActivity("ODP_UPDATED", `ODP "${validated.nama_odp}" (${existing.kode_odp}) diupdate oleh ${session.user.nama}`);
   revalidatePath("/masterdata/odp");
 };
 

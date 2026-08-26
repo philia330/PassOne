@@ -1,56 +1,66 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { parseIdsParam, requireRole, handleApiError } from "@/app/api/_lib/api-validation";
 import { Role } from "@/lib/auth/roles";
 
 export async function DELETE(request: Request) {
   try {
-    const session = await auth();
+    // ======================================
+    // VALIDATION: Auth & Permission
+    // ======================================
+    const authResult = await requireRole([Role.ADMIN]);
+    if (!authResult.ok) return authResult.response;
 
-    // Only ADMIN can delete
-    if (!session || session.user?.role !== Role.ADMIN) {
-      return NextResponse.json(
-        { success: false, message: "Akses ditolak. Hanya Admin yang dapat menghapus data." },
-        { status: 403 }
-      );
-    }
-
+    // ======================================
+    // VALIDATION: IDs Parameter
+    // ======================================
     const { searchParams } = new URL(request.url);
     const idsParam = searchParams.get("ids");
 
-    if (!idsParam) {
+    const idsResult = parseIdsParam(idsParam);
+    if (!idsResult.valid) return idsResult.error;
+
+    const { ids } = idsResult;
+
+    // ======================================
+    // CHECK DEPENDENCIES
+    // ======================================
+    const olts = await prisma.olt.findMany({
+      where: { id_olt: { in: ids } },
+      select: { id_olt: true, nama_olt: true, _count: { select: { odp: true, portPon: true } } },
+    });
+
+    if (olts.length !== ids.length) {
       return NextResponse.json(
-        { success: false, message: "ID tidak valid" },
+        { success: false, message: "Beberapa OLT tidak ditemukan." },
+        { status: 404 }
+      );
+    }
+
+    // Check for OLTs with dependencies
+    const oltsWithDeps = olts.filter((o) => o._count.odp > 0 || o._count.portPon > 0);
+
+    if (oltsWithDeps.length > 0) {
+      const names = oltsWithDeps.map((o) => o.nama_olt).join(", ");
+      return NextResponse.json(
+        { success: false, message: `OLT "${names}" tidak dapat dihapus karena masih memiliki data ODP atau Port PON terkait.` },
         { status: 400 }
       );
     }
 
-    const ids = idsParam.split(",").map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
-
-    if (ids.length === 0) {
-      return NextResponse.json(
-        { success: false, message: "Tidak ada data yang dipilih" },
-        { status: 400 }
-      );
-    }
-
-    // Delete OLT
+    // ======================================
+    // DELETE
+    // ======================================
     await prisma.olt.deleteMany({
-      where: {
-        id_olt: { in: ids },
-      },
+      where: { id_olt: { in: ids } },
     });
 
     return NextResponse.json({
       success: true,
-      message: `Berhasil menghapus ${ids.length} data OLT`,
+      message: `Berhasil menghapus ${ids.length} OLT.`,
     });
 
   } catch (error) {
-    console.error("BULK DELETE OLT ERROR:", error);
-    return NextResponse.json(
-      { success: false, message: "Terjadi kesalahan saat menghapus data" },
-      { status: 500 }
-    );
+    return handleApiError(error, "OLT_BULK_DELETE");
   }
 }

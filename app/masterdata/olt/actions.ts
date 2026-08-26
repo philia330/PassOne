@@ -7,9 +7,54 @@ import path from "path";
 import { auth } from "@/lib/auth";
 import { Role } from "@/lib/auth/roles";
 import { Prisma } from "@prisma/client";
+import { z } from "zod";
 
 const PAGE_SIZE = 10;
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "olt");
+
+// ======================================================
+// VALIDATION SCHEMA - OLT
+// ======================================================
+
+const oltValidation = z.object({
+  nama_olt: z
+    .string()
+    .min(1, "Nama OLT wajib diisi.")
+    .min(2, "Nama OLT minimal 2 karakter.")
+    .max(100, "Nama OLT maksimal 100 karakter."),
+  lokasi: z
+    .string()
+    .min(1, "Lokasi wajib diisi.")
+    .min(3, "Lokasi minimal 3 karakter.")
+    .max(255, "Lokasi maksimal 255 karakter."),
+  latitude: z
+    .number()
+    .min(-90, "Latitude tidak valid.")
+    .max(90, "Latitude tidak valid."),
+  longitude: z
+    .number()
+    .min(-180, "Longitude tidak valid.")
+    .max(180, "Longitude tidak valid."),
+  id_pop: z.number().int().positive("POP wajib dipilih."),
+  ip_olt: z
+    .string()
+    .regex(/^(\d{1,3}\.){3}\d{1,3}$/, "Format IP address tidak valid. Contoh: 192.168.1.1")
+    .max(45, "IP address terlalu panjang.")
+    .optional()
+    .nullable(),
+  username_olt: z
+    .string()
+    .min(1, "Username OLT wajib diisi.")
+    .max(50, "Username maksimal 50 karakter.")
+    .optional()
+    .nullable(),
+  password_olt: z
+    .string()
+    .min(1, "Password OLT wajib diisi.")
+    .max(100, "Password maksimal 100 karakter.")
+    .optional()
+    .nullable(),
+});
 
 /**
  * ======================================
@@ -166,24 +211,31 @@ export const getPops = async () => {
 export const createOlt = async (formData: FormData) => {
   const session = await requireAccess();
 
-  const nama_olt = (formData.get("nama_olt") as string)?.trim();
-  const lokasi = (formData.get("lokasi") as string)?.trim();
-  const latitude = parseFloat(formData.get("latitude") as string);
-  const longitude = parseFloat(formData.get("longitude") as string);
-  const id_pop = parseInt(formData.get("id_pop") as string, 10);
-  const ip_olt = (formData.get("ip_olt") as string)?.trim() || null;
-  const username_olt = (formData.get("username_olt") as string)?.trim() || null;
-  const password_olt = (formData.get("password_olt") as string)?.trim() || null;
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_olt: (formData.get("nama_olt") as string)?.trim() || "",
+    lokasi: (formData.get("lokasi") as string)?.trim() || "",
+    latitude: parseFloat(formData.get("latitude") as string) || 0,
+    longitude: parseFloat(formData.get("longitude") as string) || 0,
+    id_pop: parseInt(formData.get("id_pop") as string, 10) || 0,
+    ip_olt: (formData.get("ip_olt") as string)?.trim() || undefined,
+    username_olt: (formData.get("username_olt") as string)?.trim() || undefined,
+    password_olt: (formData.get("password_olt") as string)?.trim() || undefined,
+  };
 
-  if (!nama_olt || !lokasi || isNaN(id_pop)) {
-    throw new Error("Nama OLT, lokasi, dan POP wajib diisi.");
+  // Parse validation
+  const parseResult = oltValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
   }
 
-  if (isNaN(latitude) || isNaN(longitude)) {
-    throw new Error("Latitude dan longitude tidak valid.");
-  }
+  const validated = parseResult.data;
 
-  if (!ip_olt || !username_olt || !password_olt) {
+  if (!validated.ip_olt || !validated.username_olt || !validated.password_olt) {
     throw new Error("IP Address, Username, dan Password wajib diisi.");
   }
 
@@ -201,20 +253,20 @@ export const createOlt = async (formData: FormData) => {
     await tx.olt.create({
       data: {
         kode_olt,
-        nama_olt,
-        lokasi,
-        latitude,
-        longitude,
-        id_pop,
-        ip_olt,
-        username_olt,
-        password_olt,
+        nama_olt: validated.nama_olt,
+        lokasi: validated.lokasi,
+        latitude: validated.latitude,
+        longitude: validated.longitude,
+        id_pop: validated.id_pop,
+        ip_olt: validated.ip_olt || null,
+        username_olt: validated.username_olt || null,
+        password_olt: validated.password_olt || null,
         foto_olt,
       },
     });
   });
 
-  await logActivity("OLT_CREATED", `OLT "${nama_olt}" (${kode_olt}) dibuat oleh ${session.user.nama}`);
+  await logActivity("OLT_CREATED", `OLT "${validated.nama_olt}" (${kode_olt}) dibuat oleh ${session.user.nama}`);
   revalidatePath("/masterdata/olt");
 };
 
@@ -231,24 +283,31 @@ export const updateOlt = async (id: number, formData: FormData) => {
     throw new Error("OLT tidak ditemukan.");
   }
 
-  const nama_olt = (formData.get("nama_olt") as string)?.trim();
-  const lokasi = (formData.get("lokasi") as string)?.trim();
-  const latitude = parseFloat(formData.get("latitude") as string);
-  const longitude = parseFloat(formData.get("longitude") as string);
-  const id_pop = parseInt(formData.get("id_pop") as string, 10);
-  const ip_olt = (formData.get("ip_olt") as string)?.trim() || null;
-  const username_olt = (formData.get("username_olt") as string)?.trim() || null;
-  const password_olt = (formData.get("password_olt") as string)?.trim() || null;
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_olt: (formData.get("nama_olt") as string)?.trim() || "",
+    lokasi: (formData.get("lokasi") as string)?.trim() || "",
+    latitude: parseFloat(formData.get("latitude") as string) || 0,
+    longitude: parseFloat(formData.get("longitude") as string) || 0,
+    id_pop: parseInt(formData.get("id_pop") as string, 10) || 0,
+    ip_olt: (formData.get("ip_olt") as string)?.trim() || undefined,
+    username_olt: (formData.get("username_olt") as string)?.trim() || undefined,
+    password_olt: (formData.get("password_olt") as string)?.trim() || undefined,
+  };
 
-  if (!nama_olt || !lokasi || isNaN(id_pop)) {
-    throw new Error("Nama OLT, lokasi, dan POP wajib diisi.");
+  // Parse validation
+  const parseResult = oltValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    throw new Error(firstError.message);
   }
 
-  if (isNaN(latitude) || isNaN(longitude)) {
-    throw new Error("Latitude dan longitude tidak valid.");
-  }
+  const validated = parseResult.data;
 
-  if (!ip_olt || !username_olt || !password_olt) {
+  if (!validated.ip_olt || !validated.username_olt || !validated.password_olt) {
     throw new Error("IP Address, Username, dan Password wajib diisi.");
   }
 
@@ -267,19 +326,19 @@ export const updateOlt = async (id: number, formData: FormData) => {
   await prisma.olt.update({
     where: { id_olt: id },
     data: {
-      nama_olt,
-      lokasi,
-      latitude,
-      longitude,
-      id_pop,
-      ip_olt,
-      username_olt,
-      password_olt,
+      nama_olt: validated.nama_olt,
+      lokasi: validated.lokasi,
+      latitude: validated.latitude,
+      longitude: validated.longitude,
+      id_pop: validated.id_pop,
+      ip_olt: validated.ip_olt || null,
+      username_olt: validated.username_olt || null,
+      password_olt: validated.password_olt || null,
       foto_olt,
     },
   });
 
-  await logActivity("OLT_UPDATED", `OLT "${nama_olt}" (${existing.kode_olt}) diupdate oleh ${session.user.nama}`);
+  await logActivity("OLT_UPDATED", `OLT "${validated.nama_olt}" (${existing.kode_olt}) diupdate oleh ${session.user.nama}`);
   revalidatePath("/masterdata/olt");
 };
 

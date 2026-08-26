@@ -109,7 +109,7 @@ export default function Navbar({
         )}
         <ThemeToggle />
         <NotificationBell />
-
+        
         <button
           onClick={() => router.push("/workspace?view=settings")}
           className="rounded-xl border border-slate-200 p-2.5 transition hover:bg-slate-100 hover:scale-110 active:scale-95 dark:border-slate-700 dark:hover:bg-slate-800 sm:p-3"
