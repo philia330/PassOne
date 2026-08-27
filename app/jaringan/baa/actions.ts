@@ -171,7 +171,7 @@ function toOptionalString(value: FormDataEntryValue | null): string | null {
 interface ParsedDetail {
   id_material: number;
   jumlah: number;
-  keterangan: string | null;
+  keterangan?: string | null;
 }
 
 function parseBaaDetails(raw: string | null): ParsedDetail[] {
@@ -292,6 +292,71 @@ async function getLowStockWarnings(materialIds: number[]): Promise<string[]> {
 
 /**
  * ======================================
+ * HELPER: Kirim notifikasi material stok rendah ke Admin/Leader
+ * ======================================
+ */
+async function notifyLowStockToAdmins(materialIds: number[]) {
+  if (materialIds.length === 0) return;
+
+  const uniqueIds = [...new Set(materialIds)];
+
+  // Ambil material yang stoknya rendah
+  const lowStockMaterials = await prisma.material.findMany({
+    where: { id_material: { in: uniqueIds } },
+  });
+
+  const materialsNeedingNotification = lowStockMaterials.filter(
+    (m) => m.stok <= m.minimal_stok
+  );
+
+  if (materialsNeedingNotification.length === 0) return;
+
+  // Ambil semua admin, leader, logistik, dan teknisi
+  const adminsAndLeaders = await prisma.user.findMany({
+    where: {
+      role: { in: ["ADMIN", "LEADER", "LOGISTIK", "TEKNISI"] },
+      status: true,
+    },
+    select: { id_user: true, nama: true },
+  });
+
+  if (adminsAndLeaders.length === 0) return;
+
+  // Buat notification untuk setiap admin/leader
+  // Jika banyak material, buat 1 notifikasi ringkasan
+  if (materialsNeedingNotification.length === 1) {
+    const m = materialsNeedingNotification[0];
+    const notifications = adminsAndLeaders.map((user) => ({
+      id_user: user.id_user,
+      title: "Stok Material Menipis",
+      message: `${m.nama_material} tersisa ${m.stok} ${m.satuan} (minimal: ${m.minimal_stok}). Segera lakukan restok.`,
+      link: `/workspace?view=material`,
+      type: "SYSTEM" as const,
+      is_read: false,
+    }));
+
+    await prisma.notification.createMany({ data: notifications });
+  } else {
+    // Banyak material - buat notifikasi ringkasan
+    const materialList = materialsNeedingNotification
+      .map((m) => `${m.nama_material} (${m.stok} ${m.satuan})`)
+      .join(", ");
+
+    const notifications = adminsAndLeaders.map((user) => ({
+      id_user: user.id_user,
+      title: "Beberapa Material Stok Menipis",
+      message: `${materialsNeedingNotification.length} material perlu restok: ${materialList}`,
+      link: `/workspace?view=material`,
+      type: "SYSTEM" as const,
+      is_read: false,
+    }));
+
+    await prisma.notification.createMany({ data: notifications });
+  }
+}
+
+/**
+ * ======================================
  * HELPER: Validasi izin Edit/Hapus BAA
  * ======================================
  */
@@ -342,7 +407,7 @@ export async function createTeknisi(formData: FormData) {
   const parseResult = teknisiValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 
@@ -522,7 +587,7 @@ export async function createBaa(formData: FormData) {
   const parseResult = baaValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 
@@ -621,7 +686,10 @@ export async function createBaa(formData: FormData) {
   revalidatePath("/masterdata/odp");
   revalidatePath("/masterdata/ont");
 
+  // Cek material stok rendah dan kirim notifikasi ke admin/leader
   const lowStockMaterials = await getLowStockWarnings(validated.baa_details.map((d) => d.id_material));
+  await notifyLowStockToAdmins(validated.baa_details.map((d) => d.id_material));
+
   return { success: true, lowStockMaterials };
 }
 
@@ -673,7 +741,7 @@ export async function updateBaa(id: number, formData: FormData) {
   const parseResult = baaValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 
@@ -804,7 +872,10 @@ export async function updateBaa(id: number, formData: FormData) {
   revalidatePath("/masterdata/odp");
   revalidatePath("/masterdata/ont");
 
+  // Cek material stok rendah dan kirim notifikasi ke admin/leader
   const lowStockMaterials = await getLowStockWarnings(validated.baa_details.map((d) => d.id_material));
+  await notifyLowStockToAdmins(validated.baa_details.map((d) => d.id_material));
+
   return { success: true, lowStockMaterials };
 }
 
@@ -987,14 +1058,14 @@ export async function quickCreateOnt(formData: FormData) {
   // perlu (dan tidak boleh) dipilih terpisah supaya tidak salah pasang.
   const odp = await prisma.odp.findUnique({
     where: { id_odp },
-    select: { id_pop: true },
+    select: { olt: { select: { id_pop: true } } },
   });
 
-  if (!odp) {
-    throw new Error("ODP yang dipilih tidak ditemukan.");
+  if (!odp || !odp.olt) {
+    throw new Error("ODP atau relasi OLT tidak ditemukan.");
   }
 
-  const id_pop = odp.id_pop;
+  const id_pop = odp.olt.id_pop;
 
   // Buat ONT baru dalam transaksi
   const newOnt = await prisma.$transaction(async (tx) => {

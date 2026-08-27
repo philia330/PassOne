@@ -22,7 +22,7 @@ export default async function PortPonPage({
   // Hitung total SEMUA data (tanpa filter) untuk card statistik
   const [totalCount, { data: ports, total, totalPages }, olts, odps] = await Promise.all([
     prisma.portPon.count(),
-    getPortPons(search, page, highlightId),
+    getPortPons(search, page),
     getOlts(),
     getOdps(),
   ]);

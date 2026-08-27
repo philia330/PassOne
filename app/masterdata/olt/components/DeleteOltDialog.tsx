@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Trash2, Loader2, TriangleAlert } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -22,12 +24,14 @@ interface DeleteOltDialogProps {
   bulkIds?: number[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onDeleteStart?: () => void;
 }
 
-export const DeleteOltDialog = ({ id, namaOlt, bulkIds, open: controlledOpen, onOpenChange }: DeleteOltDialogProps) => {
+export const DeleteOltDialog = ({ id, namaOlt, bulkIds, open: controlledOpen, onOpenChange, onDeleteStart }: DeleteOltDialogProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const router = useRouter();
 
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled ? controlledOpen : internalOpen;
@@ -37,6 +41,7 @@ export const DeleteOltDialog = ({ id, namaOlt, bulkIds, open: controlledOpen, on
 
   const handleConfirm = () => {
     setErrorMsg(null);
+    onDeleteStart?.();
     startTransition(async () => {
       try {
         if (isBulk && bulkIds) {
@@ -48,13 +53,17 @@ export const DeleteOltDialog = ({ id, namaOlt, bulkIds, open: controlledOpen, on
             const error = await response.json();
             throw new Error(error.message || "Gagal menghapus data");
           }
+          toast.success(`Berhasil menghapus ${bulkIds.length} data OLT`);
         } else {
           await deleteOlt(id);
+          toast.success("Data OLT berhasil dihapus");
         }
         setIsOpen(false);
+        router.refresh();
       } catch (err: unknown) {
         const error = err as Error;
         setErrorMsg(error.message ?? "Gagal menghapus data, coba lagi.");
+        toast.error(error.message ?? "Gagal menghapus data");
       }
     });
   };

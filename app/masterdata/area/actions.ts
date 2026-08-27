@@ -140,7 +140,7 @@ export const createArea = async (formData: FormData) => {
   const parseResult = areaValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 
@@ -205,7 +205,7 @@ export const updateArea = async (id: number, formData: FormData) => {
   const parseResult = areaValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 

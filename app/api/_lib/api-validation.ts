@@ -30,7 +30,7 @@ export async function requireAuth() {
   return { ok: true as const, session };
 }
 
-export async function requireRole(roles: Role[]) {
+export async function requireRole(roles: Role[] | string[]) {
   const session = await auth();
   if (!session?.user) {
     return {
@@ -42,7 +42,8 @@ export async function requireRole(roles: Role[]) {
     };
   }
 
-  if (!roles.includes(session.user.role)) {
+  const userRole = session.user.role as string;
+  if (!roles.includes(userRole as Role)) {
     const roleNames = roles.join(", ");
     return {
       ok: false as const,
@@ -578,7 +579,7 @@ export function handleApiError(error: unknown, context?: string): NextResponse {
   console.error(`API ERROR${context ? ` [${context}]` : ""}:`, error);
 
   if (error instanceof z.ZodError) {
-    const messages = error.errors.map((e) => `${e.path.join(".")}: ${e.message}`);
+    const messages = error.issues.map((e) => `${e.path.join(".")}: ${e.message}`);
     return NextResponse.json(
       { success: false, message: messages[0] || "Validasi gagal.", errors: messages },
       { status: 400 }

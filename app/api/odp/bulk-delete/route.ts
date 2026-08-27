@@ -27,7 +27,7 @@ export async function DELETE(request: Request) {
     // ======================================
     const odps = await prisma.odp.findMany({
       where: { id_odp: { in: ids } },
-      select: { id_odp: true, nama_odp: true, _count: { select: { portPon: true, ont: true, baa: true } } },
+      select: { id_odp: true, nama_odp: true, _count: { select: { portpon: true, ont: true, baa: true } } },
     });
 
     if (odps.length !== ids.length) {
@@ -38,7 +38,7 @@ export async function DELETE(request: Request) {
     }
 
     // Check for ODPs with dependencies
-    const odpsWithDeps = odps.filter((o) => o._count.portPon > 0 || o._count.ont > 0 || o._count.baa > 0);
+    const odpsWithDeps = odps.filter((o) => o._count.portpon > 0 || o._count.ont > 0 || o._count.baa > 0);
 
     if (odpsWithDeps.length > 0) {
       const names = odpsWithDeps.map((o) => o.nama_odp).join(", ");

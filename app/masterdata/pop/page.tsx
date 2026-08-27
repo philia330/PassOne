@@ -24,7 +24,7 @@ export default async function PopPage({
   // Hitung total SEMUA data (tanpa filter) untuk card statistik
   const [totalCount, { data: rawPops, total, totalPages }, areas] = await Promise.all([
     prisma.pop.count(),
-    getPops(search, page, highlightId),
+    getPops(search, page),
     getAreas(),
   ]);
 

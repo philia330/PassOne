@@ -32,7 +32,7 @@ export default async function UserPage({
   // Hitung total SEMUA data (tanpa filter) untuk card statistik
   const [totalCount, { data: users, total, totalPages }] = await Promise.all([
     prisma.user.count(),
-    getUsers(search, page, highlightId),
+    getUsers(search, page),
   ]);
 
   const currentUser = {

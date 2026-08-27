@@ -108,7 +108,7 @@ export async function createPaket(formData: FormData) {
   const parseResult = paketValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 
@@ -190,7 +190,7 @@ export async function updatePaket(id: number, formData: FormData) {
   const parseResult = paketValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 

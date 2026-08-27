@@ -32,10 +32,10 @@ const createUserValidation = z.object({
   email: emailSchema,
   no_hp: noHpSchema,
   role: z.enum(["ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"], {
-    errorMap: () => ({ message: "Role wajib dipilih." }),
+    message: "Role wajib dipilih.",
   }),
   jkl: z.enum(["LAKI_LAKI", "PEREMPUAN"], {
-    errorMap: () => ({ message: "Jenis kelamin wajib dipilih." }),
+    message: "Jenis kelamin wajib dipilih.",
   }),
   status: z.boolean(),
 });
@@ -47,10 +47,10 @@ const updateUserValidation = z.object({
   email: emailSchema,
   no_hp: noHpSchema,
   role: z.enum(["ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"], {
-    errorMap: () => ({ message: "Role wajib dipilih." }),
+    message: "Role wajib dipilih.",
   }),
   jkl: z.enum(["LAKI_LAKI", "PEREMPUAN"], {
-    errorMap: () => ({ message: "Jenis kelamin wajib dipilih." }),
+    message: "Jenis kelamin wajib dipilih.",
   }),
   status: z.boolean(),
 });
@@ -188,7 +188,7 @@ export const createUser = async (formData: FormData) => {
   const parseResult = createUserValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 
@@ -276,7 +276,7 @@ export const updateUser = async (id: number, formData: FormData) => {
   const parseResult = updateUserValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 

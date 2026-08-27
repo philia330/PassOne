@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, ReactNode, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -57,6 +58,7 @@ export function PopSortableTable({
   actions?: ReactNode;
   currentUser?: CurrentUser;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -66,6 +68,7 @@ export function PopSortableTable({
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [selectAllPage, setSelectAllPage] = useState(false);
 
   // Highlight state untuk Command Palette
@@ -240,6 +243,7 @@ export function PopSortableTable({
       toast.error("Pilih item yang ingin dihapus");
       return;
     }
+    setIsBulkDeleting(true);
     setBulkDeleteIds(ids);
     setBulkDeleteOpen(true);
   };
@@ -250,6 +254,8 @@ export function PopSortableTable({
     setSelectAllPage(false);
     setBulkDeleteOpen(false);
     setBulkDeleteIds([]);
+    setIsBulkDeleting(false);
+    router.refresh();
   };
 
   return (
@@ -272,9 +278,14 @@ export function PopSortableTable({
                   size="sm"
                   variant="ghost"
                   onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
                   className="h-9 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
                 >
-                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  {isBulkDeleting ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-1.5 h-4 w-4" />
+                  )}
                   Hapus
                 </Button>
               )}
@@ -531,6 +542,7 @@ export function PopSortableTable({
           namaPop={`${bulkDeleteIds.length} POP`}
           bulkIds={bulkDeleteIds}
           open={bulkDeleteOpen}
+          onDeleteStart={() => setIsBulkDeleting(true)}
           onOpenChange={(isOpen) => {
             setBulkDeleteOpen(isOpen);
             if (!isOpen) {

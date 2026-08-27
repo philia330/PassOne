@@ -229,7 +229,7 @@ export const createOlt = async (formData: FormData) => {
   const parseResult = oltValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 
@@ -301,7 +301,7 @@ export const updateOlt = async (id: number, formData: FormData) => {
   const parseResult = oltValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 

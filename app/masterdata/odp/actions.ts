@@ -184,7 +184,7 @@ export const createOdp = async (formData: FormData) => {
   const parseResult = odpValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 
@@ -239,7 +239,7 @@ export const updateOdp = async (id: number, formData: FormData) => {
   const parseResult = odpValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 

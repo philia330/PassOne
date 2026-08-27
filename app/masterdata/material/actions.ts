@@ -74,7 +74,7 @@ const materialValidation = z.object({
     .positive("Harga harus lebih dari 0.")
     .max(999999999999, "Harga terlalu besar."),
   kondisi: z.enum(["BAIK", "RUSAK"], {
-    errorMap: () => ({ message: "Kondisi wajib dipilih." }),
+    message: "Kondisi wajib dipilih.",
   }),
   keterangan: z
     .string()
@@ -124,7 +124,7 @@ export async function createMaterial(formData: FormData) {
   const parseResult = materialValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 
@@ -212,7 +212,7 @@ export async function updateMaterial(id: number, formData: FormData) {
   const parseResult = materialValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 

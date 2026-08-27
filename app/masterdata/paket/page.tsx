@@ -33,7 +33,7 @@ export default async function PaketPage({
   };
 
   const [{ data: paket, total, totalPages }, totalAll] = await Promise.all([
-    getPakets(search, page, highlightId),
+    getPakets(search, page),
     getPaketTotal(),
   ]);
 

@@ -25,26 +25,19 @@ export async function DELETE(request: Request) {
     // ======================================
     // CHECK DEPENDENCIES
     // ======================================
+    // Port PON doesn't have direct Prisma relation to BAA (uses plain Int fields)
+    // So we only check if the ports exist
     const ports = await prisma.portPon.findMany({
       where: { id_port: { in: ids } },
-      select: { id_port: true, nomor_port: true, tipe_kartu: true, _count: { select: { baa: true } } },
+      select: { id_port: true, nomor_port: true, tipe_kartu: true },
     });
 
     if (ports.length !== ids.length) {
+      const foundIds = ports.map((p) => p.id_port);
+      const missingIds = ids.filter((id) => !foundIds.includes(id));
       return NextResponse.json(
-        { success: false, message: "Beberapa Port PON tidak ditemukan." },
+        { success: false, message: `Port PON dengan ID ${missingIds.join(", ")} tidak ditemukan.` },
         { status: 404 }
-      );
-    }
-
-    // Check for ports with dependencies (used in BAA)
-    const portsWithDeps = ports.filter((p) => p._count.baa > 0);
-
-    if (portsWithDeps.length > 0) {
-      const portInfo = portsWithDeps.map((p) => `Port ${p.nomor_port} (${p.tipe_kartu})`).join(", ");
-      return NextResponse.json(
-        { success: false, message: `${portInfo} tidak dapat dihapus karena masih digunakan di instalasi (BAA).` },
-        { status: 400 }
       );
     }
 

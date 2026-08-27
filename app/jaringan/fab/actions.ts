@@ -144,7 +144,7 @@ export async function createFab(formData: FormData) {
   const parseResult = fabValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 
@@ -185,6 +185,8 @@ export async function createFab(formData: FormData) {
   // ======================================
   // TRANSACTION - atomic operation
   // ======================================
+  let createdFabId: number = 0;
+
   try {
     await prisma.$transaction(async (tx) => {
       // Double-check NIK di dalam transaction (paling akurat)
@@ -196,7 +198,7 @@ export async function createFab(formData: FormData) {
         throw new Error(`NIK "${validated.nik}" sudah digunakan oleh data lain.`);
       }
 
-      await tx.fab.create({
+      const created = await tx.fab.create({
         data: {
           kode_fab: kodeSementara,
           nama_pelanggan: validated.nama_pelanggan,
@@ -213,6 +215,8 @@ export async function createFab(formData: FormData) {
           foto: fotoPath,
         },
       });
+
+      createdFabId = created.id_fab;
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -223,6 +227,50 @@ export async function createFab(formData: FormData) {
 
   await renumberKodeFab();
   await logActivity("FAB_CREATED", `FAB "${validated.nama_pelanggan}" (NIK: ${validated.nik}) dibuat oleh ${session.user.nama}`);
+
+  // Kirim notifikasi ke Admin, Leader, dan Sales bahwa ada FAB baru yang perlu ditugaskan
+  const targetUsers = await prisma.user.findMany({
+    where: {
+      role: { in: ["ADMIN", "LEADER", "SALES"] },
+      status: true,
+    },
+    select: { id_user: true, nama: true },
+  });
+
+  // Ambil data FAB yang baru dibuat (setelah renumber)
+  const newFab = await prisma.fab.findFirst({
+    where: {
+      nik: validated.nik,
+    },
+    select: { id_fab: true, kode_fab: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (newFab && targetUsers.length > 0) {
+    // Admin & Leader: tidak kirim ke diri sendiri
+    // Sales: KIRIM ke semua sales termasuk yang membuat FAB (untuk tracking FAB OPEN)
+    const notifications = targetUsers
+      .filter((u) => {
+        // Admin dan Leader tidak perlu kirim ke diri sendiri
+        if ((session.user.role === "ADMIN" || session.user.role === "LEADER") && u.id_user === session.user.id_user) {
+          return false;
+        }
+        return true;
+      })
+      .map((user) => ({
+        id_user: user.id_user,
+        title: "FAB Baru Perlu Ditugaskan",
+        message: `FAB baru ${newFab.kode_fab} - ${validated.nama_pelanggan} perlu ditugaskan ke teknisi.`,
+        link: `/jaringan/fab?highlight=${newFab.id_fab}`,
+        type: "FAB_OPEN" as const,
+        is_read: false,
+      }));
+
+    if (notifications.length > 0) {
+      await prisma.notification.createMany({ data: notifications });
+    }
+  }
+
   revalidatePath("/jaringan/fab");
 }
 
@@ -271,7 +319,7 @@ export async function updateFab(id: number, formData: FormData) {
   const parseResult = fabValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 
@@ -439,6 +487,198 @@ export async function deleteMultipleFab(ids: number[]) {
 
 /**
  * ======================================
+ * ASSIGN FAB TO TEKNISI (FITUR B)
+ * ======================================
+ */
+export async function assignFabToTeknisi(idFab: number, idTeknisi: number) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  // Validasi role: hanya ADMIN, LEADER, atau SALES yang bisa assign
+  const allowedRoles = ["ADMIN", "LEADER", "SALES"];
+  if (!allowedRoles.includes(session.user.role)) {
+    throw new Error("Anda tidak memiliki akses untuk menugaskan FAB.");
+  }
+
+  // Validasi input
+  if (!idFab || idFab <= 0) {
+    throw new Error("ID FAB tidak valid.");
+  }
+
+  if (!idTeknisi || idTeknisi <= 0) {
+    throw new Error("Pilih teknisi yang akan ditugaskan.");
+  }
+
+  // Cek FAB exists
+  const fab = await prisma.fab.findUnique({
+    where: { id_fab: idFab },
+    include: {
+      teknisiDitugaskan: {
+        select: { id_user: true, nama: true },
+      },
+    },
+  });
+
+  if (!fab) {
+    throw new Error("Data FAB tidak ditemukan.");
+  }
+
+  // Validasi: FAB harus berstatus OPEN untuk bisa ditugaskan
+  if (fab.status === "AKTIF") {
+    throw new Error("FAB ini sudah berstatus Aktif, tidak bisa ditugaskan lagi.");
+  }
+
+  // Cek teknisi exists dan ber-role TEKNISI
+  const teknisi = await prisma.user.findUnique({
+    where: { id_user: idTeknisi },
+  });
+
+  if (!teknisi) {
+    throw new Error("Teknisi tidak ditemukan.");
+  }
+
+  if (teknisi.role !== "TEKNISI") {
+    throw new Error("User yang dipilih bukan ber-role Teknisi.");
+  }
+
+  if (!teknisi.status) {
+    throw new Error("Teknisi yang dipilih berstatus nonaktif.");
+  }
+
+  // Update FAB dengan teknisi
+  await prisma.fab.update({
+    where: { id_fab: idFab },
+    data: {
+      id_teknisi_ditugaskan: idTeknisi,
+    },
+  });
+
+  // Buat notifikasi untuk teknisi - TAMPILKAN siapa yang assign dan role-nya
+  const notificationLink = `/jaringan/fab?highlight=${idFab}`;
+  await prisma.notification.create({
+    data: {
+      id_user: idTeknisi,
+      title: "FAB Ditugaskan",
+      message: `${fab.kode_fab} - ${fab.nama_pelanggan} ditugaskan kepada Anda. Ditugaskan oleh: ${session.user.nama} (${session.user.role})`,
+      link: notificationLink,
+      type: "FAB_ASSIGNED",
+      is_read: false,
+    },
+  });
+
+  // Log activity
+  const teknisiName = teknisi.nama;
+  const penginputName = session.user.nama;
+  await logActivity(
+    "FAB_UPDATED",
+    `FAB ${fab.kode_fab} - ${fab.nama_pelanggan} ditugaskan ke teknisi ${teknisiName} oleh ${penginputName}`
+  );
+
+  revalidatePath("/jaringan/fab");
+  return { success: true };
+}
+
+/**
+ * ======================================
+ * BULK ASSIGN FAB TO TEKNISI (FITUR B - BONUS)
+ * ======================================
+ */
+export async function bulkAssignFabToTeknisi(idFabs: number[], idTeknisi: number) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  // Validasi role
+  const allowedRoles = ["ADMIN", "LEADER", "SALES"];
+  if (!allowedRoles.includes(session.user.role)) {
+    throw new Error("Anda tidak memiliki akses untuk menugaskan FAB.");
+  }
+
+  // Validasi input
+  if (!idFabs || idFabs.length === 0) {
+    throw new Error("Pilih FAB yang ingin ditugaskan.");
+  }
+
+  if (!idTeknisi || idTeknisi <= 0) {
+    throw new Error("Pilih teknisi yang akan ditugaskan.");
+  }
+
+  // Cek teknisi exists dan ber-role TEKNISI
+  const teknisi = await prisma.user.findUnique({
+    where: { id_user: idTeknisi },
+  });
+
+  if (!teknisi) {
+    throw new Error("Teknisi tidak ditemukan.");
+  }
+
+  if (teknisi.role !== "TEKNISI") {
+    throw new Error("User yang dipilih bukan ber-role Teknisi.");
+  }
+
+  if (!teknisi.status) {
+    throw new Error("Teknisi yang dipilih berstatus nonaktif.");
+  }
+
+  // Ambil semua FAB yang dipilih beserta statusnya
+  const fabs = await prisma.fab.findMany({
+    where: { id_fab: { in: idFabs } },
+    select: { id_fab: true, kode_fab: true, nama_pelanggan: true, status: true },
+  });
+
+  if (fabs.length !== idFabs.length) {
+    throw new Error("Beberapa FAB tidak ditemukan.");
+  }
+
+  // Filter FABs yang bisa ditugaskan (hanya OPEN) vs yang dilewati (AKTIF)
+  const fabsToAssign = fabs.filter((f) => f.status === "OPEN");
+  const skippedFabs = fabs.filter((f) => f.status === "AKTIF");
+
+  if (fabsToAssign.length === 0) {
+    throw new Error("Semua FAB yang dipilih sudah berstatus Aktif, tidak bisa ditugaskan.");
+  }
+
+  // Bulk update hanya FABs yang berstatus OPEN
+  await prisma.fab.updateMany({
+    where: { id_fab: { in: fabsToAssign.map((f) => f.id_fab) } },
+    data: {
+      id_teknisi_ditugaskan: idTeknisi,
+    },
+  });
+
+  // Bulk create notifications untuk teknisi - TAMPILKAN siapa yang assign dan role-nya
+  const notifications = fabsToAssign.map((fab) => ({
+    id_user: idTeknisi,
+    title: "FAB Ditugaskan",
+    message: `${fab.kode_fab} - ${fab.nama_pelanggan} ditugaskan kepada Anda. Ditugaskan oleh: ${session.user.nama} (${session.user.role})`,
+    link: `/jaringan/fab?highlight=${fab.id_fab}`,
+    type: "FAB_ASSIGNED" as const,
+    is_read: false,
+  }));
+
+  await prisma.notification.createMany({ data: notifications });
+
+  // Log activity
+  const skippedMsg = skippedFabs.length > 0 ? ` (${skippedFabs.length} FAB berstatus Aktif dilewati)` : "";
+  await logActivity(
+    "FAB_UPDATED",
+    `${fabsToAssign.length} FAB ditugaskan ke teknisi ${teknisi.nama}${skippedMsg} oleh ${session.user.nama}`
+  );
+
+  revalidatePath("/jaringan/fab");
+  return {
+    success: true,
+    count: fabsToAssign.length,
+    skippedCount: skippedFabs.length,
+    skippedFabs: skippedFabs.map((f) => f.kode_fab)
+  };
+}
+
+/**
+ * ======================================
  * GET DATA
  * ======================================
  */
@@ -454,6 +694,7 @@ export async function getFabs(highlightId?: number | null) {
       paket: true,
       users: true,
       penginput: true,
+      teknisiDitugaskan: true,
     },
     orderBy: { createdAt: "desc" },
   });

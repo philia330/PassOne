@@ -38,7 +38,7 @@ export async function DELETE(request: Request) {
     // ======================================
     const users = await prisma.user.findMany({
       where: { id_user: { in: ids } },
-      select: { id_user: true, nama: true, _count: { select: { fab: true, baa: true, baateknisi: true } } },
+      select: { id_user: true, nama: true, _count: { select: { fabSales: true, fabPenginput: true, baa: true, baaTeknisi: true } } },
     });
 
     if (users.length !== ids.length) {
@@ -50,7 +50,7 @@ export async function DELETE(request: Request) {
 
     // Check for users with dependencies
     const usersWithDeps = users.filter(
-      (u) => u._count.fab > 0 || u._count.baa > 0 || u._count.baateknisi > 0
+      (u) => u._count.fabSales > 0 || u._count.fabPenginput > 0 || u._count.baa > 0 || u._count.baaTeknisi > 0
     );
 
     if (usersWithDeps.length > 0) {

@@ -22,7 +22,7 @@ const portPonValidation = z.object({
     .min(1, "Tipe kartu wajib diisi.")
     .max(50, "Tipe kartu maksimal 50 karakter."),
   status: z.enum(["TERSEDIA", "TERPASANG", "RUSAK"], {
-    errorMap: () => ({ message: "Status wajib dipilih." }),
+    message: "Status wajib dipilih.",
   }),
   id_olt: z.number().int().positive("OLT wajib dipilih."),
   id_odp: z.number().int().positive("ODP wajib dipilih."),
@@ -105,7 +105,7 @@ export const createPortPon = async (formData: FormData) => {
   const parseResult = portPonValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 
@@ -143,7 +143,7 @@ export const updatePortPon = async (id: number, formData: FormData) => {
   const parseResult = portPonValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 

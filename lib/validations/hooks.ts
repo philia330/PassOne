@@ -129,7 +129,7 @@ export function useFormValidation<T extends Record<string, unknown>>(
         return { success: true, data: validated };
       } catch (error) {
         if (error instanceof ZodError) {
-          const newErrors: ValidationError[] = error.errors.map((e) => ({
+          const newErrors: ValidationError[] = error.issues.map((e) => ({
             field: e.path.join("."),
             message: e.message,
           }));

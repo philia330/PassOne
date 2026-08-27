@@ -25,7 +25,9 @@ model User {
   baa               baa[]
   fabSales          fab[]        @relation("FabSales")
   fabPenginput      fab[]        @relation("FabPenginput")
+  fabTeknisi        fab[]        @relation("FabTeknisi")
   baaTeknisi        baateknisi[]
+  notifications     notification[]
 
   @@map("users")
 }
@@ -113,32 +115,35 @@ model baateknisi {
 }
 
 model fab {
-  id_fab         Int        @id @default(autoincrement())
-  kode_fab       String     @unique(map: "Fab_kode_fab_key")
-  nama_pelanggan String
-  nik            String     @unique(map: "Fab_nik_key")
-  foto           String?
-  no_hp          String
-  alamat         String
-  latitude       Decimal
-  longitude      Decimal
-  status         fab_status @default(OPEN)
-  id_area        Int
-  id_paket       Int
-  id_user        Int
-  id_penginput   Int
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  baa            baa[]
-  area           area       @relation(fields: [id_area], references: [id_area], map: "Fab_id_area_fkey")
-  paket          paket      @relation(fields: [id_paket], references: [id_paket], map: "Fab_id_paket_fkey")
-  users          User       @relation("FabSales", fields: [id_user], references: [id_user], map: "Fab_id_user_fkey")
-  penginput      User       @relation("FabPenginput", fields: [id_penginput], references: [id_user], map: "Fab_id_penginput_fkey")
+  id_fab                  Int        @id @default(autoincrement())
+  kode_fab                String     @unique(map: "Fab_kode_fab_key")
+  nama_pelanggan          String
+  nik                     String     @unique(map: "Fab_nik_key")
+  foto                    String?
+  no_hp                   String
+  alamat                  String
+  latitude                Decimal
+  longitude               Decimal
+  status                  fab_status @default(OPEN)
+  id_area                 Int
+  id_paket                Int
+  id_user                 Int
+  id_penginput            Int
+  id_teknisi_ditugaskan   Int?       // Nullable - teknisi yang ditugaskan mengerjakan FAB ini
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
+  baa                     baa[]
+  area                    area       @relation(fields: [id_area], references: [id_area], map: "Fab_id_area_fkey")
+  paket                   paket      @relation(fields: [id_paket], references: [id_paket], map: "Fab_id_paket_fkey")
+  users                   User       @relation("FabSales", fields: [id_user], references: [id_user], map: "Fab_id_user_fkey")
+  penginput               User       @relation("FabPenginput", fields: [id_penginput], references: [id_user], map: "Fab_id_penginput_fkey")
+  teknisiDitugaskan       User?      @relation("FabTeknisi", fields: [id_teknisi_ditugaskan], references: [id_user], map: "Fab_id_teknisi_ditugaskan_fkey")
 
   @@index([id_area], map: "Fab_id_area_fkey")
   @@index([id_paket], map: "Fab_id_paket_fkey")
   @@index([id_user], map: "Fab_id_user_fkey")
   @@index([id_penginput], map: "Fab_id_penginput_fkey")
+  @@index([id_teknisi_ditugaskan], map: "Fab_id_teknisi_ditugaskan_idx")
   @@index([nama_pelanggan], map: "Fab_nama_pelanggan_idx")
   @@index([status], map: "Fab_status_idx")
 
@@ -319,6 +324,33 @@ enum material_kondisi {
 enum fab_status {
   OPEN
   AKTIF
+}
+
+enum notification_type {
+  FAB_OPEN            // FAB baru perlu ditugaskan (untuk Admin/Leader/Sales)
+  FAB_ASSIGNED        // FAB ditugaskan ke teknisi (untuk teknisi)
+  FAB_STATUS_CHANGE   // Status FAB berubah
+  BAA_CREATED        // BAA baru dibuat
+  SYSTEM             // Notifikasi sistem (material kritis dll)
+}
+
+model notification {
+  id_notification Int               @id @default(autoincrement())
+  id_user        Int               // User yang menerima notifikasi
+  title          String            // Judul notifikasi
+  message        String            // Isi pesan notifikasi
+  link           String?           // URL tujuan (nullable, untuk notifikasi tanpa link spesifik)
+  type           notification_type @default(SYSTEM)
+  is_read        Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+
+  users          User              @relation(fields: [id_user], references: [id_user], map: "Notification_id_user_fkey")
+
+  @@index([id_user], map: "Notification_id_user_idx")
+  @@index([id_user, is_read], map: "Notification_id_user_is_read_idx")
+  @@index([createdAt], map: "Notification_createdAt_idx")
+
+  @@map("notification")
 }
 
 enum ActivityType {

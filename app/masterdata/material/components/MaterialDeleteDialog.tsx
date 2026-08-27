@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Trash2, Loader2, TriangleAlert } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -22,12 +24,14 @@ interface MaterialDeleteDialogProps {
   bulkIds?: number[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onDeleteStart?: () => void;
 }
 
-export const MaterialDeleteDialog = ({ id, namaMaterial, bulkIds, open: controlledOpen, onOpenChange }: MaterialDeleteDialogProps) => {
+export const MaterialDeleteDialog = ({ id, namaMaterial, bulkIds, open: controlledOpen, onOpenChange, onDeleteStart }: MaterialDeleteDialogProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const router = useRouter();
 
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled ? controlledOpen : internalOpen;
@@ -37,6 +41,7 @@ export const MaterialDeleteDialog = ({ id, namaMaterial, bulkIds, open: controll
 
   const handleConfirm = () => {
     setErrorMsg(null);
+    onDeleteStart?.();
     startTransition(async () => {
       try {
         if (isBulk && bulkIds) {
@@ -47,13 +52,17 @@ export const MaterialDeleteDialog = ({ id, namaMaterial, bulkIds, open: controll
             const error = await response.json();
             throw new Error(error.message || "Gagal menghapus data");
           }
+          toast.success(`Berhasil menghapus ${bulkIds.length} data Material`);
         } else {
           await deleteMaterial(id);
+          toast.success("Data Material berhasil dihapus");
         }
         setIsOpen(false);
+        router.refresh();
       } catch (err: unknown) {
         const error = err as Error;
         setErrorMsg(error.message ?? "Gagal menghapus data, coba lagi.");
+        toast.error(error.message ?? "Gagal menghapus data");
       }
     });
   };

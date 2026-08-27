@@ -26,7 +26,7 @@ const ontValidation = z.object({
     .optional()
     .nullable(),
   status: z.enum(["TERSEDIA", "RUSAK"], {
-    errorMap: () => ({ message: "Status wajib dipilih." }),
+    message: "Status wajib dipilih.",
   }),
   id_pop: z.number().int().positive("POP wajib dipilih."),
   id_odp: z.number().int().positive("ODP wajib dipilih."),
@@ -146,7 +146,7 @@ export const createOnt = async (formData: FormData) => {
   const parseResult = ontValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 
@@ -214,7 +214,7 @@ export const updateOnt = async (id: number, formData: FormData) => {
   const parseResult = ontValidation.safeParse(rawData);
 
   if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
+    const firstError = parseResult.error.issues[0];
     throw new Error(firstError.message);
   }
 

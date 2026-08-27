@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Trash2, Loader2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { deleteArea } from "../actions";
 
 interface DeleteAreaDialogProps {
@@ -22,12 +24,14 @@ interface DeleteAreaDialogProps {
   bulkIds?: number[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onDeleteStart?: () => void;
 }
 
-export const DeleteAreaDialog = ({ id, namaArea, bulkIds, open: controlledOpen, onOpenChange }: DeleteAreaDialogProps) => {
+export const DeleteAreaDialog = ({ id, namaArea, bulkIds, open: controlledOpen, onOpenChange, onDeleteStart }: DeleteAreaDialogProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const router = useRouter();
 
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled ? controlledOpen : internalOpen;
@@ -37,6 +41,7 @@ export const DeleteAreaDialog = ({ id, namaArea, bulkIds, open: controlledOpen, 
 
   const handleConfirm = () => {
     setErrorMsg(null);
+    onDeleteStart?.();
     startTransition(async () => {
       try {
         if (isBulk && bulkIds) {
@@ -48,13 +53,17 @@ export const DeleteAreaDialog = ({ id, namaArea, bulkIds, open: controlledOpen, 
             const error = await response.json();
             throw new Error(error.message || "Gagal menghapus data");
           }
+          toast.success(`Berhasil menghapus ${bulkIds.length} data Area`);
         } else {
           await deleteArea(id);
+          toast.success("Data Area berhasil dihapus");
         }
         setIsOpen(false);
+        router.refresh();
       } catch (err: unknown) {
         const error = err as Error;
         setErrorMsg(error.message ?? "Gagal menghapus data, coba lagi.");
+        toast.error(error.message ?? "Gagal menghapus data");
       }
     });
   };

@@ -71,10 +71,10 @@ export const createUserSchema = z.object({
   email: emailSchema,
   no_hp: noHpSchema,
   role: z.enum(["ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"], {
-    errorMap: () => ({ message: "Role wajib dipilih." }),
+    message: "Role wajib dipilih.",
   }),
   jkl: z.enum(["LAKI_LAKI", "PEREMPUAN"], {
-    errorMap: () => ({ message: "Jenis kelamin wajib dipilih." }),
+    message: "Jenis kelamin wajib dipilih.",
   }),
   status: z.boolean(),
   foto: z.instanceof(File).optional(),
@@ -87,10 +87,10 @@ export const updateUserSchema = z.object({
   email: emailSchema,
   no_hp: noHpSchema,
   role: z.enum(["ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"], {
-    errorMap: () => ({ message: "Role wajib dipilih." }),
+    message: "Role wajib dipilih.",
   }),
   jkl: z.enum(["LAKI_LAKI", "PEREMPUAN"], {
-    errorMap: () => ({ message: "Jenis kelamin wajib dipilih." }),
+    message: "Jenis kelamin wajib dipilih.",
   }),
   status: z.boolean(),
   foto: z.instanceof(File).optional().nullable(),
@@ -186,7 +186,7 @@ export const materialSchema = z.object({
   satuan: satuanSchema,
   harga: hargaSchema,
   kondisi: z.enum(["BAIK", "RUSAK"], {
-    errorMap: () => ({ message: "Kondisi wajib dipilih." }),
+    message: "Kondisi wajib dipilih.",
   }),
   keterangan: z
     .string()
@@ -359,7 +359,7 @@ export const portPonSchema = z.object({
     .min(1, "Tipe kartu wajib diisi.")
     .max(50, "Tipe kartu maksimal 50 karakter."),
   status: z.enum(["TERSEDIA", "TERPASANG", "RUSAK"], {
-    errorMap: () => ({ message: "Status wajib dipilih." }),
+    message: "Status wajib dipilih.",
   }),
   id_olt: z.number().int().positive("OLT wajib dipilih."),
   id_odp: z.number().int().positive("ODP wajib dipilih."),
@@ -386,7 +386,7 @@ export const ontSchema = z.object({
   serial_number: serialNumberSchema,
   model: ontModelSchema,
   status: z.enum(["TERSEDIA", "TERPASANG", "RUSAK"], {
-    errorMap: () => ({ message: "Status wajib dipilih." }),
+    message: "Status wajib dipilih.",
   }),
   id_pop: z.number().int().positive("POP wajib dipilih."),
   id_odp: z.number().int().positive("ODP wajib dipilih."),

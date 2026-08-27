@@ -42,7 +42,7 @@ export default async function OdpPage({
     prisma.odp.count(),
     prisma.ont.count(),
     prisma.baa.count(),
-    getOdps(search, page, true, sortOrder, highlightId),
+    getOdps(search, page, true, sortOrder),
     getOlts(),
   ]);
 

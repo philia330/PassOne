@@ -27,7 +27,7 @@ export async function DELETE(request: Request) {
     // ======================================
     const olts = await prisma.olt.findMany({
       where: { id_olt: { in: ids } },
-      select: { id_olt: true, nama_olt: true, _count: { select: { odp: true, portPon: true } } },
+      select: { id_olt: true, nama_olt: true, _count: { select: { odp: true, portpon: true } } },
     });
 
     if (olts.length !== ids.length) {
@@ -38,7 +38,7 @@ export async function DELETE(request: Request) {
     }
 
     // Check for OLTs with dependencies
-    const oltsWithDeps = olts.filter((o) => o._count.odp > 0 || o._count.portPon > 0);
+    const oltsWithDeps = olts.filter((o) => o._count.odp > 0 || o._count.portpon > 0);
 
     if (oltsWithDeps.length > 0) {
       const names = oltsWithDeps.map((o) => o.nama_olt).join(", ");

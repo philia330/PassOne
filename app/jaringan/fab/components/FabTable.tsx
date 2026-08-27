@@ -20,10 +20,12 @@ import {
   Trash2,
   Download,
   Check,
+  UserCog,
 } from "lucide-react";
 import { FabActionsDropdown } from "./FabActionsDropdown";
 import { FabViewDialog } from "./FabViewDialog";
 import { FabDeleteDialog } from "./FabDeleteDialog";
+import { FabAssignDialog } from "./FabAssignDialog";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,6 +64,13 @@ interface PenginputOption {
   nama: string;
 }
 
+interface TeknisiOption {
+  id_user: number;
+  nama: string;
+  username: string;
+  foto: string | null;
+}
+
 // ================== SKELETON ROW COMPONENTS ==================
 
 function SkeletonRow({ colCount = 13 }: { colCount?: number }) {
@@ -84,6 +93,7 @@ interface FabTableProps {
   currentUser: CurrentUser;
   kodeOtomatis: string;
   penginputOptions?: PenginputOption[];
+  teknisiOptions?: TeknisiOption[];
   actions?: ReactNode;
 }
 
@@ -158,10 +168,12 @@ export const FabTable = ({
   currentUser,
   kodeOtomatis,
   penginputOptions = [],
+  teknisiOptions = [],
   actions,
 }: FabTableProps) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
@@ -174,8 +186,12 @@ export const FabTable = ({
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [selectAllPage, setSelectAllPage] = useState(false);
   const [viewItem, setViewItem] = useState<FabData | null>(null);
+
+  // Bulk assign state
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
 
   // Highlight state untuk Command Palette
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
@@ -269,11 +285,17 @@ export const FabTable = ({
   const [filterTahun, setFilterTahun] = useState<string>(() => String(getCurrentYear()));
   const [filterBulan, setFilterBulan] = useState<string>(() => getCurrentMonth());
 
+  // Filter teknisi - untuk role TEKNISI, default ke FAB yang ditugaskan ke mereka
+  const isTeknisi = currentUser.role === "TEKNISI";
+  const [filterTeknisi, setFilterTeknisi] = useState<string>(() => {
+    return isTeknisi ? String(currentUser.id_user) : "all";
+  });
+
   // Clear selection when filters/search change
   useEffect(() => {
     setSelectedIds(new Set());
     setSelectAllPage(false);
-  }, [search, filterPenginput, filterTahun, filterBulan]);
+  }, [search, filterPenginput, filterTahun, filterBulan, filterTeknisi]);
 
   // Generate year options (current year - 2 to current year)
   const yearOptions = useMemo(() => {
@@ -324,6 +346,10 @@ export const FabTable = ({
       const penginputId = item.penginput?.id_user;
       const matchesPenginput = filterPenginput === "all" || penginputId === Number(filterPenginput);
 
+      // Filter berdasarkan teknisi yang ditugaskan (khusus TEKNISI)
+      const teknisiId = (item as any).teknisiDitugaskan?.id_user;
+      const matchesTeknisi = filterTeknisi === "all" || teknisiId === Number(filterTeknisi);
+
       // Filter berdasarkan tahun dan bulan
       const itemDate = new Date(item.createdAt);
       const itemYear = String(itemDate.getFullYear());
@@ -331,9 +357,9 @@ export const FabTable = ({
       const matchesTahun = filterTahun === "all" || itemYear === filterTahun;
       const matchesBulan = filterBulan === "all" || itemMonth === filterBulan;
 
-      return matchesSearch && matchesPenginput && matchesTahun && matchesBulan;
+      return matchesSearch && matchesPenginput && matchesTahun && matchesBulan && matchesTeknisi;
     });
-  }, [sortedData, search, filterPenginput, filterTahun, filterBulan]);
+  }, [sortedData, search, filterPenginput, filterTahun, filterBulan, filterTeknisi]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -467,9 +493,17 @@ export const FabTable = ({
     setSelectAllPage(false);
     setBulkDeleteOpen(false);
     setBulkDeleteIds([]);
+    setIsBulkDeleting(false);
+    router.refresh();
   };
 
   const showFilterDropdown = isSalesOrTeknisi ? true : penginputOptions.length > 0;
+
+  // Role yang boleh bulk assign
+  const canBulkAssign =
+    currentUser.role === "ADMIN" ||
+    currentUser.role === "LEADER" ||
+    currentUser.role === "SALES";
 
   return (
     <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
@@ -486,14 +520,31 @@ export const FabTable = ({
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {/* Bulk Assign ke Teknisi - hanya untuk ADMIN, LEADER, SALES */}
+              {canBulkAssign && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setBulkAssignOpen(true)}
+                  className="h-9 rounded-xl text-purple-600 hover:bg-purple-50 hover:text-purple-700 dark:text-purple-400 dark:hover:bg-purple-500/10"
+                >
+                  <UserCog className="mr-1.5 h-4 w-4" />
+                  Tugaskan
+                </Button>
+              )}
               {canDelete && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
                   className="h-9 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
                 >
-                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  {isBulkDeleting ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-1.5 h-4 w-4" />
+                  )}
                   Hapus
                 </Button>
               )}
@@ -618,6 +669,52 @@ export const FabTable = ({
                   variant="ghost"
                   size="sm"
                   onClick={clearFilter}
+                  className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+                >
+                  <X className="h-4 w-4 text-slate-500" />
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Filter Dropdown Teknisi - khusus untuk TEKNISI melihat FAB yang ditugaskan ke mereka */}
+          {isTeknisi && (
+            <div className="flex items-center gap-2">
+              <Select value={filterTeknisi} onValueChange={(value) => { if (value) { setFilterTeknisi(value); setPage(1); } }}>
+                <SelectTrigger className="h-11 w-[200px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+                  <UserCog className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+                  <SelectValue>
+                    {filterTeknisi === String(currentUser.id_user) ? "Ditugaskan ke Saya" : "Semua FAB"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="max-h-64 overflow-y-auto rounded-2xl border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+                  <SelectItem
+                    value="all"
+                    className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>Semua FAB</span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem
+                    value={String(currentUser.id_user)}
+                    className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                  >
+                    <span className="flex items-center gap-2">
+                      <UserCog className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                      <span className="font-medium">Ditugaskan ke Saya</span>
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Clear filter button */}
+              {filterTeknisi !== "all" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setFilterTeknisi("all"); setPage(1); }}
                   className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
                 >
                   <X className="h-4 w-4 text-slate-500" />
@@ -836,6 +933,7 @@ export const FabTable = ({
                           currentUser={currentUser}
                           canEdit={canEdit(item)}
                           canDelete={canDelete}
+                          teknisiOptions={teknisiOptions}
                         />
                       </div>
                     </TableCell>
@@ -966,6 +1064,7 @@ export const FabTable = ({
               handleDeleteSuccess();
             }
           }}
+          onDeleteStart={() => setIsBulkDeleting(true)}
         />
       )}
 
@@ -977,6 +1076,25 @@ export const FabTable = ({
           onOpenChange={(isOpen) => {
             if (!isOpen) setViewItem(null);
           }}
+        />
+      )}
+
+      {/* Bulk Assign Dialog */}
+      {bulkAssignOpen && selectedIds.size > 0 && (
+        <FabAssignDialog
+          open={bulkAssignOpen}
+          onOpenChange={(isOpen) => {
+            setBulkAssignOpen(isOpen);
+            if (!isOpen) {
+              setSelectedIds(new Set());
+              setSelectAllPage(false);
+            }
+          }}
+          selectedIds={Array.from(selectedIds).filter((id) => {
+            const fab = data.find((f) => f.id_fab === id);
+            return fab?.status === "OPEN";
+          })}
+          teknisiOptions={teknisiOptions}
         />
       )}
     </Card>

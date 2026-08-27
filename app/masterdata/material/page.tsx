@@ -36,7 +36,7 @@ export default async function MaterialPage({
   const canExport = currentRole === "ADMIN" || currentRole === "LEADER";
 
   const [{ data: material, total, totalPages }, totalAll] = await Promise.all([
-    getMaterials(search, page, highlightId),
+    getMaterials(search, page),
     getMaterialTotal(),
   ]);
 

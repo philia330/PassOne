@@ -27,7 +27,7 @@ export default async function OltPage({
   // Hitung total SEMUA data (tanpa filter) untuk card statistik
   const [totalCount, { data: olts, total, totalPages }, pops] = await Promise.all([
     prisma.olt.count(),
-    getOlts(search, page, highlightId),
+    getOlts(search, page),
     getPops(),
   ]);
 

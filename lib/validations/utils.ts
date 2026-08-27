@@ -161,7 +161,7 @@ export function removeDangerousChars(value: string): string {
 
 /** Format Zod error messages for user display */
 export function formatZodErrors(error: z.ZodError): string[] {
-  return error.errors.map((err) => {
+  return error.issues.map((err) => {
     const field = err.path.join(".");
     return `${field ? `${field}: ` : ""}${err.message}`;
   });
@@ -169,8 +169,8 @@ export function formatZodErrors(error: z.ZodError): string[] {
 
 /** Get first Zod error message */
 export function getFirstZodError(error: z.ZodError): string {
-  if (error.errors.length === 0) return "Validasi gagal.";
-  const first = error.errors[0];
+  if (error.issues.length === 0) return "Validasi gagal.";
+  const first = error.issues[0];
   const field = first.path.join(".");
   return `${field ? `${field}: ` : ""}${first.message}`;
 }

@@ -24,7 +24,7 @@ export default async function AreaPage({
   // Hitung total SEMUA data (tanpa filter) untuk card statistik
   const [totalCount, { data: areas, total, totalPages }] = await Promise.all([
     prisma.area.count(),
-    getAreas(search, page, highlightId),
+    getAreas(search, page),
   ]);
 
   // Hanya Admin dan Leader yang bisa export

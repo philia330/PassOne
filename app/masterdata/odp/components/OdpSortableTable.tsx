@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,6 +56,7 @@ export function OdpSortableTable({
   defaultValue: string;
   currentUser?: CurrentUser;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -65,6 +66,7 @@ export function OdpSortableTable({
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [selectAllPage, setSelectAllPage] = useState(false);
 
   // Highlight state untuk Command Palette
@@ -241,6 +243,7 @@ export function OdpSortableTable({
 
   // Bulk delete handler
   const handleBulkDelete = () => {
+    setIsBulkDeleting(true);
     const ids = Array.from(selectedIds);
     if (ids.length === 0) {
       toast.error("Pilih item yang ingin dihapus");
@@ -256,6 +259,8 @@ export function OdpSortableTable({
     setSelectAllPage(false);
     setBulkDeleteOpen(false);
     setBulkDeleteIds([]);
+    setIsBulkDeleting(false);
+    router.refresh();
   };
 
   return (
@@ -278,9 +283,10 @@ export function OdpSortableTable({
                   size="sm"
                   variant="ghost"
                   onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
                   className="h-9 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
                 >
-                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  {isBulkDeleting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1.5 h-4 w-4" />}
                   Hapus
                 </Button>
               )}
@@ -497,6 +503,7 @@ export function OdpSortableTable({
           namaOdp={`${bulkDeleteIds.length} ODP`}
           bulkIds={bulkDeleteIds}
           open={bulkDeleteOpen}
+          onDeleteStart={() => setIsBulkDeleting(true)}
           onOpenChange={(isOpen) => {
             setBulkDeleteOpen(isOpen);
             if (!isOpen) {
