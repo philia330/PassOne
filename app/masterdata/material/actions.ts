@@ -38,8 +38,23 @@ async function requireAccess() {
   }
 
   const role = session.user.role;
-  if (role !== Role.ADMIN && role !== Role.LOGISTIK) {
+  if (role !== Role.ADMIN && role !== Role.LOGISTIK && role !== Role.TEKNISI) {
     throw new Error("Anda tidak memiliki akses untuk mengelola material.");
+  }
+
+  return session;
+}
+
+async function requireWriteAccess() {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  const role = session.user.role;
+  // Only ADMIN and LOGISTIK can create/update/delete material
+  if (role !== Role.ADMIN && role !== Role.LOGISTIK) {
+    throw new Error("Anda tidak memiliki akses untuk mengubah data material.");
   }
 
   return session;
@@ -105,7 +120,7 @@ async function renumberKodeMaterial() {
  * ======================================
  */
 export async function createMaterial(formData: FormData) {
-  const session = await requireAccess();
+  const session = await requireWriteAccess();
 
   // ======================================
   // VALIDASI INPUT
@@ -184,7 +199,7 @@ export async function createMaterial(formData: FormData) {
  * ======================================
  */
 export async function updateMaterial(id: number, formData: FormData) {
-  const session = await requireAccess();
+  const session = await requireWriteAccess();
 
   // Ambil data lama
   const existing = await prisma.material.findUnique({
@@ -275,7 +290,7 @@ export async function updateMaterial(id: number, formData: FormData) {
  * ======================================
  */
 export async function deleteMaterial(id: number) {
-  const session = await requireAccess();
+  const session = await requireWriteAccess();
 
   // Ambil data sebelum hapus
   const material = await prisma.material.findUnique({

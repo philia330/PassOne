@@ -47,7 +47,7 @@ export const permissions = {
     paket: [],
     fab: [],
     baa: ["create", "read", "update", "delete"],
-    materialList: ["create", "read", "update", "delete"],
+    materialList: ["read"],
   },
 
   LOGISTIK: {

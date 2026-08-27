@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { Bell, Check, Loader2, Trash2, ArrowLeft, PackageX, AlertTriangle, Info } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Bell, Check, Loader2, Trash2, ArrowLeft, PackageX, AlertTriangle, Info, UserCog, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -72,6 +73,7 @@ function formatTimeAgo(dateString: string): string {
 }
 
 export default function NotificationsPage() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [total, setTotal] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -106,6 +108,32 @@ export default function NotificationsPage() {
     fetchNotifications();
   }, [page]);
 
+  // Handle notification click - mark as read and navigate
+  const handleNotificationClick = async (item: NotificationItem) => {
+    // Mark as read if unread
+    if (!item.is_read) {
+      try {
+        await fetch("/api/notifications/mark-read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idNotification: item.id_notification }),
+        });
+        setNotifications((prev) =>
+          prev.map((n) => (n.id_notification === item.id_notification ? { ...n, is_read: true } : n))
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch {
+        // continue even if mark read fails
+      }
+    }
+
+    // Navigate to link if exists
+    if (item.link) {
+      router.push(item.link);
+    }
+  };
+
+  // Handle mark as read only (without navigation)
   const handleMarkAsRead = async (id: number) => {
     try {
       const res = await fetch("/api/notifications/mark-read", {
@@ -190,12 +218,10 @@ export default function NotificationsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/workspace">
-            <Button variant="outline" className="rounded-xl gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Kembali
-            </Button>
-          </Link>
+          <Button variant="outline" onClick={() => router.back()} className="rounded-xl gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Kembali
+          </Button>
           {unreadCount > 0 && (
             <Button
               variant="outline"
@@ -238,14 +264,17 @@ export default function NotificationsPage() {
               const severity = TYPE_TO_SEVERITY[item.type] || "info";
               const Icon = TYPE_ICON[item.type] || Info;
               const colorClass = TYPE_COLOR[severity];
+              const isFabNotification = item.type === "FAB_ASSIGNED" || item.type === "FAB_OPEN";
 
               return (
                 <div
                   key={item.id_notification}
                   className={cn(
-                    "group flex items-start gap-4 p-4 transition hover:bg-slate-50 dark:hover:bg-slate-800/50",
-                    !item.is_read && "bg-purple-50/50 dark:bg-purple-500/5"
+                    "group flex items-start gap-3 p-4 transition",
+                    !item.is_read ? "bg-purple-50/50 dark:bg-purple-500/5" : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
+                    item.link && "cursor-pointer"
                   )}
+                  onClick={() => item.link && handleNotificationClick(item)}
                 >
                   {/* Icon */}
                   <div
@@ -259,7 +288,7 @@ export default function NotificationsPage() {
 
                   {/* Content */}
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h4
                         className={cn(
                           "text-sm font-semibold",
@@ -271,7 +300,7 @@ export default function NotificationsPage() {
                         {item.title}
                       </h4>
                       {!item.is_read && (
-                        <span className="h-2 w-2 rounded-full bg-purple-500" />
+                        <span className="h-2 w-2 rounded-full bg-purple-500 flex-shrink-0" />
                       )}
                     </div>
                     <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
@@ -280,15 +309,36 @@ export default function NotificationsPage() {
                     <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
                       {formatTimeAgo(item.createdAt)}
                     </p>
+
+                    {/* FAB Action Buttons */}
+                    {isFabNotification && item.link && (
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNotificationClick(item);
+                          }}
+                          className="h-8 rounded-lg text-xs font-medium border-purple-200 text-purple-600 hover:bg-purple-50 hover:border-purple-300 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-500/10"
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1.5" />
+                          {item.type === "FAB_ASSIGNED" ? "Lihat FAB" : "Buka FAB"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions */}
-                  <div className="flex flex-shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                    {!item.is_read && (
+                  <div className="flex flex-shrink-0 items-center gap-1">
+                    {!item.is_read && !isFabNotification && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleMarkAsRead(item.id_notification)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAsRead(item.id_notification);
+                        }}
                         className="h-8 w-8 p-0 rounded-lg text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-500/10"
                         title="Tandai sudah dibaca"
                       >
@@ -298,7 +348,10 @@ export default function NotificationsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setDeleteId(item.id_notification)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteId(item.id_notification);
+                      }}
                       className="h-8 w-8 p-0 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
                       title="Hapus notifikasi"
                     >

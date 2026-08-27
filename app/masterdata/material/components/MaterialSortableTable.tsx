@@ -82,6 +82,7 @@ export function MaterialSortableTable({
   const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
 
   const canDelete = currentUser.role === "ADMIN";
+  const canWrite = currentUser.role === "ADMIN" || currentUser.role === "LOGISTIK";
 
   // Clear selection when filters/search change
   useEffect(() => {
@@ -342,7 +343,7 @@ export function MaterialSortableTable({
           <MaterialSearch value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
             {actions}
-            <MaterialDialog mode="create" kodeOtomatis={kodeOtomatis} />
+            {canWrite && <MaterialDialog mode="create" kodeOtomatis={kodeOtomatis} />}
           </div>
         </div>
 
@@ -470,7 +471,7 @@ export function MaterialSortableTable({
                             namaMaterial={item.nama_material}
                             satuanMaterial={item.satuan}
                           />
-                          <MaterialDialog mode="edit" material={item} />
+                          {canWrite && <MaterialDialog mode="edit" material={item} />}
                           {canDelete && <MaterialDeleteDialog id={item.id_material} namaMaterial={item.nama_material} />}
                         </div>
                       </TableCell>
@@ -525,7 +526,7 @@ export function MaterialSortableTable({
                       namaMaterial={item.nama_material}
                       satuanMaterial={item.satuan}
                     />
-                    <MaterialDialog mode="edit" material={item} />
+                    {canWrite && <MaterialDialog mode="edit" material={item} />}
                     {canDelete && <MaterialDeleteDialog id={item.id_material} namaMaterial={item.nama_material} />}
                   </div>
                 </div>

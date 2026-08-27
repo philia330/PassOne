@@ -615,7 +615,7 @@ export const FabTable = ({
 </div>
 
         {/* Baris 2: Filter Penginput + Filter Bulan + Page Size Selector */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 overflow-visible">
           {/* Filter Dropdown Penginput - hanya tampil jika ada opsi atau role yang sesuai */}
           {showFilterDropdown && (
             <div className="flex items-center gap-2">
@@ -633,7 +633,7 @@ export const FabTable = ({
                     }}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent className="max-h-64 overflow-y-auto rounded-2xl border-slate-200 p-1.5 shadow-lg dark:border-slate-700">
+                <SelectContent className="max-h-64 overflow-y-auto rounded-2xl border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
                   {isSalesOrTeknisi && (
                     <SelectItem
                       value={String(currentUser.id_user)}

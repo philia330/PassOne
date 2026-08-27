@@ -214,33 +214,24 @@ export function FabAssignDialog({
                     <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
                     <span className="text-slate-400">Memuat teknisi...</span>
                   </div>
+                ) : selectedTeknisiData ? (
+                  <div className="flex items-center gap-2">
+                    <TeknisiAvatar
+                      nama={selectedTeknisiData.nama}
+                      foto={selectedTeknisiData.foto}
+                      size="sm"
+                      isSelected={false}
+                    />
+                    <span className="font-medium">{selectedTeknisiData.nama}</span>
+                    <span className="text-slate-400 text-xs">
+                      @{selectedTeknisiData.username}
+                    </span>
+                  </div>
                 ) : (
-                  <SelectValue placeholder="-- Pilih Teknisi --">
-                    {({ selectedValue }) => {
-                      // Lookup nama dari selected value
-                      const selected = teknisiOptions.find(
-                        (t) => String(t.id_user) === selectedValue
-                      );
-                      if (!selected) return <span className="text-slate-400">-- Pilih Teknisi --</span>;
-                      return (
-                        <div className="flex items-center gap-2">
-                          <TeknisiAvatar
-                            nama={selected.nama}
-                            foto={selected.foto}
-                            size="sm"
-                            isSelected={false}
-                          />
-                          <span className="font-medium">{selected.nama}</span>
-                          <span className="text-slate-400 text-xs">
-                            @{selected.username}
-                          </span>
-                        </div>
-                      );
-                    }}
-                  </SelectValue>
+                  <span className="text-slate-400">-- Pilih Teknisi --</span>
                 )}
               </SelectTrigger>
-              <SelectContent className="max-h-64 overflow-y-auto rounded-xl border-slate-200 dark:border-slate-700 p-1.5">
+              <SelectContent className="max-h-64 overflow-y-auto rounded-xl border-slate-200 dark:border-slate-700 p-1.5 z-[100]">
                 {teknisiOptions.length === 0 && !isTeknisiLoading ? (
                   <div className="px-3 py-4 text-center text-sm text-slate-400">
                     Tidak ada teknisi tersedia
