@@ -170,6 +170,16 @@ export function PortPonSortableTable({
   const totalPagesCalc = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  // Kalau hasil filter/sort bikin halaman aktif sekarang jadi out-of-range
+  // (misal lagi di halaman 3 terus search dipersempit sampai cuma sisa 1
+  // halaman), balikin ke halaman terakhir yang valid biar nggak nyangkut
+  // di halaman kosong.
+  useEffect(() => {
+    if (page > totalPagesCalc) {
+      setPage(totalPagesCalc);
+    }
+  }, [page, totalPagesCalc]);
+
   // Selection functions
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
@@ -492,9 +502,12 @@ export function PortPonSortableTable({
           ))}
         </div>
 
-        <div className="flex justify-end">
-          <PortPonPagination page={page} totalPages={totalPagesCalc} />
-        </div>
+        <PortPonPagination
+          page={page}
+          totalPages={totalPagesCalc}
+          totalItems={sorted.length}
+          pageSize={PAGE_SIZE}
+        />
       </CardContent>
 
       {/* Bulk Delete Dialog */}

@@ -72,6 +72,19 @@ export function UserSortableTable({
   const [page, setPage] = useState(initialPage);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
+  // BUG FIX: useState(initialPage) cuma dibaca sekali waktu mount pertama.
+  // Waktu user pindah halaman, UserPagination push URL baru -> server
+  // component re-fetch & kirim prop `page` baru -> tapi karena komponen ini
+  // client component yang sudah mount, React TIDAK otomatis update state
+  // `page` dari prop baru itu. Efeknya: data tabel (initialData) berubah
+  // (karena itu prop baru yang di-render ulang), tapi indikator halaman
+  // yang dikirim ke <UserPagination> tetap nyangkut di halaman lama ->
+  // tombol Previous kelihatan disabled terus dan navigasi mundur gagal.
+  // Fix: sinkronkan ulang setiap kali prop `initialPage` berubah.
+  useEffect(() => {
+    setPage(initialPage);
+  }, [initialPage]);
+
   // Selection state for bulk actions
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
@@ -171,8 +184,19 @@ export function UserSortableTable({
     });
   }, [filtered, sortOrder]);
 
- const totalPagesCalc = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPagesCalc = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // BUG FIX: `initialData` yang dikirim dari server SUDAH dipaginasi di
+  // server (getUsers(search, page) cuma balikin 10 item buat halaman itu
+  // saja). Sebelumnya di sini di-slice LAGI pakai (page-1)*PAGE_SIZE, yang
+  // mengasumsikan `sorted` berisi semua data. Begitu `page` state sudah
+  // benar (lihat fix di atas), slice ini akan mengakses index di luar
+  // panjang array (mis. slice(10, 20) padahal `sorted` cuma punya 10 item)
+  // dan hasilnya array kosong -> tabel kelihatan kosong di halaman > 1.
+  // Fix: data yang sudah datang dari server dipakai langsung (cuma
+  // di-filter/sort di client untuk feedback instan sebelum request server
+  // berikutnya selesai), tanpa di-slice ulang berdasarkan `page`.
+  const paginated = sorted;
 
   // Selection functions
   const toggleSelect = (id: number) => {

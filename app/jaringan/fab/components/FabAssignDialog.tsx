@@ -169,140 +169,142 @@ export function FabAssignDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md rounded-2xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-500/20">
-              <UserCog className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            </div>
-            {title}
-          </DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="sm:max-w-md rounded-2xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-500/20">
+                <UserCog className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              {title}
+            </DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4 py-4 overflow-y-auto flex-1">
-          {/* Current assigned teknisi info (for single mode) */}
-          {fab?.teknisiDitugaskan && !isBulkMode && (
-            <div className="rounded-xl bg-amber-50 p-3 text-sm dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30">
-              <p className="text-amber-700 dark:text-amber-400 font-medium">
-                Teknisi saat ini:
-              </p>
-              <p className="text-amber-800 dark:text-amber-300">
-                {fab.teknisiDitugaskan.nama}
-              </p>
-              <p className="text-amber-600 dark:text-amber-500 text-xs mt-1">
-                Memilih teknisi lain akan menggantinya.
-              </p>
-            </div>
-          )}
-
-          {/* Teknisi select */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Pilih Teknisi <span className="text-red-500">*</span>
-            </label>
-            <Select value={selectedTeknisi} onValueChange={handleTeknisiChange}>
-              <SelectTrigger
-                className={cn(
-                  "h-12 rounded-xl border-slate-200 dark:border-slate-700",
-                  "focus:ring-purple-500 focus:border-purple-400"
-                )}
-              >
-                {isTeknisiLoading ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-                    <span className="text-slate-400">Memuat teknisi...</span>
-                  </div>
-                ) : selectedTeknisiData ? (
-                  <div className="flex items-center gap-2">
-                    <TeknisiAvatar
-                      nama={selectedTeknisiData.nama}
-                      foto={selectedTeknisiData.foto}
-                      size="sm"
-                      isSelected={false}
-                    />
-                    <span className="font-medium">{selectedTeknisiData.nama}</span>
-                    <span className="text-slate-400 text-xs">
-                      @{selectedTeknisiData.username}
-                    </span>
-                  </div>
-                ) : (
-                  <span className="text-slate-400">-- Pilih Teknisi --</span>
-                )}
-              </SelectTrigger>
-              <SelectContent className="max-h-64 overflow-y-auto rounded-xl border-slate-200 dark:border-slate-700 p-1.5 z-[100]">
-                {teknisiOptions.length === 0 && !isTeknisiLoading ? (
-                  <div className="px-3 py-4 text-center text-sm text-slate-400">
-                    Tidak ada teknisi tersedia
-                  </div>
-                ) : (
-                  teknisiOptions.map((teknisi) => (
-                    <SelectItem
-                      key={teknisi.id_user}
-                      value={String(teknisi.id_user)}
-                      className={cn(
-                        "rounded-xl gap-2 py-2.5 cursor-pointer",
-                        "focus:bg-purple-50 dark:focus:bg-purple-500/10",
-                        currentTeknisiId === teknisi.id_user &&
-                          "bg-purple-50 dark:bg-purple-500/20"
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <TeknisiAvatar
-                          nama={teknisi.nama}
-                          foto={teknisi.foto}
-                          size="sm"
-                          isSelected={currentTeknisiId === teknisi.id_user}
-                        />
-                        <div className="flex flex-col">
-                          <span className="font-medium">{teknisi.nama}</span>
-                          <span className="text-xs text-slate-400">
-                            @{teknisi.username}
-                          </span>
-                        </div>
-                        {currentTeknisiId === teknisi.id_user && (
-                          <Check className="ml-auto h-4 w-4 text-purple-500" />
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={isPending}
-            className="rounded-xl h-10"
-          >
-            Batal
-          </Button>
-          <Button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isPending || !selectedTeknisi || isTeknisiLoading}
-            className="rounded-xl h-10 bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700"
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Menugaskan...
-              </>
-            ) : (
-              <>
-                <UserCog className="mr-2 h-4 w-4" />
-                {isBulkMode ? "Tugaskan Semua" : "Tugaskan"}
-              </>
+          <div className="space-y-4 py-4 overflow-y-auto flex-1">
+            {/* Current assigned teknisi info (for single mode) */}
+            {fab?.teknisiDitugaskan && !isBulkMode && (
+              <div className="rounded-xl bg-amber-50 p-3 text-sm dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30">
+                <p className="text-amber-700 dark:text-amber-400 font-medium">
+                  Teknisi saat ini:
+                </p>
+                <p className="text-amber-800 dark:text-amber-300">
+                  {fab.teknisiDitugaskan.nama}
+                </p>
+                <p className="text-amber-600 dark:text-amber-500 text-xs mt-1">
+                  Memilih teknisi lain akan menggantinya.
+                </p>
+              </div>
             )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+
+            {/* Teknisi select */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Pilih Teknisi <span className="text-red-500">*</span>
+              </label>
+              <Select value={selectedTeknisi} onValueChange={handleTeknisiChange}>
+                <SelectTrigger
+                  className={cn(
+                    "h-12 rounded-xl border-slate-200 dark:border-slate-700",
+                    "focus:ring-purple-500 focus:border-purple-400"
+                  )}
+                >
+                  {isTeknisiLoading ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                      <span className="text-slate-400">Memuat teknisi...</span>
+                    </div>
+                  ) : selectedTeknisiData ? (
+                    <div className="flex items-center gap-2">
+                      <TeknisiAvatar
+                        nama={selectedTeknisiData.nama}
+                        foto={selectedTeknisiData.foto}
+                        size="sm"
+                        isSelected={false}
+                      />
+                      <span className="font-medium">{selectedTeknisiData.nama}</span>
+                      <span className="text-slate-400 text-xs">
+                        @{selectedTeknisiData.username}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-slate-400">-- Pilih Teknisi --</span>
+                  )}
+                </SelectTrigger>
+                <SelectContent className="max-h-64 rounded-xl border-slate-200 dark:border-slate-700 p-1.5 z-[100]">
+                  {teknisiOptions.length === 0 && !isTeknisiLoading ? (
+                    <div className="px-3 py-4 text-center text-sm text-slate-400">
+                      Tidak ada teknisi tersedia
+                    </div>
+                  ) : (
+                    teknisiOptions.map((teknisi) => (
+                      <SelectItem
+                        key={teknisi.id_user}
+                        value={String(teknisi.id_user)}
+                        className={cn(
+                          "rounded-xl gap-2 py-2.5 cursor-pointer",
+                          "focus:bg-purple-50 dark:focus:bg-purple-500/10",
+                          currentTeknisiId === teknisi.id_user &&
+                            "bg-purple-50 dark:bg-purple-500/20"
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <TeknisiAvatar
+                            nama={teknisi.nama}
+                            foto={teknisi.foto}
+                            size="sm"
+                            isSelected={currentTeknisiId === teknisi.id_user}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{teknisi.nama}</span>
+                            <span className="text-xs text-slate-400">
+                              @{teknisi.username}
+                            </span>
+                          </div>
+                          {currentTeknisiId === teknisi.id_user && (
+                            <Check className="ml-auto h-4 w-4 text-purple-500" />
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={isPending}
+              className="rounded-xl h-10"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isPending || !selectedTeknisi || isTeknisiLoading}
+              className="rounded-xl h-10 bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menugaskan...
+                </>
+              ) : (
+                <>
+                  <UserCog className="mr-2 h-4 w-4" />
+                  {isBulkMode ? "Tugaskan Semua" : "Tugaskan"}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

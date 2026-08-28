@@ -308,7 +308,6 @@ export function UserFormDialog({
 
         <form
           action={handleSubmit}
-          encType="multipart/form-data"
           className="
             flex
             min-h-0
