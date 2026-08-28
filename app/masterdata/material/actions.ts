@@ -116,6 +116,45 @@ async function renumberKodeMaterial() {
 
 /**
  * ======================================
+ * HELPER: Kirim notifikasi stok kritis ke Admin/Leader/Logistik
+ * Dipanggil setiap kali stok material diubah manual (create/update) dari
+ * Master Data -- supaya tetap ada notifikasi walau stoknya tidak berubah
+ * lewat pemakaian di BAA. TEKNISI sengaja TIDAK dikirimi notifikasi ini --
+ * teknisi cuma perlu tau FAB yang ditugaskan ke mereka, bukan urusan stok.
+ * ======================================
+ */
+async function notifyIfStockCritical(idMaterial: number) {
+  const material = await prisma.material.findUnique({
+    where: { id_material: idMaterial },
+  });
+
+  if (!material) return;
+  if (material.stok > material.minimal_stok) return;
+
+  const targets = await prisma.user.findMany({
+    where: {
+      role: { in: ["ADMIN", "LEADER", "LOGISTIK"] },
+      status: true,
+    },
+    select: { id_user: true },
+  });
+
+  if (targets.length === 0) return;
+
+  const notifications = targets.map((user) => ({
+    id_user: user.id_user,
+    title: "Stok Material Menipis",
+    message: `${material.nama_material} tersisa ${material.stok} ${material.satuan} (minimal: ${material.minimal_stok}). Segera lakukan restok.`,
+    link: `/masterdata/material`,
+    type: "SYSTEM" as const,
+    is_read: false,
+  }));
+
+  await prisma.notification.createMany({ data: notifications });
+}
+
+/**
+ * ======================================
  * CREATE MATERIAL
  * ======================================
  */
@@ -160,7 +199,7 @@ export async function createMaterial(formData: FormData) {
 
   const kodeSementara = `TMP-${Date.now()}`;
 
-  await prisma.$transaction(async (tx) => {
+  const createdId = await prisma.$transaction(async (tx) => {
     // Double-check di dalam transaction
     const existingInTx = await tx.material.findFirst({
       where: {
@@ -174,7 +213,7 @@ export async function createMaterial(formData: FormData) {
       throw new Error(`Material "${validated.nama_material}" sudah ada.`);
     }
 
-    await tx.material.create({
+    const created = await tx.material.create({
       data: {
         kode_material: kodeSementara,
         nama_material: validated.nama_material,
@@ -186,10 +225,17 @@ export async function createMaterial(formData: FormData) {
         keterangan: validated.keterangan || null,
       },
     });
+
+    return created.id_material;
   });
 
   await renumberKodeMaterial();
   await logActivity("MATERIAL_CREATED", `Material "${validated.nama_material}" dibuat oleh ${session.user.nama}`);
+
+  // Cek langsung -- kalau stok awal material baru ini sudah di bawah/sama
+  // dengan minimal stok, langsung kirim notifikasi kritis.
+  await notifyIfStockCritical(createdId);
+
   revalidatePath("/masterdata/material");
 }
 
@@ -281,6 +327,11 @@ export async function updateMaterial(id: number, formData: FormData) {
   });
 
   await logActivity("MATERIAL_UPDATED", `Material "${validated.nama_material}" diupdate oleh ${session.user.nama}`);
+
+  // Cek ulang setelah update -- stok/minimal_stok bisa saja baru berubah
+  // jadi kritis (atau sebaliknya, sudah aman lagi) lewat form ini.
+  await notifyIfStockCritical(id);
+
   revalidatePath("/masterdata/material");
 }
 

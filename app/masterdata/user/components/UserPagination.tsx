@@ -1,89 +1,70 @@
 "use client";
 
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
-type Props = {
-  page: number;
-  totalPages: number;
-};
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-export function UserPagination({
+export const UserPagination = ({
   page,
   totalPages,
-}: Props) {
+}: {
+  page: number;
+  totalPages: number;
+}) => {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const search = searchParams.get("search") ?? "";
-
-  const createLink = (newPage: number) => {
-    const params = new URLSearchParams();
-
-    if (search) {
-      params.set("search", search);
-    }
-
+  const goTo = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(newPage));
-
-    return `/masterdata/user?${params.toString()}`;
+    router.push(`${pathname}?${params.toString()}`);
   };
 
+  if (totalPages <= 1) return null;
+
   return (
-    <div className="flex items-center gap-3">
-      <Link
-        href={createLink(Math.max(page - 1, 1))}
-        className={`
-          rounded-xl
-          border
-          bg-white
-          px-4
-          py-2
-          text-sm
-          text-slate-700
-          transition
-          dark:border-slate-700
-          dark:bg-slate-800
-          dark:text-slate-300
-          ${
-            page === 1
-              ? "pointer-events-none opacity-40"
-              : "hover:bg-slate-100 dark:hover:bg-slate-700"
-          }
-        `}
-      >
-        Sebelumnya
-      </Link>
+    <Pagination className="my-2">
+      <PaginationContent>
+        <PaginationItem>
+          <PaginationPrevious
+            className={`cursor-pointer dark:hover:bg-slate-800 dark:hover:text-slate-100 ${
+              page === 1 ? "pointer-events-none opacity-50 dark:opacity-40" : ""
+            }`}
+            onClick={() => page > 1 && goTo(page - 1)}
+          />
+        </PaginationItem>
 
-      <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-        Halaman <strong className="dark:text-slate-200">{page}</strong> dari{" "}
-        <strong className="dark:text-slate-200">{totalPages}</strong>
-      </span>
+        {Array.from({ length: totalPages }).map((_, index) => (
+          <PaginationItem key={index}>
+            <PaginationLink
+              className="cursor-pointer dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+              isActive={page === index + 1}
+              onClick={() => goTo(index + 1)}
+            >
+              {index + 1}
+            </PaginationLink>
+          </PaginationItem>
+        ))}
 
-      <Link
-        href={createLink(
-          Math.min(page + 1, totalPages)
-        )}
-        className={`
-          rounded-xl
-          border
-          bg-white
-          px-4
-          py-2
-          text-sm
-          text-slate-700
-          transition
-          dark:border-slate-700
-          dark:bg-slate-800
-          dark:text-slate-300
-          ${
-            page === totalPages
-              ? "pointer-events-none opacity-40"
-              : "hover:bg-slate-100 dark:hover:bg-slate-700"
-          }
-        `}
-      >
-        Berikutnya
-      </Link>
-    </div>
+        <PaginationItem>
+          <PaginationNext
+            className={`cursor-pointer dark:hover:bg-slate-800 dark:hover:text-slate-100 ${
+              page === totalPages
+                ? "pointer-events-none opacity-50 dark:opacity-40"
+                : ""
+            }`}
+            onClick={() => page < totalPages && goTo(page + 1)}
+          />
+        </PaginationItem>
+      </PaginationContent>
+    </Pagination>
   );
-}
+};

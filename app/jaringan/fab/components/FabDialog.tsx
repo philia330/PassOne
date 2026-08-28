@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Plus, Pencil, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -53,13 +54,20 @@ export const FabDialog = ({
       try {
         if (mode === "create") {
           await createFab(formData);
+          toast.success("FAB baru berhasil ditambahkan");
         } else if (fab) {
           await updateFab(fab.id_fab, formData);
+          toast.success("Perubahan FAB berhasil disimpan");
         }
         setOpen(false);
       } catch (err: unknown) {
         const error = err as Error;
-        setErrorMsg(error.message ?? "Terjadi kesalahan, coba lagi.");
+        const message = error.message ?? "Terjadi kesalahan, coba lagi.";
+        setErrorMsg(message);
+        // Ditampilkan juga sebagai toast -- pesan error di dalam form bisa
+        // ketutupan/di luar layar kalau posisi scroll form lagi di bawah,
+        // jadi kegagalan simpan tetap kelihatan langsung tanpa perlu scroll.
+        toast.error(message);
       }
     });
   };

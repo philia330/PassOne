@@ -335,10 +335,15 @@ export async function updateFab(id: number, formData: FormData) {
     }
   }
 
-  const id_user =
-    session.user.role === "TEKNISI"
-      ? validated.id_user
-      : Number(session.user.id_user);
+  // PERBAIKAN: sebelumnya baris ini memaksa id_user (field Sales) jadi ID
+  // orang yang SEDANG EDIT untuk role selain TEKNISI --
+  //   session.user.role === "TEKNISI" ? validated.id_user : Number(session.user.id_user)
+  // -- padahal form (FabForm.tsx) sudah mengirim nilai id_user yang benar
+  // untuk semua role (dikunci ke Sales asli / dipilih via dropdown untuk
+  // Teknisi). Akibatnya field Sales diam-diam ketimpa jadi nama editor
+  // setiap kali Admin/Leader mengedit FAB. Sekarang tinggal pakai nilai
+  // yang sudah tervalidasi dari form, sama seperti id_area & id_paket.
+  const id_user = validated.id_user;
 
   let fotoPath: string | undefined;
   const fotoFile = formData.get("foto") as File | null;
@@ -682,13 +687,17 @@ export async function bulkAssignFabToTeknisi(idFabs: number[], idTeknisi: number
  * GET DATA
  * ======================================
  */
-export async function getFabs(highlightId?: number | null) {
-  const where = highlightId
-    ? { id_fab: highlightId }
-    : {};
-
+// PERBAIKAN BUG HIGHLIGHT: sebelumnya function ini menerima highlightId dan
+// memfilter where: { id_fab: highlightId } kalau ada -- akibatnya begitu
+// masuk dari notifikasi (?highlight=123), tabel FAB cuma menerima SATU baris
+// data dari server. Efeknya: menghapus teks di kolom pencarian di client jadi
+// percuma, karena sumber datanya sendiri memang cuma 1 baris -- baru normal
+// lagi kalau klik ulang menu FAB di sidebar (fetch server dari nol).
+// Highlight/scroll-ke-baris itu sepenuhnya urusan client (FabTable.tsx baca
+// query param `highlight` sendiri lewat useSearchParams()), jadi server
+// SELALU harus kirim semua data, parameter highlightId tidak lagi dipakai.
+export async function getFabs() {
   return prisma.fab.findMany({
-    where,
     include: {
       area: true,
       paket: true,

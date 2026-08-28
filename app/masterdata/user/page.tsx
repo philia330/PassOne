@@ -33,6 +33,7 @@ export default async function UserPage({
   const [totalCount, { data: users, total, totalPages }] = await Promise.all([
     prisma.user.count(),
     getUsers(search, page),
+    
   ]);
 
   const currentUser = {
@@ -76,7 +77,13 @@ export default async function UserPage({
           }
         />
       ) : (
-        <UserSortableTable initialData={users} defaultValue={search} currentUser={currentUser} />
+       <UserSortableTable
+  initialData={users}
+  defaultValue={search}
+  currentUser={currentUser}
+  total={total}
+  page={page}
+/>
       )}
     </div>
   );

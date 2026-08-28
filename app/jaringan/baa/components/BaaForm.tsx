@@ -45,6 +45,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { QrScannerDialog } from "@/components/shared/QrScannerDialog";
+import { OntFormDialog } from "@/app/masterdata/ont/components/OntFormDialog";
 import { quickCreateOnt } from "@/app/jaringan/baa/actions";
 import type {
   BaaData,
@@ -201,8 +202,47 @@ export const BaaForm = ({
   const [scannedSerial, setScannedSerial] = useState("");
   const [isCreatingOnt, setIsCreatingOnt] = useState(false);
 
+  // Manual add ONT state (for "Tambah ONT" button)
+  const [manualAddOntOpen, setManualAddOntOpen] = useState(false);
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const ontBasePath = `${appUrl}/masterdata/ont`;
+
+  // Callback when ONT is created from OntFormDialog (BAA context)
+  const handleOntCreated = async (ontInfo: { serial_number: string; model: string | null }) => {
+    // Refresh ontOptions from server to get the new ONT with id_ont
+    // The createOnt server action already revalidates, but we need to refresh the dropdown
+    // For now, we'll use quickCreateOnt to get the ONT with proper id
+    try {
+      const fd = new FormData();
+      fd.set("serial_number", ontInfo.serial_number);
+      fd.set("id_odp", idOdp);
+
+      const result = await quickCreateOnt(fd);
+
+      if (result?.success && result.data) {
+        const newOnt = {
+          id_ont: result.data.id_ont,
+          serial_number: result.data.serial_number,
+          model: ontInfo.model,
+        } as OntOption;
+
+        // Add to extraOntOptions and auto-select
+        setExtraOntOptions((prev) => {
+          // Check if already exists
+          const existing = prev.find(o => o.id_ont === newOnt.id_ont);
+          if (existing) return prev;
+          return [newOnt, ...prev];
+        });
+        setIdOnt(String(newOnt.id_ont));
+        toast.success(`ONT ${newOnt.serial_number} berhasil ditambahkan dan dipilih.`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Gagal menambahkan ONT.";
+      toast.error(message);
+    }
+    setManualAddOntOpen(false);
+  };
 
   const addTeknisiRow = () => {
     setExtraTeknisiRows((rows) => [...rows, { rowId: makeRowId(), id_user: "" }]);
@@ -617,27 +657,44 @@ export const BaaForm = ({
         <input type="hidden" name="id_odp" value={idOdp} required />
       </div>
 
-      {/* ONT -- searchable + tombol Scan untuk isi cepat dari kamera */}
+      {/* ONT -- searchable + tombol Scan + tombol Tambah ONT untuk isi cepat dari kamera atau manual */}
       <div className="col-span-1 space-y-2">
         <div className="flex items-center justify-between gap-2">
           <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             <Wifi size={13} className="text-purple-500" /> ONT
           </Label>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              if (!idOdp) {
-                toast.error("Pilih ODP terlebih dahulu sebelum scan ONT.");
-                return;
-              }
-              setScannerOpen(true);
-            }}
-            className="rounded-xl h-7 px-2 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
-          >
-            <ScanLine className="mr-1 h-3.5 w-3.5" /> Scan
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (!idOdp) {
+                  toast.error("Pilih ODP terlebih dahulu sebelum scan ONT.");
+                  return;
+                }
+                setScannerOpen(true);
+              }}
+              className="rounded-xl h-7 px-2 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
+            >
+              <ScanLine className="mr-1 h-3.5 w-3.5" /> Scan
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (!idOdp) {
+                  toast.error("Pilih ODP terlebih dahulu sebelum menambahkan ONT.");
+                  return;
+                }
+                setManualAddOntOpen(true);
+              }}
+              className="rounded-xl h-7 px-2 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" /> Tambah ONT
+            </Button>
+          </div>
         </div>
         <SearchableSelect
           value={idOnt}
@@ -801,7 +858,6 @@ export const BaaForm = ({
           <ImageIcon size={13} className="text-purple-500" /> Foto Instalasi
         </Label>
 
-        {/* Input asli disembunyikan -- semua interaksi lewat dropzone custom */}
         <input
           ref={fotoInputRef}
           id="foto_instalasi"
@@ -845,9 +901,6 @@ export const BaaForm = ({
           )}
         </button>
 
-        {/* Ambil Foto (kamera) & Pilih dari Galeri -- input yang sama, cuma
-            atribut capture-nya beda sebelum di-trigger. Di desktop dua-duanya
-            sama-sama buka File Explorer, tidak masalah. */}
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -1040,6 +1093,17 @@ export const BaaForm = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog Tambah ONT Manual (dari tombol "Tambah ONT") - menggunakan form ONT yang sama */}
+      <OntFormDialog
+        mode="create"
+        pops={[]}
+        odps={mergedOdpOptions}
+        defaultOdpId={idOdp ? Number(idOdp) : undefined}
+        onOntCreated={handleOntCreated}
+        externalOpen={manualAddOntOpen}
+        onExternalOpenChange={setManualAddOntOpen}
+      />
     </div>
   );
 };

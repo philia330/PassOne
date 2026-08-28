@@ -108,10 +108,10 @@ export default function NotificationsPage() {
     fetchNotifications();
   }, [page]);
 
-  // Handle notification click - mark as read and navigate
-  const handleNotificationClick = async (item: NotificationItem) => {
-    // Mark as read if unread
-    if (!item.is_read) {
+    const handleNotificationClick = async (item: NotificationItem) => {
+    // Item live (id negatif) tidak bisa di-mark-read lewat API -- lihat
+    // penjelasan di NotificationBell.
+    if (!item.is_read && item.id_notification > 0) {
       try {
         await fetch("/api/notifications/mark-read", {
           method: "POST",
@@ -127,7 +127,6 @@ export default function NotificationsPage() {
       }
     }
 
-    // Navigate to link if exists
     if (item.link) {
       router.push(item.link);
     }
@@ -329,9 +328,9 @@ export default function NotificationsPage() {
                     )}
                   </div>
 
-                  {/* Actions */}
+                                    {/* Actions */}
                   <div className="flex flex-shrink-0 items-center gap-1">
-                    {!item.is_read && !isFabNotification && (
+                    {!item.is_read && !isFabNotification && item.id_notification > 0 && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -345,18 +344,20 @@ export default function NotificationsPage() {
                         <Check className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteId(item.id_notification);
-                      }}
-                      className="h-8 w-8 p-0 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
-                      title="Hapus notifikasi"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {item.id_notification > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteId(item.id_notification);
+                        }}
+                        className="h-8 w-8 p-0 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
+                        title="Hapus notifikasi"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               );

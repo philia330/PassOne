@@ -28,7 +28,10 @@ const ontValidation = z.object({
   status: z.enum(["TERSEDIA", "RUSAK"], {
     message: "Status wajib dipilih.",
   }),
-  id_pop: z.number().int().positive("POP wajib dipilih."),
+  // id_pop boleh 0 di sini -- khusus createOnt, 0 berarti "belum diisi"
+  // dan akan di-derive otomatis dari ODP (lihat logic di createOnt).
+  // updateOnt tetap wajib POP asli lewat pengecekan manual di bawah.
+  id_pop: z.number().int().min(0, "POP tidak valid."),
   id_odp: z.number().int().positive("ODP wajib dipilih."),
 });
 
@@ -54,18 +57,41 @@ async function logActivity(type: string, description: string) {
 
 /**
  * ======================================
- * HELPER: Cek hak akses
+ * HELPER: Cek hak akses untuk CREATE ONT
+ * TEKNISI boleh create, tapi tidak boleh update/delete
  * ======================================
  */
-async function requireAccess() {
+async function requireCreateAccess() {
   const session = await auth();
   if (!session?.user) {
     throw new Error("Sesi tidak valid, silakan login ulang.");
   }
 
   const role = session.user.role;
+  // ADMIN, LOGISTIK, dan TEKNISI boleh create ONT
+  if (role !== Role.ADMIN && role !== Role.LOGISTIK && role !== Role.TEKNISI) {
+    throw new Error("Anda tidak memiliki akses untuk membuat ONT.");
+  }
+
+  return session;
+}
+
+/**
+ * ======================================
+ * HELPER: Cek hak akses untuk UPDATE/DELETE ONT
+ * Hanya ADMIN dan LOGISTIK yang boleh
+ * ======================================
+ */
+async function requireUpdateDeleteAccess() {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  const role = session.user.role;
+  // Hanya ADMIN dan LOGISTIK yang boleh update/delete ONT
   if (role !== Role.ADMIN && role !== Role.LOGISTIK) {
-    throw new Error("Anda tidak memiliki akses untuk mengelola ONT.");
+    throw new Error("Anda tidak memiliki akses untuk mengubah atau menghapus ONT.");
   }
 
   return session;
@@ -129,7 +155,7 @@ export const getOdps = async () => {
  * ======================================
  */
 export const createOnt = async (formData: FormData) => {
-  const session = await requireAccess();
+  const session = await requireCreateAccess();
 
   // ======================================
   // VALIDASI INPUT
@@ -142,7 +168,7 @@ export const createOnt = async (formData: FormData) => {
     id_odp: parseInt(formData.get("id_odp") as string, 10) || 0,
   };
 
-  // Parse validation
+  // Parse validation - id_pop is optional if coming from BAA context
   const parseResult = ontValidation.safeParse(rawData);
 
   if (!parseResult.success) {
@@ -151,6 +177,19 @@ export const createOnt = async (formData: FormData) => {
   }
 
   const validated = parseResult.data;
+
+  // Jika id_pop kosong (BAA context), auto-derive dari ODP
+  let finalIdPop = validated.id_pop;
+  if (!finalIdPop || finalIdPop === 0) {
+    const odp = await prisma.odp.findUnique({
+      where: { id_odp: validated.id_odp },
+      select: { olt: { select: { id_pop: true } } },
+    });
+    if (!odp?.olt?.id_pop) {
+      throw new Error("ODP tidak memiliki relasi POP. Pilih ODP yang valid.");
+    }
+    finalIdPop = odp.olt.id_pop;
+  }
 
   // Cek duplikat serial number
   const existing = await prisma.ont.findUnique({
@@ -176,7 +215,7 @@ export const createOnt = async (formData: FormData) => {
         pelanggan: "",
         model: validated.model || "",
         status: validated.status,
-        id_pop: validated.id_pop,
+        id_pop: finalIdPop,
         id_odp: validated.id_odp,
       },
     });
@@ -192,7 +231,7 @@ export const createOnt = async (formData: FormData) => {
  * ======================================
  */
 export const updateOnt = async (id: number, formData: FormData) => {
-  const session = await requireAccess();
+  const session = await requireUpdateDeleteAccess();
 
   const existing = await prisma.ont.findUnique({ where: { id_ont: id } });
   if (!existing) {
@@ -219,6 +258,13 @@ export const updateOnt = async (id: number, formData: FormData) => {
   }
 
   const validated = parseResult.data;
+
+  // Mode edit selalu menampilkan field POP secara langsung (bukan derived
+  // dari ODP seperti di quick-add BAA), jadi di sini POP wajib benar-benar
+  // dipilih oleh user -- tidak ada auto-derive.
+  if (!validated.id_pop || validated.id_pop <= 0) {
+    throw new Error("POP wajib dipilih.");
+  }
 
   // Cek duplikat jika serial berubah
   if (validated.serial_number !== existing.serial_number) {
@@ -265,7 +311,7 @@ export const updateOnt = async (id: number, formData: FormData) => {
  * ======================================
  */
 export const deleteOnt = async (id: number) => {
-  const session = await requireAccess();
+  const session = await requireUpdateDeleteAccess();
 
   const ont = await prisma.ont.findUnique({
     where: { id_ont: id },

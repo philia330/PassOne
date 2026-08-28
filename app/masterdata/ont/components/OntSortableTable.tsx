@@ -88,7 +88,13 @@ export function OntSortableTable({
   const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
 
   const isAdmin = currentUser?.role === "ADMIN";
-  const canBulkDelete = isAdmin;
+  const isLogistik = currentUser?.role === "LOGISTIK";
+  const isTeknisi = currentUser?.role === "TEKNISI";
+
+  // TEKNISI tidak boleh edit atau delete ONT
+  const canEditOnt = !isTeknisi;
+  const canDeleteOnt = isAdmin || isLogistik;
+  const canBulkDelete = isAdmin || isLogistik;
 
   // Clear selection when filters/search change
   useEffect(() => {
@@ -467,8 +473,8 @@ export function OntSortableTable({
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center gap-1">
                         <OntQrDialog ont={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, status: ont.status }} />
-                        <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, model: ont.model, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />
-                        {canDelete && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number ?? ""} />}
+                        {canEditOnt && <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, model: ont.model, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />}
+                        {canDeleteOnt && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number ?? ""} />}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -514,8 +520,8 @@ export function OntSortableTable({
                 </button>
                 <div className="flex shrink-0 gap-1">
                   <OntQrDialog ont={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, status: ont.status }} />
-                  <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, model: ont.model, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />
-                  {canDelete && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number ?? ""} />}
+                  {canEditOnt && <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, model: ont.model, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />}
+                  {canDeleteOnt && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number ?? ""} />}
                 </div>
               </div>
               <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${statusBadge[ont.status]}`}>{ont.status}</span>

@@ -57,14 +57,19 @@ export function UserSortableTable({
   initialData,
   defaultValue,
   currentUser,
+  total,
+  page: initialPage,
 }: {
   initialData: User[];
   defaultValue: string;
   currentUser?: CurrentUser;
+  total: number;
+  page: number;
 }) {
+
   const router = useRouter();
   const [search, setSearch] = useState(defaultValue);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   // Selection state for bulk actions
@@ -166,7 +171,7 @@ export function UserSortableTable({
     });
   }, [filtered, sortOrder]);
 
-  const totalPagesCalc = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+ const totalPagesCalc = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // Selection functions

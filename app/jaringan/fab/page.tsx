@@ -8,14 +8,14 @@ import { ExportButton } from "@/components/ui/ExportButton";
 import { StatCardsDropdown } from "@/components/dashboard/StatCardsDropdown";
 import { getFabs } from "./actions";
 
-export default async function FabPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ highlight?: string }>;
-}) {
+// PERBAIKAN BUG HIGHLIGHT: page ini sebelumnya menerima searchParams.highlight
+// dan meneruskannya ke getFabs(highlightId) untuk MEMFILTER data di server --
+// itu sumber bug "gak bisa balik nampilin semua data". Highlight sekarang
+// murni ditangani di client (FabTable.tsx baca query param `highlight` sendiri
+// via useSearchParams()), jadi page ini tidak perlu lagi searchParams sama
+// sekali; getFabs() selalu mengambil semua data.
+export default async function FabPage() {
   const session = await auth();
-  const params = await searchParams;
-  const highlightId = params?.highlight ? Number(params.highlight) : null;
 
   const currentUser = {
     id_user: Number(session!.user.id_user),
@@ -24,7 +24,7 @@ export default async function FabPage({
   };
 
   const [rawFab, areaList, paketList, salesList, penginputListRaw, teknisiList, fabStats] = await Promise.all([
-    getFabs(highlightId),
+    getFabs(),
     prisma.area.findMany({
       orderBy: { nama_area: "asc" },
       select: { id_area: true, nama_area: true },

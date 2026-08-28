@@ -324,11 +324,17 @@ export const BaaTable = ({
   const lastHighlightId = useRef<string | null>(null);
   const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
 
-  // Handle highlight dari Command Palette (query param: highlight=<id_baa>)
+  // Handle highlight dari Command Palette / notifikasi (query param: highlight=<id_baa>)
+  // PERBAIKAN BUG HIGHLIGHT: `data` yang diterima di sini SEKARANG SELALU
+  // berisi semua BAA (lihat perbaikan di actions.ts getBaaData) -- sebelumnya
+  // server memfilter jadi cuma 1 baris kalau ada highlightId. Di effect ini
+  // sendiri yang diubah cuma cara menghapus query param `highlight` dari URL,
+  // sekarang pakai router.replace() (bukan window.history langsung) supaya
+  // searchParams dari useSearchParams() ikut konsisten.
   useEffect(() => {
     const highlightId = searchParams.get("highlight");
 
-    // Reset highlightHandled jika nilai highlight berubah (软导航后新值)
+    // Reset highlightHandled jika nilai highlight berubah (navigasi baru)
     if (highlightId !== lastHighlightId.current) {
       highlightHandled.current = false;
       lastHighlightId.current = highlightId;
@@ -368,11 +374,15 @@ export const BaaTable = ({
       }, 100);
     }, 200);
 
-    // Hapus highlight param dari URL
+    // Hapus highlight param dari URL -- pakai router.replace (bukan
+    // window.history.replaceState langsung) supaya searchParams dari
+    // useSearchParams() ikut ter-update konsisten di sisi Next.js, bukan
+    // cuma tampilan address bar doang.
     const timer = setTimeout(() => {
       const url = new URL(window.location.href);
       url.searchParams.delete("highlight");
-      window.history.replaceState({}, "", url.toString());
+      const queryString = url.searchParams.toString();
+      router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
     }, 500);
 
     return () => clearTimeout(timer);

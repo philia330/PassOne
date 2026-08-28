@@ -8,7 +8,6 @@ import {
   Phone,
   ArrowUp,
   ArrowDown,
-  ImageIcon,
   Filter,
   X,
   Loader2,
@@ -26,10 +25,10 @@ import { FabActionsDropdown } from "./FabActionsDropdown";
 import { FabViewDialog } from "./FabViewDialog";
 import { FabDeleteDialog } from "./FabDeleteDialog";
 import { FabAssignDialog } from "./FabAssignDialog";
+import { FabImageDialog } from "./FabImageDialog";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -123,30 +122,6 @@ const formatTanggal = (date: Date) =>
 
 type SortOrder = "asc" | "desc";
 
-function FabFotoButton({ foto, namaPelanggan }: { foto?: string | null; namaPelanggan: string }) {
-  if (!foto) return <span className="text-slate-400 dark:text-slate-500 text-xs">-</span>;
-
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-1.5 text-slate-500 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-600 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-purple-600 dark:hover:bg-purple-500/20 dark:hover:text-purple-400"
-        >
-          <ImageIcon size={16} />
-        </button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md rounded-3xl p-4">
-        <img
-          src={foto}
-          alt={`Foto depan rumah ${namaPelanggan}`}
-          className="w-full rounded-2xl object-cover"
-        />
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function DiinputOlehCell({ item }: { item: FabData }) {
   return (
     <div className="flex items-center gap-1.5 text-sm">
@@ -199,11 +174,18 @@ export const FabTable = ({
   const lastHighlightId = useRef<string | null>(null);
   const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
 
-  // Handle highlight dari Command Palette (query param: highlight=<id_fab>)
+  // Handle highlight dari Command Palette / notifikasi (query param: highlight=<id_fab>)
+  // PERBAIKAN BUG HIGHLIGHT: `data` yang diterima di sini SEKARANG SELALU
+  // berisi semua FAB (lihat perbaikan di actions.ts getFabs) -- sebelumnya
+  // server memfilter jadi cuma 1 baris kalau ada highlightId, makanya
+  // menghapus teks pencarian di client percuma. Di effect ini sendiri tidak
+  // ada yang perlu diubah soal itu, cukup cara menghapus query param `highlight`
+  // dari URL yang diganti pakai router.replace() (bukan window.history
+  // langsung) supaya searchParams dari useSearchParams() ikut konsisten.
   useEffect(() => {
     const highlightId = searchParams.get("highlight");
 
-    // Reset highlightHandled jika nilai highlight berubah (软导航后新值)
+    // Reset highlightHandled jika nilai highlight berubah (navigasi baru)
     if (highlightId !== lastHighlightId.current) {
       highlightHandled.current = false;
       lastHighlightId.current = highlightId;
@@ -241,11 +223,15 @@ export const FabTable = ({
       }, 100);
     }, 200);
 
-    // Hapus highlight param dari URL
+    // Hapus highlight param dari URL -- pakai router.replace (bukan
+    // window.history.replaceState langsung) supaya searchParams dari
+    // useSearchParams() ikut ter-update konsisten di sisi Next.js, bukan
+    // cuma tampilan address bar doang.
     const timer = setTimeout(() => {
       const url = new URL(window.location.href);
       url.searchParams.delete("highlight");
-      window.history.replaceState({}, "", url.toString());
+      const queryString = url.searchParams.toString();
+      router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
     }, 500);
 
     return () => clearTimeout(timer);
@@ -898,9 +884,9 @@ export const FabTable = ({
                     <TableCell className="font-medium dark:text-slate-200">
                       {item.kode_fab}
                     </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <FabFotoButton foto={item.foto} namaPelanggan={item.nama_pelanggan} />
-                    </TableCell>
+                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+            <FabImageDialog fotoUrl={item.foto} namaPelanggan={item.nama_pelanggan} />
+          </TableCell>
                     <TableCell className="dark:text-slate-300">
                       {item.nama_pelanggan}
                     </TableCell>
@@ -967,8 +953,8 @@ export const FabTable = ({
                   {/* Header: kode + nama + status + aksi */}
                   <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
                     <div className="flex items-start gap-3 min-w-0">
-                      <FabFotoButton foto={item.foto} namaPelanggan={item.nama_pelanggan} />
-                      <div className="min-w-0">
+                <FabImageDialog fotoUrl={item.foto} namaPelanggan={item.nama_pelanggan} />
+                <div className="min-w-0">
                         <p className="truncate font-semibold text-slate-900 dark:text-slate-100">
                           {item.nama_pelanggan}
                         </p>

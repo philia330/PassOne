@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, AlertTriangle, Info, PackageX, Check, Loader2 } from "lucide-react";
+import { Bell, AlertTriangle, Info, PackageX, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
 type NotificationItem = {
   id_notification: number;
@@ -59,9 +58,9 @@ function formatTimeAgo(dateString: string): string {
 export default function NotificationBell() {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [total, setTotal] = useState(0);
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isMarkingAll, setIsMarkingAll] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Fetch notifications dari model Notification
@@ -72,6 +71,9 @@ export default function NotificationBell() {
         const data = await res.json();
         setItems(data.notifications ?? []);
         setUnreadCount(data.unreadCount ?? 0);
+        // total = jumlah notifikasi sebenarnya (bukan cuma yang di-preview
+        // di dropdown, yang dibatasi maksimal 20).
+        setTotal(data.total ?? data.notifications?.length ?? 0);
       }
     } catch {
       // silent fail
@@ -96,10 +98,14 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Mark notification as read and navigate
+    // Mark notification as read and navigate
   const handleNotificationClick = async (item: NotificationItem) => {
-    // Mark as read
-    if (!item.is_read) {
+    // Notifikasi "live" (FAB open / material kritis yang dihitung real-time)
+    // punya id negatif -- bukan baris asli di DB, jadi tidak perlu (dan
+    // tidak bisa) di-mark-read lewat API. Dia akan tetap tampil selama
+    // kondisinya masih ada, dan hilang sendiri begitu FAB-nya ditugaskan
+    // atau stok materialnya di-restok.
+    if (!item.is_read && item.id_notification > 0) {
       try {
         await fetch("/api/notifications/mark-read", {
           method: "POST",
@@ -124,24 +130,6 @@ export default function NotificationBell() {
     setOpen(false);
   };
 
-  // Mark all as read
-  const handleMarkAllAsRead = async () => {
-    setIsMarkingAll(true);
-    try {
-      const res = await fetch("/api/notifications/mark-all-read", {
-        method: "POST",
-      });
-      if (res.ok) {
-        setItems((prev) => prev.map((n) => ({ ...n, is_read: true })));
-        setUnreadCount(0);
-      }
-    } catch {
-      // silent fail
-    } finally {
-      setIsMarkingAll(false);
-    }
-  };
-
   // Show only 5 latest notifications
   const latestNotifications = items.slice(0, 5);
 
@@ -163,37 +151,11 @@ export default function NotificationBell() {
       {open && (
         <div className="absolute right-0 top-14 z-50 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-            <div>
-              <h3 className="font-semibold text-slate-800 dark:text-slate-100">Notifikasi</h3>
-              <p className="text-xs text-slate-400 dark:text-slate-500">
-                {unreadCount === 0 ? "Semua sudah dibaca" : `${unreadCount} belum dibaca`}
-              </p>
-            </div>
-            <div className="flex items-center gap-1">
-              {unreadCount > 0 && (
-                <button
-                  onClick={handleMarkAllAsRead}
-                  disabled={isMarkingAll}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-500/10 transition-colors disabled:opacity-50"
-                  title="Tandai semua sudah dibaca"
-                >
-                  {isMarkingAll ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Check className="h-3 w-3" />
-                  )}
-                  <span className="hidden sm:inline">Baca Semua</span>
-                </button>
-              )}
-              <Link
-                href="/workspace?view=notifications"
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-2 py-1 text-xs font-medium text-sky-600 hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-sky-500/10 transition-colors"
-              >
-                Lihat Semua
-              </Link>
-            </div>
+          <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">Notifikasi</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              {unreadCount === 0 ? "Semua sudah dibaca" : `${unreadCount} belum dibaca`}
+            </p>
           </div>
 
           {/* Notification list */}
@@ -256,18 +218,16 @@ export default function NotificationBell() {
             )}
           </div>
 
-          {/* Footer - Lihat Semua */}
-          {items.length > 5 && (
-            <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-800">
-              <Link
-                href="/workspace?view=notifications"
-                onClick={() => setOpen(false)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-50 py-2 text-sm font-medium text-purple-600 transition hover:bg-purple-100 dark:bg-purple-500/10 dark:text-purple-400 dark:hover:bg-purple-500/20"
-              >
-                Lihat Semua Notifikasi ({items.length})
-              </Link>
-            </div>
-          )}
+          {/* Footer - Lihat Semua (satu-satunya jalan ke halaman lengkap) */}
+          <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+            <Link
+              href="/workspace?view=notifications"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-50 py-2 text-sm font-medium text-purple-600 transition hover:bg-purple-100 dark:bg-purple-500/10 dark:text-purple-400 dark:hover:bg-purple-500/20"
+            >
+              Lihat Semua Notifikasi ({total})
+            </Link>
+          </div>
         </div>
       )}
     </div>

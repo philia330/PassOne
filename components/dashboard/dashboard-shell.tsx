@@ -34,13 +34,19 @@ export default function DashboardShell({
         />
       )}
 
-      <div className="flex flex-1 overflow-hidden">
+      {/* min-h-0 penting: tanpa ini, flex item defaultnya min-height:auto,
+          jadi dia akan tumbuh mengikuti tinggi konten di dalamnya (bukan
+          dibatasi tinggi parent) dan overflow-hidden jadi gak ngefek. */}
+      <div className="flex flex-1 overflow-hidden min-h-0">
         <Sidebar settings={settings} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden min-h-0">
           <Navbar settings={settings} onMenuClick={() => setSidebarOpen(true)} />
 
-          <main className="flex-1 overflow-y-auto bg-slate-100 p-4 dark:bg-slate-950 sm:p-6 lg:p-8">
+          {/* min-h-0 di sini yang paling krusial: ini yang bikin konten
+              notifikasi panjang tadi bisa scroll DI DALAM main, bukan
+              mendorong seluruh halaman (body) untuk scroll. */}
+          <main className="flex-1 min-h-0 overflow-y-auto bg-slate-100 p-4 dark:bg-slate-950 sm:p-6 lg:p-8">
             {children}
           </main>
 

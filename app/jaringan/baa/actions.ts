@@ -149,6 +149,23 @@ const teknisiValidation = z.object({
     .or(z.literal("").transform(() => undefined)),
 });
 
+/**
+ * ======================================
+ * HELPER: Konversi FormDataEntryValue ke number untuk keperluan VALIDASI ZOD
+ * ======================================
+ * formData.get() SELALU mengembalikan string (atau File/null), padahal
+ * schema Zod untuk field seperti port_olt, rx_power_dbm, dll didefinisikan
+ * sebagai z.number(). Tanpa konversi ini, safeParse() akan SELALU gagal
+ * dengan error "Expected number, received string" -- akibatnya createBaa/
+ * updateBaa langsung throw di awal dan data tidak pernah tersimpan ke DB,
+ * walau form sudah diisi dengan benar dan lengkap oleh user.
+ */
+function toValidationNumber(value: FormDataEntryValue | null): number | undefined {
+  if (value === null || value === "") return undefined;
+  const num = Number(value);
+  return Number.isNaN(num) ? undefined : num;
+}
+
 function toOptionalNumber(
   value: FormDataEntryValue | null,
   minValue = 0,
@@ -292,7 +309,9 @@ async function getLowStockWarnings(materialIds: number[]): Promise<string[]> {
 
 /**
  * ======================================
- * HELPER: Kirim notifikasi material stok rendah ke Admin/Leader
+ * HELPER: Kirim notifikasi material stok rendah ke Admin/Leader/Logistik
+ * TEKNISI sengaja tidak dikirimi -- teknisi cuma perlu tau FAB yang
+ * ditugaskan ke mereka, bukan urusan stok material.
  * ======================================
  */
 async function notifyLowStockToAdmins(materialIds: number[]) {
@@ -311,10 +330,10 @@ async function notifyLowStockToAdmins(materialIds: number[]) {
 
   if (materialsNeedingNotification.length === 0) return;
 
-  // Ambil semua admin, leader, logistik, dan teknisi
+  // Ambil semua admin, leader, dan logistik (TEKNISI dihapus dari daftar)
   const adminsAndLeaders = await prisma.user.findMany({
     where: {
-      role: { in: ["ADMIN", "LEADER", "LOGISTIK", "TEKNISI"] },
+      role: { in: ["ADMIN", "LEADER", "LOGISTIK"] },
       status: true,
     },
     select: { id_user: true, nama: true },
@@ -322,7 +341,7 @@ async function notifyLowStockToAdmins(materialIds: number[]) {
 
   if (adminsAndLeaders.length === 0) return;
 
-  // Buat notification untuk setiap admin/leader
+  // Buat notification untuk setiap admin/leader/logistik
   // Jika banyak material, buat 1 notifikasi ringkasan
   if (materialsNeedingNotification.length === 1) {
     const m = materialsNeedingNotification[0];
@@ -571,13 +590,13 @@ export async function createBaa(formData: FormData) {
     id_olt: parseInt(formData.get("id_olt") as string, 10) || 0,
     id_odp: parseInt(formData.get("id_odp") as string, 10) || 0,
     id_ont: parseInt(formData.get("id_ont") as string, 10) || 0,
-    port_olt: formData.get("port_olt") as string || undefined,
-    port_odp: formData.get("port_odp") as string || undefined,
-    rx_power_dbm: formData.get("rx_power_dbm") as string || undefined,
-    tx_power_dbm: formData.get("tx_power_dbm") as string || undefined,
+    port_olt: toValidationNumber(formData.get("port_olt")),
+    port_odp: toValidationNumber(formData.get("port_odp")),
+    rx_power_dbm: toValidationNumber(formData.get("rx_power_dbm")),
+    tx_power_dbm: toValidationNumber(formData.get("tx_power_dbm")),
     speed_download: formData.get("speed_download") as string || undefined,
     speed_upload: formData.get("speed_upload") as string || undefined,
-    ping_ms: formData.get("ping_ms") as string || undefined,
+    ping_ms: toValidationNumber(formData.get("ping_ms")),
     catatan: formData.get("catatan") as string || undefined,
     baa_details: parseBaaDetails(formData.get("baa_details") as string | null),
     teknisi_tambahan: teknisiTambahanIds,
@@ -725,13 +744,13 @@ export async function updateBaa(id: number, formData: FormData) {
     id_olt: parseInt(formData.get("id_olt") as string, 10) || 0,
     id_odp: parseInt(formData.get("id_odp") as string, 10) || 0,
     id_ont: parseInt(formData.get("id_ont") as string, 10) || 0,
-    port_olt: formData.get("port_olt") as string || undefined,
-    port_odp: formData.get("port_odp") as string || undefined,
-    rx_power_dbm: formData.get("rx_power_dbm") as string || undefined,
-    tx_power_dbm: formData.get("tx_power_dbm") as string || undefined,
+    port_olt: toValidationNumber(formData.get("port_olt")),
+    port_odp: toValidationNumber(formData.get("port_odp")),
+    rx_power_dbm: toValidationNumber(formData.get("rx_power_dbm")),
+    tx_power_dbm: toValidationNumber(formData.get("tx_power_dbm")),
     speed_download: formData.get("speed_download") as string || undefined,
     speed_upload: formData.get("speed_upload") as string || undefined,
-    ping_ms: formData.get("ping_ms") as string || undefined,
+    ping_ms: toValidationNumber(formData.get("ping_ms")),
     catatan: formData.get("catatan") as string || undefined,
     baa_details: parseBaaDetails(formData.get("baa_details") as string | null),
     teknisi_tambahan: teknisiTambahanIds,
@@ -1107,13 +1126,17 @@ export async function quickCreateOnt(formData: FormData) {
  * GET DATA
  * ======================================
  */
+// PERBAIKAN BUG HIGHLIGHT (sama seperti FAB): sebelumnya highlightId dipakai
+// untuk memfilter where: { id_baa: highlightId }, jadi begitu masuk dari
+// notifikasi (?highlight=123) server cuma balikin SATU baris BAA -- akibatnya
+// tabel gak bisa balik nampilin semua data walau pencarian dikosongkan.
+// Highlight/scroll-ke-baris itu sepenuhnya urusan client (BaaTable.tsx baca
+// query param `highlight` sendiri lewat useSearchParams()), jadi di sini
+// SELALU ambil semua data. Parameter highlightId sengaja dibiarkan ada di
+// signature (biar pemanggil lama yang masih mengirim argumen ini tidak error
+// kompilasi), tapi sudah tidak dipakai untuk memfilter apa pun.
 export async function getBaaData(highlightId?: number | null) {
-  const where = highlightId
-    ? { id_baa: highlightId }
-    : {};
-
   return await prisma.baa.findMany({
-    where,
     include: {
       fab: true,
       users: true,
@@ -1136,7 +1159,6 @@ export async function getBaaData(highlightId?: number | null) {
     },
   });
 }
-
 export async function getFabOptions() {
   return await prisma.fab.findMany({
     where: { status: "OPEN" },

@@ -167,11 +167,15 @@
   html {
     @apply font-sans;
      font-size: 20px;
+     height: 100%;
+     overflow: hidden;
   }
 
   body {
     @apply bg-background text-foreground;
      font-size: 20px;
+     height: 100%;
+     overflow: hidden;
   }
 }
 .no-scrollbar::-webkit-scrollbar {

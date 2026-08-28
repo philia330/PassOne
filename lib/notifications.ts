@@ -1,78 +1,68 @@
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 
-export type NotificationItem = {
-  id: string;
+export type LiveNotification = {
+  id_notification: number;
+  id_user: number;
   title: string;
-  description: string;
-  href: string;
-  severity: "warning" | "danger" | "info";
+  message: string;
+  link: string | null;
+  type: string;
+  is_read: boolean;
+  createdAt: string;
 };
 
-export async function getNotifications(role: Role): Promise<NotificationItem[]> {
-  const notifications: NotificationItem[] = [];
+const FAB_ID_OFFSET = 1_000_000_000;
+const MATERIAL_ID_OFFSET = 2_000_000_000;
 
-  // ADMIN: melihat semua notifikasi
-  // SALES: hanya notifikasi FAB
-  // LOGISTIK: hanya notifikasi material
-  // LEADER/TEKNISI: FAB + material
+export async function getLiveNotifications(role: Role, userId: number): Promise<LiveNotification[]> {
+  const result: LiveNotification[] = [];
 
   const isAdmin = role === "ADMIN";
-  const canSeeMaterial = isAdmin || role === "LOGISTIK" || role === "LEADER" || role === "TEKNISI";
-  const canSeeFab = isAdmin || role === "SALES" || role === "LEADER" || role === "TEKNISI";
+  const canSeeMaterial = isAdmin || role === "LOGISTIK" || role === "LEADER";
+  const canSeeFab = isAdmin || role === "SALES" || role === "LEADER";
+
+  if (canSeeFab) {
+    const fabOpen = await prisma.fab.findMany({
+      where: { status: "OPEN" },
+      orderBy: { createdAt: "asc" },
+      select: { id_fab: true, kode_fab: true, nama_pelanggan: true, createdAt: true },
+    });
+
+    fabOpen.forEach((f) => {
+      result.push({
+        id_notification: -(FAB_ID_OFFSET + f.id_fab),
+        id_user: userId,
+        title: "FAB Menunggu Tindak Lanjut",
+        message: `${f.kode_fab} — ${f.nama_pelanggan} masih berstatus Open, belum ditugaskan ke teknisi.`,
+        link: `/jaringan/fab?highlight=${f.id_fab}`,
+        type: "FAB_OPEN",
+        is_read: false,
+        createdAt: f.createdAt.toISOString(),
+      });
+    });
+  }
 
   if (canSeeMaterial) {
     const materials = await prisma.material.findMany({
-      select: { id_material: true, nama_material: true, stok: true, minimal_stok: true },
+      select: { id_material: true, nama_material: true, stok: true, minimal_stok: true, satuan: true },
     });
 
     materials
       .filter((m) => m.stok <= m.minimal_stok)
       .forEach((m) => {
-        notifications.push({
-          id: `material-${m.id_material}`,
+        result.push({
+          id_notification: -(MATERIAL_ID_OFFSET + m.id_material),
+          id_user: userId,
           title: "Stok Material Menipis",
-          description: `${m.nama_material} tersisa ${m.stok} unit (minimal ${m.minimal_stok}).`,
-          href: "/workspace?view=material",
-          severity: m.stok === 0 ? "danger" : "warning",
+          message: `${m.nama_material} tersisa ${m.stok} ${m.satuan} (minimal: ${m.minimal_stok}).`,
+          link: `/masterdata/material`,
+          type: "SYSTEM",
+          is_read: false,
+          createdAt: new Date().toISOString(),
         });
       });
   }
 
-  if (canSeeFab) {
-    const fabPending = await prisma.fab.findMany({
-      where: { status: "OPEN" },
-      orderBy: { createdAt: "asc" },
-      // Hapus take(5) - tampilkan semua FAB pending
-      select: { id_fab: true, kode_fab: true, nama_pelanggan: true, createdAt: true },
-    });
-
-    fabPending.forEach((f) => {
-      notifications.push({
-        id: `fab-${f.id_fab}`,
-        title: "FAB Menunggu Tindak Lanjut",
-        description: `${f.kode_fab} — ${f.nama_pelanggan} masih berstatus Open.`,
-        href: "/workspace?view=fab",
-        severity: "info",
-      });
-    });
-  }
-
-  // Admin juga melihat statistik keseluruhan
-  if (isAdmin) {
-    const fabOpenCount = await prisma.fab.count({ where: { status: "OPEN" } });
-
-    // Tambahkan notifikasi ringkasan jika banyak
-    if (fabOpenCount > 10) {
-      notifications.push({
-        id: "fab-summary",
-        title: "Banyak FAB Pending",
-        description: `Ada ${fabOpenCount} FAB yang masih berstatus Open dan perlu ditindaklanjuti.`,
-        href: "/workspace?view=fab",
-        severity: "warning",
-      });
-    }
-  }
-
-  return notifications;
+  return result;
 }
