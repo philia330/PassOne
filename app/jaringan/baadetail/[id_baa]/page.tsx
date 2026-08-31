@@ -2,14 +2,12 @@ import { notFound, redirect } from "next/navigation";
 import { BaaImageDialog } from "@/app/jaringan/baa/components/BaaImageDialog";
 import { auth } from "@/lib/auth";
 import { Role } from "@/lib/auth/roles";
-import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/PageHeader";
 import Image from "next/image";
 import {
-  ArrowLeft,
   Calendar,
   UserCog,
   Router,
@@ -27,6 +25,8 @@ import {
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { getBaaById } from "@/app/jaringan/baa/actions"; // Import dari actions
+import { getSettings } from "@/lib/settings";
+import { BaaDetailActions } from "../components/BaaDetailActions";
 
 // ✅ FIX: params sekarang berupa Promise di Next.js 15/16 (async params)
 interface BaaDetailPageProps {
@@ -86,6 +86,75 @@ function toNumber(value: unknown): number | null {
   return isNaN(num) ? null : num;
 }
 
+// ================================================================
+// HELPER: Serialize BAA data untuk Client Component
+// Konversi Decimal ke number agar bisa di-serialize
+// ================================================================
+function serializeBaaForClient(baa: any) {
+  return {
+    ...baa,
+    tanggal_instalasi: baa.tanggal_instalasi?.toISOString?.() ?? baa.tanggal_instalasi,
+    createdAt: baa.createdAt?.toISOString?.() ?? baa.createdAt,
+    updatedAt: baa.updatedAt?.toISOString?.() ?? baa.updatedAt,
+    rx_power_dbm: toNumber(baa.rx_power_dbm),
+    tx_power_dbm: toNumber(baa.tx_power_dbm),
+    ping_ms: toNumber(baa.ping_ms),
+    // Serialize fab dan relasinya
+    fab: baa.fab ? {
+      ...baa.fab,
+      latitude: toNumber(baa.fab.latitude),
+      longitude: toNumber(baa.fab.longitude),
+      createdAt: baa.fab.createdAt?.toISOString?.() ?? baa.fab.createdAt,
+      updatedAt: baa.fab.updatedAt?.toISOString?.() ?? baa.fab.updatedAt,
+      paket: baa.fab.paket ? {
+        ...baa.fab.paket,
+        harga: toNumber(baa.fab.paket.harga),
+        createdAt: baa.fab.paket.createdAt?.toISOString?.() ?? baa.fab.paket.createdAt,
+        updatedAt: baa.fab.paket.updatedAt?.toISOString?.() ?? baa.fab.paket.updatedAt,
+      } : null,
+    } : null,
+    // Serialize olt
+    olt: baa.olt ? {
+      ...baa.olt,
+      latitude: toNumber(baa.olt.latitude),
+      longitude: toNumber(baa.olt.longitude),
+      createdAt: baa.olt.createdAt?.toISOString?.() ?? baa.olt.createdAt,
+      updatedAt: baa.olt.updatedAt?.toISOString?.() ?? baa.olt.updatedAt,
+    } : null,
+    // Serialize odp
+    odp: baa.odp ? {
+      ...baa.odp,
+      latitude: toNumber(baa.odp.latitude),
+      longitude: toNumber(baa.odp.longitude),
+      createdAt: baa.odp.createdAt?.toISOString?.() ?? baa.odp.createdAt,
+      updatedAt: baa.odp.updatedAt?.toISOString?.() ?? baa.odp.updatedAt,
+    } : null,
+    // Serialize ont
+    ont: baa.ont ? {
+      ...baa.ont,
+      createdAt: baa.ont.createdAt?.toISOString?.() ?? baa.ont.createdAt,
+      updatedAt: baa.ont.updatedAt?.toISOString?.() ?? baa.ont.updatedAt,
+    } : null,
+    // Serialize baadetail dan material
+    baadetail: baa.baadetail?.map((d: any) => ({
+      ...d,
+      createdAt: d.createdAt?.toISOString?.() ?? d.createdAt,
+      updatedAt: d.updatedAt?.toISOString?.() ?? d.updatedAt,
+      material: d.material ? {
+        ...d.material,
+        harga: toNumber(d.material.harga),
+        createdAt: d.material.createdAt?.toISOString?.() ?? d.material.createdAt,
+        updatedAt: d.material.updatedAt?.toISOString?.() ?? d.material.updatedAt,
+      } : null,
+    })) ?? [],
+    // Serialize teknisiTambahan
+    teknisiTambahan: baa.teknisiTambahan?.map((t: any) => ({
+      ...t,
+      createdAt: t.createdAt?.toISOString?.() ?? t.createdAt,
+    })) ?? [],
+  };
+}
+
 export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
   // ✅ Proteksi role
   const session = await auth();
@@ -105,10 +174,14 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
 
   // Gunakan getBaaId dari actions.ts
   const baa = await getBaaById(id);
+  const settings = await getSettings();
 
   if (!baa) {
     notFound();
   }
+
+  // Serialize BAA data untuk Client Component
+  const baaForClient = serializeBaaForClient(baa);
 
   // Konversi Decimal ke number
   const rxPower = toNumber(baa.rx_power_dbm);
@@ -129,23 +202,7 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
           description={`${baa.fab?.nama_pelanggan} • ${formatTanggal(baa.tanggal_instalasi)}`}
         />
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href="/workspace?view=baa">
-            <Button variant="outline" className="rounded-xl gap-2 text-slate-600">
-              <ArrowLeft className="h-4 w-4" />
-              Kembali
-            </Button>
-          </Link>
-
-          <a
-            href={`/jaringan/baadetail/${id_baa}/print`}
-            target="_blank"
-            className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-purple-700"
-          >
-            <Download className="h-4 w-4" />
-            Cetak Invoice
-          </a>
-        </div>
+        <BaaDetailActions baa={baaForClient} appName={settings.app_name} backHref="/workspace?view=baa" />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

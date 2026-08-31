@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -54,6 +56,7 @@ export function OdpSortableTable({
   defaultValue: string;
   currentUser?: CurrentUser;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -63,7 +66,14 @@ export function OdpSortableTable({
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [selectAllPage, setSelectAllPage] = useState(false);
+
+  // Highlight state untuk Command Palette
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const highlightHandled = useRef(false);
+  const lastHighlightId = useRef<string | null>(null);
+  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
 
   const isAdmin = currentUser?.role === "ADMIN";
   const canBulkDelete = isAdmin;
@@ -73,6 +83,59 @@ export function OdpSortableTable({
     setSelectedIds(new Set());
     setSelectAllPage(false);
   }, [search]);
+
+  // Handle highlight dari Command Palette (query param: highlight=<id_odp>)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlightId = params.get("highlight");
+
+    // Reset highlightHandled jika nilai highlight berubah (软导航后新值)
+    if (highlightId !== lastHighlightId.current) {
+      highlightHandled.current = false;
+      lastHighlightId.current = highlightId;
+    }
+
+    if (!highlightId || highlightHandled.current) return;
+    highlightHandled.current = true;
+
+    const targetId = Number(highlightId);
+    if (isNaN(targetId)) return;
+
+    // Cari item di data
+    const item = initialData.find((o) => o.id_odp === targetId);
+    if (!item) return;
+
+    // Set search ke nama ODP - ini akan sync ke OdpSearch via onChange
+    setSearch(item.nama_odp);
+    setPage(1);
+
+    // Update URL search param agar sinkron dengan state
+    const timer = setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("search", item.nama_odp);
+      url.searchParams.delete("highlight");
+      url.searchParams.set("page", "1");
+      window.history.replaceState({}, "", url.toString());
+    }, 100);
+
+    // Highlight baris setelah render
+    setTimeout(() => {
+      setHighlightedId(targetId);
+
+      // Scroll ke baris
+      setTimeout(() => {
+        const row = rowRefs.current.get(targetId);
+        if (row) {
+          row.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        // Hapus highlight setelah 3 detik
+        setTimeout(() => setHighlightedId(null), 3000);
+      }, 100);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
 
   const toggleSort = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -180,6 +243,7 @@ export function OdpSortableTable({
 
   // Bulk delete handler
   const handleBulkDelete = () => {
+    setIsBulkDeleting(true);
     const ids = Array.from(selectedIds);
     if (ids.length === 0) {
       toast.error("Pilih item yang ingin dihapus");
@@ -195,6 +259,8 @@ export function OdpSortableTable({
     setSelectAllPage(false);
     setBulkDeleteOpen(false);
     setBulkDeleteIds([]);
+    setIsBulkDeleting(false);
+    router.refresh();
   };
 
   return (
@@ -217,9 +283,10 @@ export function OdpSortableTable({
                   size="sm"
                   variant="ghost"
                   onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
                   className="h-9 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
                 >
-                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  {isBulkDeleting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1.5 h-4 w-4" />}
                   Hapus
                 </Button>
               )}
@@ -251,7 +318,7 @@ export function OdpSortableTable({
         )}
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <OdpSearch defaultValue={search} />
+          <OdpSearch value={search} onChange={setSearch} />
           <div className="add-button">
             <OdpFormDialog mode="create" olts={olts} />
           </div>
@@ -316,11 +383,14 @@ export function OdpSortableTable({
                 paginated.map((odp) => (
                   <TableRow
                     key={odp.id_odp}
-                    className={`border-b border-slate-200 transition-colors ${
+                    ref={(el) => { if (el) rowRefs.current.set(odp.id_odp, el); else rowRefs.current.delete(odp.id_odp); }}
+                    className={cn(
+                      "border-b border-slate-200 transition-colors",
                       selectedIds.has(odp.id_odp)
                         ? "bg-purple-50 dark:bg-purple-500/10"
-                        : "hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
-                    }`}
+                        : "hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50",
+                      highlightedId === odp.id_odp && "bg-yellow-100 dark:bg-yellow-500/20 ring-2 ring-yellow-400 dark:ring-yellow-500"
+                    )}
                   >
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <button
@@ -433,6 +503,7 @@ export function OdpSortableTable({
           namaOdp={`${bulkDeleteIds.length} ODP`}
           bulkIds={bulkDeleteIds}
           open={bulkDeleteOpen}
+          onDeleteStart={() => setIsBulkDeleting(true)}
           onOpenChange={(isOpen) => {
             setBulkDeleteOpen(isOpen);
             if (!isOpen) {

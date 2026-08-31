@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useMemo, ReactNode, useEffect } from "react";
-import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2 } from "lucide-react";
+import { useState, useMemo, ReactNode, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2, Printer } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -17,6 +19,7 @@ import { OntSearch } from "./OntSearch";
 import { OntPagination } from "./OntPagination";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { OntQrDialog } from "./OntQrDialog";
 
 type Pop = { id_pop: number; nama_pop: string };
 type Odp = { id_odp: number; nama_odp: string };
@@ -37,6 +40,7 @@ type Ont = {
   id_ont: number;
   serial_number: string;
   pelanggan: string;
+  model: string;
   status: "TERSEDIA" | "TERPASANG" | "RUSAK";
   id_pop: number | null;
   id_odp: number | null;
@@ -64,6 +68,7 @@ export function OntSortableTable({
   actions?: ReactNode;
   currentUser?: CurrentUser;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -73,16 +78,82 @@ export function OntSortableTable({
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [selectAllPage, setSelectAllPage] = useState(false);
 
+  // Highlight state untuk Command Palette
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const highlightHandled = useRef(false);
+  const lastHighlightId = useRef<string | null>(null);
+  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
+
   const isAdmin = currentUser?.role === "ADMIN";
-  const canBulkDelete = isAdmin;
+  const isLogistik = currentUser?.role === "LOGISTIK";
+  const isTeknisi = currentUser?.role === "TEKNISI";
+
+  // TEKNISI tidak boleh edit atau delete ONT
+  const canEditOnt = !isTeknisi;
+  const canDeleteOnt = isAdmin || isLogistik;
+  const canBulkDelete = isAdmin || isLogistik;
 
   // Clear selection when filters/search change
   useEffect(() => {
     setSelectedIds(new Set());
     setSelectAllPage(false);
   }, [search]);
+
+  // Handle highlight dari Command Palette (query param: highlight=<id_ont>)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlightId = params.get("highlight");
+
+    // Reset highlightHandled jika nilai highlight berubah (软导航后新值)
+    if (highlightId !== lastHighlightId.current) {
+      highlightHandled.current = false;
+      lastHighlightId.current = highlightId;
+    }
+
+    if (!highlightId || highlightHandled.current) return;
+    highlightHandled.current = true;
+
+    const targetId = Number(highlightId);
+    if (isNaN(targetId)) return;
+
+    // Cari item di data
+    const item = initialData.find((o) => o.id_ont === targetId);
+    if (!item) return;
+
+    // Set search ke nama/pelanggan ONT - ini akan sync ke OntSearch via onChange
+    setSearch(item.pelanggan);
+    setPage(1);
+
+    // Update URL search param agar sinkron dengan state
+    const timer = setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("search", item.pelanggan);
+      url.searchParams.delete("highlight");
+      url.searchParams.set("page", "1");
+      window.history.replaceState({}, "", url.toString());
+    }, 100);
+
+    // Highlight baris setelah render
+    setTimeout(() => {
+      setHighlightedId(targetId);
+
+      // Scroll ke baris
+      setTimeout(() => {
+        const row = rowRefs.current.get(targetId);
+        if (row) {
+          row.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        // Hapus highlight setelah 3 detik
+        setTimeout(() => setHighlightedId(null), 3000);
+      }, 100);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
 
   const toggleSort = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -95,6 +166,7 @@ export function OntSortableTable({
       (ont) =>
         ont.serial_number.toLowerCase().includes(query) ||
         ont.pelanggan.toLowerCase().includes(query) ||
+        ont.model.toLowerCase().includes(query) ||
         (ont.pop?.nama_pop?.toLowerCase().includes(query) ?? false) ||
         (ont.odp?.nama_odp?.toLowerCase().includes(query) ?? false)
     );
@@ -199,12 +271,24 @@ export function OntSortableTable({
     setBulkDeleteOpen(true);
   };
 
+  // Bulk print labels handler
+  const handleBulkPrintLabels = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) {
+      toast.error("Pilih item yang ingin dicetak");
+      return;
+    }
+    router.push(`/masterdata/ont/print-labels?ids=${ids.join(",")}`);
+  };
+
   // Handle delete success
   const handleDeleteSuccess = () => {
     setSelectedIds(new Set());
     setSelectAllPage(false);
     setBulkDeleteOpen(false);
     setBulkDeleteIds([]);
+    setIsBulkDeleting(false);
+    router.refresh();
   };
 
   return (
@@ -227,9 +311,14 @@ export function OntSortableTable({
                   size="sm"
                   variant="ghost"
                   onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
                   className="h-9 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
                 >
-                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  {isBulkDeleting ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-1.5 h-4 w-4" />
+                  )}
                   Hapus
                 </Button>
               )}
@@ -250,6 +339,15 @@ export function OntSortableTable({
               <Button
                 size="sm"
                 variant="ghost"
+                onClick={handleBulkPrintLabels}
+                className="h-9 rounded-xl text-purple-600 hover:bg-purple-50 hover:text-purple-700 dark:text-purple-400 dark:hover:bg-purple-500/10"
+              >
+                <Printer className="mr-1.5 h-4 w-4" />
+                Cetak Label QR
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
                 onClick={() => { setSelectedIds(new Set()); setSelectAllPage(false); }}
                 className="h-9 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
@@ -261,7 +359,7 @@ export function OntSortableTable({
         )}
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <OntSearch defaultValue={search} />
+          <OntSearch value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
             {actions}
             <OntFormDialog mode="create" pops={pops} odps={odps} />
@@ -307,6 +405,7 @@ export function OntSortableTable({
                     )}
                   </button>
                 </TableHead>
+                <TableHead className="dark:text-slate-300">Model</TableHead>
                 <TableHead className="dark:text-slate-300">Pelanggan</TableHead>
                 <TableHead className="dark:text-slate-300">Status</TableHead>
                 <TableHead className="dark:text-slate-300">POP</TableHead>
@@ -319,7 +418,7 @@ export function OntSortableTable({
             <TableBody>
               {paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-slate-400 dark:text-slate-500">
+                  <TableCell colSpan={9} className="py-10 text-center text-slate-400 dark:text-slate-500">
                     {search ? "Tidak ada data ONT yang cocok" : "Belum ada data ONT"}
                   </TableCell>
                 </TableRow>
@@ -327,11 +426,14 @@ export function OntSortableTable({
                 paginated.map((ont) => (
                   <TableRow
                     key={ont.id_ont}
-                    className={`border-b border-slate-200 transition-colors ${
+                    ref={(el) => { if (el) rowRefs.current.set(ont.id_ont, el); else rowRefs.current.delete(ont.id_ont); }}
+                    className={cn(
+                      "border-b border-slate-200 transition-colors",
                       selectedIds.has(ont.id_ont)
                         ? "bg-purple-50 dark:bg-purple-500/10"
-                        : "hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
-                    }`}
+                        : "hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50",
+                      highlightedId === ont.id_ont && "bg-yellow-100 dark:bg-yellow-500/20 ring-2 ring-yellow-400 dark:ring-yellow-500"
+                    )}
                   >
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <button
@@ -356,7 +458,10 @@ export function OntSortableTable({
                       </button>
                     </TableCell>
                     <TableCell className="font-medium dark:text-slate-200" onClick={(e) => e.stopPropagation()}>{ont.serial_number}</TableCell>
-                    <TableCell className="dark:text-slate-300" onClick={(e) => e.stopPropagation()}>{ont.pelanggan}</TableCell>
+                    <TableCell className="dark:text-slate-300" onClick={(e) => e.stopPropagation()}>{ont.model || "-"}</TableCell>
+                    <TableCell className="dark:text-slate-300" onClick={(e) => e.stopPropagation()}>
+                      {ont.pelanggan || <span className="text-slate-400 italic">Belum terpasang</span>}
+                    </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusBadge[ont.status]}`}>{ont.status}</span>
                     </TableCell>
@@ -367,8 +472,9 @@ export function OntSortableTable({
                     </TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center gap-1">
-                        <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />
-                        {canDelete && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number ?? ""} />}
+                        <OntQrDialog ont={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, status: ont.status }} />
+                        {canEditOnt && <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, model: ont.model, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />}
+                        {canDeleteOnt && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number ?? ""} />}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -406,12 +512,16 @@ export function OntSortableTable({
                   </div>
                   <div>
                     <p className="font-semibold dark:text-slate-100">{ont.serial_number}</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{ont.pelanggan}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{ont.model || "-"}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      {ont.pelanggan || <span className="italic">Belum terpasang</span>}
+                    </p>
                   </div>
                 </button>
                 <div className="flex shrink-0 gap-1">
-                  <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />
-                  {canDelete && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number ?? ""} />}
+                  <OntQrDialog ont={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, status: ont.status }} />
+                  {canEditOnt && <OntFormDialog mode="edit" pops={pops} odps={odps} data={{ id_ont: ont.id_ont, serial_number: ont.serial_number, pelanggan: ont.pelanggan, model: ont.model, status: ont.status, id_pop: ont.id_pop, id_odp: ont.id_odp }} />}
+                  {canDeleteOnt && <DeleteOntDialog id={ont.id_ont} name={ont.serial_number ?? ""} />}
                 </div>
               </div>
               <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${statusBadge[ont.status]}`}>{ont.status}</span>
@@ -437,6 +547,7 @@ export function OntSortableTable({
               handleDeleteSuccess();
             }
           }}
+          onDeleteStart={() => setIsBulkDeleting(true)}
         />
       )}
     </Card>

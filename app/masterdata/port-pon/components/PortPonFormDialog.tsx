@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 
 import { createPortPon, updatePortPon } from "../actions";
+import { validateNumericInput, validateTextInput } from "@/lib/validations/hooks";
 
 type Olt = { id_olt: number; nama_olt: string };
 type Odp = { id_odp: number; nama_odp: string };
@@ -63,6 +64,7 @@ export const PortPonFormDialog = ({
   const [oltValue, setOltValue] = useState("");
   const [statusValue, setStatusValue] = useState<"TERSEDIA" | "TERPASANG" | "RUSAK">("TERSEDIA");
   const [odpValue, setOdpValue] = useState("");
+  const [tipeKartu, setTipeKartu] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -70,10 +72,12 @@ export const PortPonFormDialog = ({
         setOltValue(data.id_olt ? String(data.id_olt) : "");
         setStatusValue(data.status ?? "TERSEDIA");
         setOdpValue(data.id_odp ? String(data.id_odp) : "");
+        setTipeKartu(data.tipe_kartu ?? "");
       } else {
         setOltValue("");
         setStatusValue("TERSEDIA");
         setOdpValue("");
+        setTipeKartu("");
       }
     }
   }, [open, mode, data]);
@@ -86,7 +90,47 @@ export const PortPonFormDialog = ({
     setOdpValue(value || "");
   };
 
+  // Handle nomor port - numeric only
+  const handleNomorPortChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const sanitized = validateNumericInput(e.target.value, 3);
+      e.target.value = sanitized;
+    },
+    []
+  );
+
+  // Handle tipe kartu - text with max length
+  const handleTipeKartuChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const sanitized = validateTextInput(e.target.value, 50);
+      setTipeKartu(sanitized);
+    },
+    []
+  );
+
   const handleSubmit = async (formData: FormData) => {
+    // Client-side validation
+    if (!oltValue) {
+      toast.error("OLT wajib dipilih.");
+      return;
+    }
+
+    if (!odpValue) {
+      toast.error("ODP wajib dipilih.");
+      return;
+    }
+
+    const nomorPort = formData.get("nomor_port") as string;
+    if (!nomorPort || parseInt(nomorPort, 10) < 1 || parseInt(nomorPort, 10) > 256) {
+      toast.error("Nomor port harus antara 1 dan 256.");
+      return;
+    }
+
+    if (!tipeKartu || tipeKartu.trim().length < 1) {
+      toast.error("Tipe kartu wajib diisi.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -99,8 +143,8 @@ export const PortPonFormDialog = ({
       }
 
       setOpen(false);
-    } catch {
-      toast.error("Terjadi kesalahan saat menyimpan data Port PON");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan saat menyimpan data Port PON");
     } finally {
       setIsSubmitting(false);
     }
@@ -147,7 +191,7 @@ export const PortPonFormDialog = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                OLT
+                OLT<span className="text-red-500 ml-1">*</span>
               </label>
 
               <SearchableSelect
@@ -167,7 +211,7 @@ export const PortPonFormDialog = ({
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                ODP Terhubung
+                ODP Terhubung<span className="text-red-500 ml-1">*</span>
               </label>
 
               <SearchableSelect
@@ -189,7 +233,7 @@ export const PortPonFormDialog = ({
           {/* 3. Status */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Status
+              Status<span className="text-red-500 ml-1">*</span>
             </label>
 
             <Select
@@ -231,29 +275,37 @@ export const PortPonFormDialog = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Nomor Port
+                Nomor Port<span className="text-red-500 ml-1">*</span>
               </label>
               <Input
                 type="number"
                 name="nomor_port"
                 defaultValue={data?.nomor_port}
-                placeholder="Contoh: 1"
+                placeholder="1-256"
+                min={1}
+                max={256}
+                onChange={handleNomorPortChange}
                 required
                 className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
+              <p className="text-xs text-slate-400">1-256</p>
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Tipe Kartu
+                Tipe Kartu<span className="text-red-500 ml-1">*</span>
               </label>
               <Input
                 name="tipe_kartu"
-                defaultValue={data?.tipe_kartu}
-                placeholder="Contoh: GTGO, GTGH"
+                value={tipeKartu}
+                onChange={handleTipeKartuChange}
+                placeholder="GTGO, GTGH"
+                maxLength={50}
                 required
+                autoComplete="off"
                 className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
+              <p className="text-xs text-slate-400">{tipeKartu.length}/50 karakter</p>
             </div>
           </div>
 
@@ -270,7 +322,7 @@ export const PortPonFormDialog = ({
 
             <Button
               type="submit"
-              disabled={isSubmitting || !oltValue || !odpValue}
+              disabled={isSubmitting || !oltValue || !odpValue || !tipeKartu.trim()}
               className="cursor-pointer rounded-2xl h-11 font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-md hover:opacity-90 active:scale-95 hover:scale-105 transition-transform"
             >
               {isSubmitting ? "Menyimpan..." : "Simpan"}

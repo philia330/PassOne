@@ -1,20 +1,41 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useTransition } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-export const MaterialSearch = ({ defaultValue }: { defaultValue: string }) => {
-  const [value, setValue] = useState(defaultValue);
+interface MaterialSearchProps {
+  value: string;
+  onChange: (value: string) => void;
+}
 
+export const MaterialSearch = ({ value, onChange }: MaterialSearchProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+
+  const pathnameRef = useRef(pathname);
+  const searchParamsRef = useRef(searchParams);
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+    searchParamsRef.current = searchParams;
+  });
+
+  // Sinkronisasi jika URL berubah dari luar (misal: highlight dari Command Palette)
+  useEffect(() => {
+    const urlSearch = searchParams.get("search") ?? "";
+    if (value !== urlSearch) {
+      onChange(urlSearch);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParamsRef.current.toString());
 
       if (value) {
         params.set("search", value);
@@ -23,11 +44,15 @@ export const MaterialSearch = ({ defaultValue }: { defaultValue: string }) => {
       }
       params.set("page", "1");
 
-      router.push(`${pathname}?${params.toString()}`);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      startTransition(() => {
+        router.push(`${pathnameRef.current}?${params.toString()}`, {
+          scroll: false,
+        });
+      });
     }, 400);
 
     return () => clearTimeout(handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   return (
@@ -39,7 +64,8 @@ export const MaterialSearch = ({ defaultValue }: { defaultValue: string }) => {
         type="text"
         placeholder="Cari kode / nama material..."
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={isPending}
         className="h-11 rounded-2xl pl-9 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
       />
     </div>

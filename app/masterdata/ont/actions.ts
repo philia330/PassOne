@@ -5,8 +5,35 @@ import { revalidatePath } from "next/cache";
 import { ont_status } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { Role } from "@/lib/auth/roles";
+import { z } from "zod";
 
 const PAGE_SIZE = 10;
+
+// ======================================================
+// VALIDATION SCHEMA - ONT
+// ======================================================
+
+const ontValidation = z.object({
+  serial_number: z
+    .string()
+    .min(1, "Serial number wajib diisi.")
+    .min(5, "Serial number minimal 5 karakter.")
+    .max(50, "Serial number maksimal 50 karakter.")
+    .regex(/^[a-zA-Z0-9\-]+$/, "Serial number hanya boleh berisi huruf, angka, dan tanda hubung."),
+  model: z
+    .string()
+    .max(100, "Model maksimal 100 karakter.")
+    .optional()
+    .nullable(),
+  status: z.enum(["TERSEDIA", "RUSAK"], {
+    message: "Status wajib dipilih.",
+  }),
+  // id_pop boleh 0 di sini -- khusus createOnt, 0 berarti "belum diisi"
+  // dan akan di-derive otomatis dari ODP (lihat logic di createOnt).
+  // updateOnt tetap wajib POP asli lewat pengecekan manual di bawah.
+  id_pop: z.number().int().min(0, "POP tidak valid."),
+  id_odp: z.number().int().positive("ODP wajib dipilih."),
+});
 
 /**
  * ======================================
@@ -30,18 +57,41 @@ async function logActivity(type: string, description: string) {
 
 /**
  * ======================================
- * HELPER: Cek hak akses
+ * HELPER: Cek hak akses untuk CREATE ONT
+ * TEKNISI boleh create, tapi tidak boleh update/delete
  * ======================================
  */
-async function requireAccess() {
+async function requireCreateAccess() {
   const session = await auth();
   if (!session?.user) {
     throw new Error("Sesi tidak valid, silakan login ulang.");
   }
 
   const role = session.user.role;
+  // ADMIN, LOGISTIK, dan TEKNISI boleh create ONT
+  if (role !== Role.ADMIN && role !== Role.LOGISTIK && role !== Role.TEKNISI) {
+    throw new Error("Anda tidak memiliki akses untuk membuat ONT.");
+  }
+
+  return session;
+}
+
+/**
+ * ======================================
+ * HELPER: Cek hak akses untuk UPDATE/DELETE ONT
+ * Hanya ADMIN dan LOGISTIK yang boleh
+ * ======================================
+ */
+async function requireUpdateDeleteAccess() {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  const role = session.user.role;
+  // Hanya ADMIN dan LOGISTIK yang boleh update/delete ONT
   if (role !== Role.ADMIN && role !== Role.LOGISTIK) {
-    throw new Error("Anda tidak memiliki akses untuk mengelola ONT.");
+    throw new Error("Anda tidak memiliki akses untuk mengubah atau menghapus ONT.");
   }
 
   return session;
@@ -58,6 +108,7 @@ export const getOnts = async (search: string = "", page: number = 1) => {
         OR: [
           { serial_number: { contains: search } },
           { pelanggan: { contains: search } },
+          { model: { contains: search } },
           { pop: { nama_pop: { contains: search } } },
           { odp: { nama_odp: { contains: search } } },
         ],
@@ -104,41 +155,73 @@ export const getOdps = async () => {
  * ======================================
  */
 export const createOnt = async (formData: FormData) => {
-  const session = await requireAccess();
+  const session = await requireCreateAccess();
 
-  const serial_number = (formData.get("serial_number") as string)?.trim();
-  const pelanggan = (formData.get("pelanggan") as string)?.trim();
-  const rawStatus = formData.get("status") as string | null;
-  const status = rawStatus === "TERPASANG" ? "TERSEDIA" : ((rawStatus as ont_status | null) || "TERSEDIA");
-  const id_pop = parseInt(formData.get("id_pop") as string, 10);
-  const id_odp = parseInt(formData.get("id_odp") as string, 10);
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    serial_number: (formData.get("serial_number") as string)?.trim() || "",
+    model: (formData.get("model") as string)?.trim() || undefined,
+    status: (formData.get("status") as string) || "TERSEDIA",
+    id_pop: parseInt(formData.get("id_pop") as string, 10) || 0,
+    id_odp: parseInt(formData.get("id_odp") as string, 10) || 0,
+  };
 
-  if (!serial_number || !pelanggan || isNaN(id_pop) || isNaN(id_odp)) {
-    throw new Error("Serial number, pelanggan, POP, dan ODP wajib diisi.");
+  // Parse validation - id_pop is optional if coming from BAA context
+  const parseResult = ontValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.issues[0];
+    throw new Error(firstError.message);
+  }
+
+  const validated = parseResult.data;
+
+  // Jika id_pop kosong (BAA context), auto-derive dari ODP
+  let finalIdPop = validated.id_pop;
+  if (!finalIdPop || finalIdPop === 0) {
+    const odp = await prisma.odp.findUnique({
+      where: { id_odp: validated.id_odp },
+      select: { olt: { select: { id_pop: true } } },
+    });
+    if (!odp?.olt?.id_pop) {
+      throw new Error("ODP tidak memiliki relasi POP. Pilih ODP yang valid.");
+    }
+    finalIdPop = odp.olt.id_pop;
   }
 
   // Cek duplikat serial number
   const existing = await prisma.ont.findUnique({
-    where: { serial_number },
+    where: { serial_number: validated.serial_number },
   });
 
   if (existing) {
-    throw new Error(`ONT dengan serial number "${serial_number}" sudah ada.`);
+    throw new Error(`ONT dengan serial number "${validated.serial_number}" sudah ada.`);
   }
 
   await prisma.$transaction(async (tx) => {
     // Double-check dalam transaction
-    const existingInTx = await tx.ont.findUnique({ where: { serial_number } });
+    const existingInTx = await tx.ont.findUnique({ where: { serial_number: validated.serial_number } });
     if (existingInTx) {
-      throw new Error(`ONT dengan serial number "${serial_number}" sudah ada.`);
+      throw new Error(`ONT dengan serial number "${validated.serial_number}" sudah ada.`);
     }
 
+    // pelanggan sengaja dikosongkan di sini -- baru terisi otomatis saat
+    // ONT ini dipakai di BAA (lihat sinkronisasi di app/jaringan/baa/actions.ts)
     await tx.ont.create({
-      data: { serial_number, pelanggan, status: status || "TERSEDIA", id_pop, id_odp },
+      data: {
+        serial_number: validated.serial_number,
+        pelanggan: "",
+        model: validated.model || "",
+        status: validated.status,
+        id_pop: finalIdPop,
+        id_odp: validated.id_odp,
+      },
     });
   });
 
-  await logActivity("ONT_CREATED", `ONT "${serial_number}" (${pelanggan}) dibuat oleh ${session.user.nama}`);
+  await logActivity("ONT_CREATED", `ONT "${validated.serial_number}" dibuat oleh ${session.user.nama}`);
   revalidatePath("/masterdata/ont");
 };
 
@@ -148,55 +231,77 @@ export const createOnt = async (formData: FormData) => {
  * ======================================
  */
 export const updateOnt = async (id: number, formData: FormData) => {
-  const session = await requireAccess();
+  const session = await requireUpdateDeleteAccess();
 
   const existing = await prisma.ont.findUnique({ where: { id_ont: id } });
   if (!existing) {
     throw new Error("ONT tidak ditemukan.");
   }
 
-  const serial_number = (formData.get("serial_number") as string)?.trim();
-  const pelanggan = (formData.get("pelanggan") as string)?.trim();
-  const rawStatus = formData.get("status") as string | null;
-  const status =
-    rawStatus === "TERPASANG"
-      ? existing.status
-      : ((rawStatus as ont_status | null) || existing.status || "TERSEDIA");
-  const id_pop = parseInt(formData.get("id_pop") as string, 10);
-  const id_odp = parseInt(formData.get("id_odp") as string, 10);
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    serial_number: (formData.get("serial_number") as string)?.trim() || "",
+    model: (formData.get("model") as string)?.trim() || undefined,
+    status: (formData.get("status") as string) || existing.status || "TERSEDIA",
+    id_pop: parseInt(formData.get("id_pop") as string, 10) || 0,
+    id_odp: parseInt(formData.get("id_odp") as string, 10) || 0,
+  };
 
-  if (!serial_number || !pelanggan || isNaN(id_pop) || isNaN(id_odp)) {
-    throw new Error("Serial number, pelanggan, POP, dan ODP wajib diisi.");
+  // Parse validation
+  const parseResult = ontValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.issues[0];
+    throw new Error(firstError.message);
+  }
+
+  const validated = parseResult.data;
+
+  // Mode edit selalu menampilkan field POP secara langsung (bukan derived
+  // dari ODP seperti di quick-add BAA), jadi di sini POP wajib benar-benar
+  // dipilih oleh user -- tidak ada auto-derive.
+  if (!validated.id_pop || validated.id_pop <= 0) {
+    throw new Error("POP wajib dipilih.");
   }
 
   // Cek duplikat jika serial berubah
-  if (serial_number !== existing.serial_number) {
+  if (validated.serial_number !== existing.serial_number) {
     const duplicate = await prisma.ont.findFirst({
-      where: { serial_number, id_ont: { not: id } },
+      where: { serial_number: validated.serial_number, id_ont: { not: id } },
     });
 
     if (duplicate) {
-      throw new Error(`ONT dengan serial number "${serial_number}" sudah ada.`);
+      throw new Error(`ONT dengan serial number "${validated.serial_number}" sudah ada.`);
     }
   }
 
   await prisma.$transaction(async (tx) => {
-    if (serial_number !== existing.serial_number) {
+    if (validated.serial_number !== existing.serial_number) {
       const existingInTx = await tx.ont.findFirst({
-        where: { serial_number, id_ont: { not: id } },
+        where: { serial_number: validated.serial_number, id_ont: { not: id } },
       });
       if (existingInTx) {
-        throw new Error(`ONT dengan serial number "${serial_number}" sudah ada.`);
+        throw new Error(`ONT dengan serial number "${validated.serial_number}" sudah ada.`);
       }
     }
 
+    // pelanggan TIDAK disentuh dari form Master Data -- nilainya cuma boleh
+    // berubah lewat sinkronisasi otomatis dari BAA (create/update/delete).
     await tx.ont.update({
       where: { id_ont: id },
-      data: { serial_number, pelanggan, status: status || "TERSEDIA", id_pop, id_odp },
+      data: {
+        serial_number: validated.serial_number,
+        model: validated.model || "",
+        status: validated.status,
+        id_pop: validated.id_pop,
+        id_odp: validated.id_odp,
+      },
     });
   });
 
-  await logActivity("ONT_UPDATED", `ONT "${serial_number}" (${pelanggan}) diupdate oleh ${session.user.nama}`);
+  await logActivity("ONT_UPDATED", `ONT "${validated.serial_number}" diupdate oleh ${session.user.nama}`);
   revalidatePath("/masterdata/ont");
 };
 
@@ -206,7 +311,7 @@ export const updateOnt = async (id: number, formData: FormData) => {
  * ======================================
  */
 export const deleteOnt = async (id: number) => {
-  const session = await requireAccess();
+  const session = await requireUpdateDeleteAccess();
 
   const ont = await prisma.ont.findUnique({
     where: { id_ont: id },
@@ -226,6 +331,6 @@ export const deleteOnt = async (id: number) => {
 
   await prisma.ont.delete({ where: { id_ont: id } });
 
-  await logActivity("ONT_DELETED", `ONT "${ont.serial_number}" (${ont.pelanggan}) dihapus oleh ${session.user.nama}`);
+  await logActivity("ONT_DELETED", `ONT "${ont.serial_number}" dihapus oleh ${session.user.nama}`);
   revalidatePath("/masterdata/ont");
 };

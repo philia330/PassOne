@@ -145,14 +145,12 @@ export default function PointDetailDrawer({
 }) {
   const [showPassword, setShowPassword] = useState(false);
 
-  // Reset showPassword dilakukan SAAT RENDER, bukan di dalam useEffect --
-  // pola resmi React "adjusting state during render" buat derived state
-  // yang perlu di-reset kalau titik yang dipilih (point.id) berubah.
-  const [lastPointId, setLastPointId] = useState<string | null>(null);
-  if (point && point.id !== lastPointId) {
-    setLastPointId(point.id);
+  // Reset showPassword saat point berubah -- gunakan useEffect yang benar
+  // untuk menghindari infinite re-render dari pola "adjusting state during render"
+  useEffect(() => {
+    // Reset showPassword setiap kali point berubah
     setShowPassword(false);
-  }
+  }, [point?.id]);
 
   // Tutup pakai tombol Escape
   useEffect(() => {
@@ -164,25 +162,25 @@ export default function PointDetailDrawer({
   }, [onClose]);
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       {point && (
         <>
           {/* Overlay */}
           <motion.div
-            variants={overlayVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
+            key="drawer-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.3 } }}
+            exit={{ opacity: 0, transition: { duration: 0.25 } }}
             onClick={onClose}
             className="fixed inset-0 z-[1000] bg-black/50 backdrop-blur-sm"
           />
 
           {/* Panel */}
           <motion.div
-            variants={panelVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
+            key="drawer-panel"
+            initial={{ x: "100%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1, transition: { type: "spring", damping: 30, stiffness: 220, duration: 0.35 } }}
+            exit={{ x: "100%", opacity: 0, transition: { type: "spring", damping: 30, stiffness: 220, duration: 0.3 } }}
             className="fixed right-0 top-0 z-[1001] flex h-full w-full max-w-sm flex-col overflow-hidden bg-white shadow-2xl dark:bg-slate-900"
           >
             {(() => {

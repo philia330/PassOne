@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Router, Wifi, FileText } from "lucide-react";
 import { getOdps, getOlts } from "./actions";
+import { prisma } from "@/lib/prisma";
 import { OdpSortableTable } from "./components/OdpSortableTable";
 import { requirePageAccess } from "@/lib/auth/guards";
 import { ExportButton } from "@/components/ui/ExportButton";
@@ -13,6 +14,7 @@ export default async function OdpPage({
     search?: string;
     page?: string;
     sort?: string;
+    highlight?: string;
   }>;
 }) {
   const session = await requirePageAccess(["ADMIN", "LEADER"]);
@@ -22,6 +24,7 @@ export default async function OdpPage({
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
   const sortOrder: "asc" | "desc" = params.sort === "desc" ? "desc" : "asc";
+  const highlightId = params?.highlight ? Number(params.highlight) : null;
 
   const currentRole = session.user.role as string;
 
@@ -34,26 +37,38 @@ export default async function OdpPage({
   // Hanya Admin dan Leader yang bisa export
   const canExport = currentRole === "ADMIN" || currentRole === "LEADER";
 
-  const [{ data: rawOdps, total, totalPages }, olts] = await Promise.all([
+  // Hitung total SEMUA data (tanpa filter) untuk card statistik
+  const [totalOdp, totalOnt, totalBaa, { data: rawOdps, total, totalPages }, olts] = await Promise.all([
+    prisma.odp.count(),
+    prisma.ont.count(),
+    prisma.baa.count(),
     getOdps(search, page, true, sortOrder),
     getOlts(),
   ]);
 
-  // Convert Decimal to number for sortable table
+  // Convert Decimal to number for sortable table (Prisma returns Decimal objects)
   const odps = rawOdps.map((o) => ({
-    ...o,
+    id_odp: o.id_odp,
+    kode_odp: o.kode_odp,
+    nama_odp: o.nama_odp,
+    alamat: o.alamat,
     latitude: Number(o.latitude),
     longitude: Number(o.longitude),
+    id_olt: o.id_olt,
+    jumlah_port: o.jumlah_port,
+    createdAt: o.createdAt,
+    updatedAt: o.updatedAt,
+    olt: o.olt ? {
+      id_olt: o.olt.id_olt,
+      nama_olt: o.olt.nama_olt,
+    } : null,
+    _count: o._count,
   }));
 
-  const allPoints = odps.map((o) => ({
-    id_odp: o.id_odp,
-    odpNama: o.nama_odp,
-    odpLat: Number(o.latitude),
-    odpLng: Number(o.longitude),
-    oltNama: o.olt?.nama_olt ?? "-",
-    oltLat: Number(o.olt?.latitude ?? 0),
-    oltLng: Number(o.olt?.longitude ?? 0),
+  // Convert olts to plain objects (remove Prisma Decimal fields)
+  const oltsData = olts.map((o) => ({
+    id_olt: o.id_olt,
+    nama_olt: o.nama_olt,
   }));
 
   return (
@@ -69,7 +84,7 @@ export default async function OdpPage({
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="text-sm text-white/80">Total ODP</p>
-              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{total}</h2>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{totalOdp}</h2>
               <p className="mt-1 text-sm text-white/80">Perangkat Terdaftar</p>
             </div>
             <div className="rounded-2xl bg-white/20 p-4">
@@ -83,7 +98,7 @@ export default async function OdpPage({
             <div>
               <p className="text-sm text-white/80">Total ONT</p>
               <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">
-                {odps.reduce((sum, o) => sum + ((o as any)._count?.ont || 0), 0)}
+                {totalOnt}
               </h2>
               <p className="mt-1 text-sm text-white/80">ONT Terpasang</p>
             </div>
@@ -98,7 +113,7 @@ export default async function OdpPage({
             <div>
               <p className="text-sm text-white/80">Total BAA</p>
               <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">
-                {odps.reduce((sum, o) => sum + ((o as any)._count?.baa || 0), 0)}
+                {totalBaa}
               </h2>
               <p className="mt-1 text-sm text-white/80">BAA Terbuat</p>
             </div>
@@ -111,7 +126,7 @@ export default async function OdpPage({
 
       <OdpSortableTable
         initialData={odps}
-        olts={olts}
+        olts={oltsData}
         defaultValue={search}
         currentUser={currentUser}
       />

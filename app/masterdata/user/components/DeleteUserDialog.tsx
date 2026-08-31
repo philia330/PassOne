@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Trash2, Loader2, TriangleAlert } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -22,9 +24,11 @@ interface DeleteUserDialogProps {
   bulkIds?: number[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onDeleteStart?: () => void;
 }
 
-export const DeleteUserDialog = ({ id, name, bulkIds, open: controlledOpen, onOpenChange }: DeleteUserDialogProps) => {
+export const DeleteUserDialog = ({ id, name, bulkIds, open: controlledOpen, onOpenChange, onDeleteStart }: DeleteUserDialogProps) => {
+  const router = useRouter();
   const [internalOpen, setInternalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -37,6 +41,7 @@ export const DeleteUserDialog = ({ id, name, bulkIds, open: controlledOpen, onOp
 
   const handleConfirm = () => {
     setErrorMsg(null);
+    onDeleteStart?.();
     startTransition(async () => {
       try {
         if (isBulk && bulkIds) {
@@ -48,13 +53,17 @@ export const DeleteUserDialog = ({ id, name, bulkIds, open: controlledOpen, onOp
             const error = await response.json();
             throw new Error(error.message || "Gagal menghapus data");
           }
+          toast.success(`${bulkIds.length} user berhasil dihapus`);
         } else {
           await deleteUser(id);
+          toast.success("User berhasil dihapus");
         }
         setIsOpen(false);
+        router.refresh();
       } catch (err: unknown) {
         const error = err as Error;
         setErrorMsg(error.message ?? "Gagal menghapus user, coba lagi.");
+        toast.error(error.message ?? "Gagal menghapus user, coba lagi.");
       }
     });
   };

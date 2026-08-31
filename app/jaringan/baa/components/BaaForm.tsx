@@ -23,7 +23,9 @@ import {
   Plus,
   X,
   Boxes,
+  ScanLine,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { QrScannerDialog } from "@/components/shared/QrScannerDialog";
+import { OntFormDialog } from "@/app/masterdata/ont/components/OntFormDialog";
+import { quickCreateOnt } from "@/app/jaringan/baa/actions";
 import type {
   BaaData,
   StatusBaa,
@@ -180,6 +192,58 @@ export const BaaForm = ({
       : []
   );
 
+  // ================================================================
+  // ONT -- scan QR untuk pilih ONT terdaftar ATAU tambah ONT baru
+  // dari barcode/QR pabrik, tanpa keluar dari form BAA.
+  // ================================================================
+  const [extraOntOptions, setExtraOntOptions] = useState<OntOption[]>([]);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [quickAddOntOpen, setQuickAddOntOpen] = useState(false);
+  const [scannedSerial, setScannedSerial] = useState("");
+  const [isCreatingOnt, setIsCreatingOnt] = useState(false);
+
+  // Manual add ONT state (for "Tambah ONT" button)
+  const [manualAddOntOpen, setManualAddOntOpen] = useState(false);
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const ontBasePath = `${appUrl}/masterdata/ont`;
+
+  // Callback when ONT is created from OntFormDialog (BAA context)
+  const handleOntCreated = async (ontInfo: { serial_number: string; model: string | null }) => {
+    // Refresh ontOptions from server to get the new ONT with id_ont
+    // The createOnt server action already revalidates, but we need to refresh the dropdown
+    // For now, we'll use quickCreateOnt to get the ONT with proper id
+    try {
+      const fd = new FormData();
+      fd.set("serial_number", ontInfo.serial_number);
+      fd.set("id_odp", idOdp);
+
+      const result = await quickCreateOnt(fd);
+
+      if (result?.success && result.data) {
+        const newOnt = {
+          id_ont: result.data.id_ont,
+          serial_number: result.data.serial_number,
+          model: ontInfo.model,
+        } as OntOption;
+
+        // Add to extraOntOptions and auto-select
+        setExtraOntOptions((prev) => {
+          // Check if already exists
+          const existing = prev.find(o => o.id_ont === newOnt.id_ont);
+          if (existing) return prev;
+          return [newOnt, ...prev];
+        });
+        setIdOnt(String(newOnt.id_ont));
+        toast.success(`ONT ${newOnt.serial_number} berhasil ditambahkan dan dipilih.`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Gagal menambahkan ONT.";
+      toast.error(message);
+    }
+    setManualAddOntOpen(false);
+  };
+
   const addTeknisiRow = () => {
     setExtraTeknisiRows((rows) => [...rows, { rowId: makeRowId(), id_user: "" }]);
   };
@@ -271,13 +335,126 @@ export const BaaForm = ({
         {
           id_ont: defaultValues.ont.id_ont,
           serial_number: defaultValues.ont.serial_number,
-          pelanggan: (defaultValues.ont as { pelanggan?: string }).pelanggan ?? null,
+          model: (defaultValues.ont as { model?: string }).model ?? null,
         } as OntOption,
         ...ontOptions,
       ];
     }
     return ontOptions;
   }, [ontOptions, defaultValues]);
+
+  // Gabungkan opsi ONT dari server + ONT baru hasil quick-add lewat scan,
+  // supaya langsung muncul di dropdown tanpa reload halaman.
+  const allOntOptions = useMemo(() => {
+    const combined = [...extraOntOptions, ...mergedOntOptions];
+    const seen = new Set<number>();
+    return combined.filter((o) => {
+      if (seen.has(o.id_ont)) return false;
+      seen.add(o.id_ont);
+      return true;
+    });
+  }, [extraOntOptions, mergedOntOptions]);
+
+  const handleOntScanResult = (decodedText: string) => {
+    setScannerOpen(false);
+
+    const isAppUrl = decodedText.startsWith(ontBasePath) && decodedText.includes("highlight=");
+
+    if (isAppUrl) {
+      let targetId: number | null = null;
+      try {
+        const url = new URL(decodedText);
+        const raw = url.searchParams.get("highlight");
+        targetId = raw ? Number(raw) : null;
+      } catch {
+        targetId = null;
+      }
+
+      if (targetId && !Number.isNaN(targetId)) {
+        const found = allOntOptions.find((o) => o.id_ont === targetId);
+        if (found) {
+          setIdOnt(String(found.id_ont));
+          toast.success(`ONT ${found.serial_number} dipilih.`);
+          return;
+        }
+      }
+
+      toast.error("ONT ini sudah dipakai BAA lain, tidak bisa dipilih lagi.");
+      return;
+    }
+
+    // Bukan URL aplikasi -> anggap serial number mentah dari stiker pabrik
+    const serial = decodedText.trim();
+    if (!serial) {
+      toast.error("QR code tidak terbaca dengan jelas. Coba scan ulang.");
+      return;
+    }
+
+    // ODP wajib sudah dipilih di form BAA -- ONT baru akan otomatis
+    // mengikuti ODP (dan POP) yang sama, tidak boleh dipilih terpisah di
+    // dialog quick-add supaya data tidak nyasar ke ODP lain.
+    if (!idOdp) {
+      toast.error("Pilih ODP terlebih dahulu di form sebelum menambahkan ONT baru.");
+      return;
+    }
+
+    setScannedSerial(serial);
+    setQuickAddOntOpen(true);
+  };
+
+  const handleQuickAddOnt = async () => {
+    if (!scannedSerial.trim()) {
+      toast.error("Serial number wajib diisi.");
+      return;
+    }
+
+    if (!idOdp) {
+      toast.error("ODP belum dipilih di form. Pilih ODP dulu lalu coba lagi.");
+      return;
+    }
+
+    setIsCreatingOnt(true);
+    try {
+      const fd = new FormData();
+      fd.set("serial_number", scannedSerial.trim());
+      fd.set("id_odp", idOdp);
+
+      const result = await quickCreateOnt(fd);
+
+      if (result?.success && result.data) {
+        const newOnt = {
+          id_ont: result.data.id_ont,
+          serial_number: result.data.serial_number,
+          model: null,
+        } as OntOption;
+
+        // Jika ONT sudah ada sebelumnya, tampilkan pesan yang berbeda
+        if (result.data.alreadyExists) {
+          setExtraOntOptions((prev) => {
+            // Update jika sudah ada, atau tambahkan baru
+            const existing = prev.find(o => o.id_ont === newOnt.id_ont);
+            if (existing) {
+              return prev.map(o => o.id_ont === newOnt.id_ont ? newOnt : o);
+            }
+            return [newOnt, ...prev];
+          });
+          setIdOnt(String(newOnt.id_ont));
+          setQuickAddOntOpen(false);
+          toast.success(`ONT ${newOnt.serial_number} yang sudah terdaftar dipilih.`);
+        } else {
+          setExtraOntOptions((prev) => [newOnt, ...prev]);
+          setIdOnt(String(newOnt.id_ont));
+          setQuickAddOntOpen(false);
+          toast.success(`ONT ${newOnt.serial_number} berhasil ditambahkan dan dipilih.`);
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Gagal menambahkan ONT baru.";
+      toast.error(message);
+    } finally {
+      setIsCreatingOnt(false);
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
@@ -480,22 +657,56 @@ export const BaaForm = ({
         <input type="hidden" name="id_odp" value={idOdp} required />
       </div>
 
-      {/* ONT -- sekarang searchable, sama pola dengan FAB */}
+      {/* ONT -- searchable + tombol Scan + tombol Tambah ONT untuk isi cepat dari kamera atau manual */}
       <div className="col-span-1 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          <Wifi size={13} className="text-purple-500" /> ONT
-        </Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <Wifi size={13} className="text-purple-500" /> ONT
+          </Label>
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (!idOdp) {
+                  toast.error("Pilih ODP terlebih dahulu sebelum scan ONT.");
+                  return;
+                }
+                setScannerOpen(true);
+              }}
+              className="rounded-xl h-7 px-2 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
+            >
+              <ScanLine className="mr-1 h-3.5 w-3.5" /> Scan
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (!idOdp) {
+                  toast.error("Pilih ODP terlebih dahulu sebelum menambahkan ONT.");
+                  return;
+                }
+                setManualAddOntOpen(true);
+              }}
+              className="rounded-xl h-7 px-2 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" /> Tambah ONT
+            </Button>
+          </div>
+        </div>
         <SearchableSelect
           value={idOnt}
           onValueChange={setIdOnt}
-          options={mergedOntOptions.map((o) => ({
+          options={allOntOptions.map((o) => ({
             value: String(o.id_ont),
-            label: (o as { pelanggan?: string | null }).pelanggan
-              ? `${o.serial_number} — ${(o as { pelanggan?: string | null }).pelanggan}`
+            label: o.model
+              ? `${o.serial_number} — ${o.model}`
               : o.serial_number,
           }))}
           placeholder="Pilih ONT"
-          searchPlaceholder="Cari serial number / nama pelanggan..."
+          searchPlaceholder="Cari serial number / model ONT..."
           emptyText="ONT tidak ditemukan"
         />
         <input type="hidden" name="id_ont" value={idOnt} required />
@@ -517,6 +728,7 @@ export const BaaForm = ({
           min={1}
           max={9999}
           defaultValue={defaultValues?.port_olt ?? ""}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           required
         />
@@ -538,6 +750,7 @@ export const BaaForm = ({
           min={1}
           max={9999}
           defaultValue={defaultValues?.port_odp ?? ""}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           required
         />
@@ -559,6 +772,7 @@ export const BaaForm = ({
           placeholder="Contoh: -18.5 (biasanya minus)"
           required
           defaultValue={defaultValues?.rx_power_dbm ?? ""}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
@@ -579,6 +793,7 @@ export const BaaForm = ({
           placeholder="Contoh: 3.2"
           required
           defaultValue={defaultValues?.tx_power_dbm ?? ""}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
@@ -597,6 +812,7 @@ export const BaaForm = ({
           placeholder="Contoh: 50 Mbps"
           required
           defaultValue={defaultValues?.speed_download ?? ""}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
@@ -615,6 +831,7 @@ export const BaaForm = ({
           placeholder="Contoh: 20 Mbps"
           required
           defaultValue={defaultValues?.speed_upload ?? ""}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
@@ -635,6 +852,7 @@ export const BaaForm = ({
           placeholder="Contoh: 12"
           required
           defaultValue={defaultValues?.ping_ms ?? ""}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
@@ -647,7 +865,6 @@ export const BaaForm = ({
           <ImageIcon size={13} className="text-purple-500" /> Foto Instalasi
         </Label>
 
-        {/* Input asli disembunyikan -- semua interaksi lewat dropzone custom */}
         <input
           ref={fotoInputRef}
           id="foto_instalasi"
@@ -691,9 +908,6 @@ export const BaaForm = ({
           )}
         </button>
 
-        {/* Ambil Foto (kamera) & Pilih dari Galeri -- input yang sama, cuma
-            atribut capture-nya beda sebelum di-trigger. Di desktop dua-duanya
-            sama-sama buka File Explorer, tidak masalah. */}
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -742,6 +956,7 @@ export const BaaForm = ({
           rows={2}
           placeholder="Catatan tambahan (opsional)"
           defaultValue={defaultValues?.catatan ?? ""}
+          autoComplete="off"
           className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 resize-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
         />
       </div>
@@ -807,6 +1022,7 @@ export const BaaForm = ({
                     placeholder="Keterangan (opsional)"
                     value={row.keterangan}
                     onChange={(e) => updateRow(row.rowId, "keterangan", e.target.value)}
+                    autoComplete="off"
                     className="rounded-xl h-10 border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
@@ -825,6 +1041,79 @@ export const BaaForm = ({
 
         <input type="hidden" name="baa_details" value={JSON.stringify(materialRows)} />
       </div>
+
+      {/* Scanner QR untuk ONT — bisa scan QR aplikasi (pilih ONT terdaftar)
+          atau barcode/QR stiker pabrik (tambah ONT baru) */}
+      <QrScannerDialog
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        onScanResult={handleOntScanResult}
+        title="Scan QR ONT"
+        description="Scan QR aplikasi untuk pilih ONT terdaftar, atau barcode/QR stiker pabrik untuk tambah ONT baru"
+      />
+
+      {/* Dialog Tambah ONT Baru (quick-add dari hasil scan barcode pabrik) */}
+      <Dialog open={quickAddOntOpen} onOpenChange={setQuickAddOntOpen}>
+        <DialogContent className="rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-slate-900 dark:text-slate-100">
+              Tambah ONT Baru
+            </DialogTitle>
+            <DialogDescription className="text-slate-500 dark:text-slate-400">
+              Serial number terisi otomatis dari hasil scan. Nama pelanggan akan terisi otomatis mengikuti FAB saat BAA ini disimpan. ODP mengikuti pilihan di form ini dan tidak bisa diubah dari sini.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                ODP
+              </Label>
+              <Input
+                value={mergedOdpOptions.find((o) => String(o.id_odp) === idOdp)?.nama_odp ?? "-"}
+                readOnly
+                className="rounded-2xl h-11 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+              />
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                ONT baru otomatis terdaftar di ODP ini (mengikuti ODP yang dipilih di form).
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Serial Number
+              </Label>
+              <Input
+                value={scannedSerial}
+                onChange={(e) => setScannedSerial(e.target.value)}
+                placeholder="Serial number ONT"
+                autoComplete="off"
+                className="rounded-2xl h-11 border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+
+            <Button
+              type="button"
+              onClick={handleQuickAddOnt}
+              disabled={isCreatingOnt}
+              className="w-full rounded-xl h-11 bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              {isCreatingOnt ? "Menyimpan..." : "Simpan & Pilih ONT Ini"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Tambah ONT Manual (dari tombol "Tambah ONT") - menggunakan form ONT yang sama */}
+      <OntFormDialog
+        mode="create"
+        pops={[]}
+        odps={mergedOdpOptions}
+        defaultOdpId={idOdp ? Number(idOdp) : undefined}
+        onOntCreated={handleOntCreated}
+        externalOpen={manualAddOntOpen}
+        onExternalOpenChange={setManualAddOntOpen}
+      />
     </div>
   );
 };

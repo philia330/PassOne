@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MapPin } from "lucide-react";
 
 import { getAreas } from "./actions";
+import { prisma } from "@/lib/prisma";
 
 import { AreaSortableTable } from "./components/AreaSortableTable";
 import { requirePageAccess } from "@/lib/auth/guards";
@@ -11,15 +12,20 @@ import { ExportButton } from "@/components/ui/ExportButton";
 export default async function AreaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; page?: string }>;
+  searchParams: Promise<{ search?: string; page?: string; highlight?: string }>;
 }) {
   const session = await requirePageAccess(["ADMIN"]);
 
   const params = await searchParams;
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
+  const highlightId = params?.highlight ? Number(params.highlight) : null;
 
-  const { data: areas, total, totalPages } = await getAreas(search, page);
+  // Hitung total SEMUA data (tanpa filter) untuk card statistik
+  const [totalCount, { data: areas, total, totalPages }] = await Promise.all([
+    prisma.area.count(),
+    getAreas(search, page),
+  ]);
 
   // Hanya Admin dan Leader yang bisa export
   const canExport = session.user.role === "ADMIN" || session.user.role === "LEADER";
@@ -42,7 +48,7 @@ export default async function AreaPage({
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="text-sm text-white/80">Total Area</p>
-              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{total}</h2>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{totalCount}</h2>
               <p className="mt-1 text-sm text-white/80">Wilayah Terdaftar</p>
             </div>
 

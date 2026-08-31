@@ -4,8 +4,26 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { Role } from "@/lib/auth/roles";
+import { z } from "zod";
 
 const PAGE_SIZE = 10;
+
+// ======================================================
+// VALIDATION SCHEMA - Area
+// ======================================================
+
+const areaValidation = z.object({
+  nama_area: z
+    .string()
+    .min(1, "Nama area wajib diisi.")
+    .min(2, "Nama area minimal 2 karakter.")
+    .max(100, "Nama area maksimal 100 karakter."),
+  keterangan: z
+    .string()
+    .max(255, "Keterangan maksimal 255 karakter.")
+    .optional()
+    .nullable(),
+});
 
 /**
  * ======================================
@@ -110,23 +128,33 @@ export const getAreas = async (search: string = "", page: number = 1) => {
 export const createArea = async (formData: FormData) => {
   const session = await requireAccess();
 
-  const nama_area = (formData.get("nama_area") as string)?.trim();
-  const keteranganRaw = formData.get("keterangan") as string;
-  const keterangan = keteranganRaw?.trim() || null;
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_area: (formData.get("nama_area") as string)?.trim() || "",
+    keterangan: (formData.get("keterangan") as string)?.trim() || undefined,
+  };
 
-  if (!nama_area) {
-    throw new Error("Nama Area wajib diisi.");
+  // Parse validation
+  const parseResult = areaValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.issues[0];
+    throw new Error(firstError.message);
   }
+
+  const validated = parseResult.data;
 
   // Cek duplikat nama area
   const existing = await prisma.area.findFirst({
     where: {
-      nama_area: nama_area,
+      nama_area: validated.nama_area,
     },
   });
 
   if (existing) {
-    throw new Error(`Area "${nama_area}" sudah ada. Gunakan nama yang berbeda.`);
+    throw new Error(`Area "${validated.nama_area}" sudah ada. Gunakan nama yang berbeda.`);
   }
 
   const kode_area = await generateKodeArea();
@@ -134,20 +162,20 @@ export const createArea = async (formData: FormData) => {
   await prisma.$transaction(async (tx) => {
     const existingInTx = await tx.area.findFirst({
       where: {
-        nama_area: nama_area,
+        nama_area: validated.nama_area,
       },
     });
 
     if (existingInTx) {
-      throw new Error(`Area "${nama_area}" sudah ada.`);
+      throw new Error(`Area "${validated.nama_area}" sudah ada.`);
     }
 
     await tx.area.create({
-      data: { kode_area, nama_area, keterangan },
+      data: { kode_area, nama_area: validated.nama_area, keterangan: validated.keterangan || null },
     });
   });
 
-  await logActivity("AREA_CREATED", `Area "${nama_area}" dibuat oleh ${session.user.nama}`);
+  await logActivity("AREA_CREATED", `Area "${validated.nama_area}" dibuat oleh ${session.user.nama}`);
   revalidatePath("/masterdata/area");
   revalidatePath("/workspace");
 };
@@ -165,34 +193,44 @@ export const updateArea = async (id: number, formData: FormData) => {
     throw new Error("Area tidak ditemukan.");
   }
 
-  const nama_area = (formData.get("nama_area") as string)?.trim();
-  const keteranganRaw = formData.get("keterangan") as string;
-  const keterangan = keteranganRaw?.trim() || null;
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_area: (formData.get("nama_area") as string)?.trim() || "",
+    keterangan: (formData.get("keterangan") as string)?.trim() || undefined,
+  };
 
-  if (!nama_area) {
-    throw new Error("Nama Area wajib diisi.");
+  // Parse validation
+  const parseResult = areaValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.issues[0];
+    throw new Error(firstError.message);
   }
 
+  const validated = parseResult.data;
+
   // Cek duplikat jika nama berubah
-  if (nama_area.toLowerCase() !== existing.nama_area.toLowerCase()) {
+  if (validated.nama_area.toLowerCase() !== existing.nama_area.toLowerCase()) {
     const duplicate = await prisma.area.findFirst({
       where: {
-        nama_area: nama_area,
+        nama_area: validated.nama_area,
         id_area: { not: id },
       },
     });
 
     if (duplicate) {
-      throw new Error(`Area "${nama_area}" sudah ada.`);
+      throw new Error(`Area "${validated.nama_area}" sudah ada.`);
     }
   }
 
   await prisma.area.update({
     where: { id_area: id },
-    data: { nama_area, keterangan },
+    data: { nama_area: validated.nama_area, keterangan: validated.keterangan || null },
   });
 
-  await logActivity("AREA_UPDATED", `Area "${nama_area}" diupdate oleh ${session.user.nama}`);
+  await logActivity("AREA_UPDATED", `Area "${validated.nama_area}" diupdate oleh ${session.user.nama}`);
   revalidatePath("/masterdata/area");
   revalidatePath("/workspace");
 };

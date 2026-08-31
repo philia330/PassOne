@@ -1,56 +1,66 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { parseIdsParam, requireRole, handleApiError } from "@/app/api/_lib/api-validation";
 import { Role } from "@/lib/auth/roles";
 
 export async function DELETE(request: Request) {
   try {
-    const session = await auth();
+    // ======================================
+    // VALIDATION: Auth & Permission (ADMIN or LOGISTIK)
+    // ======================================
+    const authResult = await requireRole([Role.ADMIN, Role.LOGISTIK]);
+    if (!authResult.ok) return authResult.response;
 
-    // Only ADMIN can delete
-    if (!session || session.user?.role !== Role.ADMIN) {
-      return NextResponse.json(
-        { success: false, message: "Akses ditolak. Hanya Admin yang dapat menghapus data." },
-        { status: 403 }
-      );
-    }
-
+    // ======================================
+    // VALIDATION: IDs Parameter
+    // ======================================
     const { searchParams } = new URL(request.url);
     const idsParam = searchParams.get("ids");
 
-    if (!idsParam) {
+    const idsResult = parseIdsParam(idsParam);
+    if (!idsResult.valid) return idsResult.error;
+
+    const { ids } = idsResult;
+
+    // ======================================
+    // CHECK DEPENDENCIES
+    // ======================================
+    const materials = await prisma.material.findMany({
+      where: { id_material: { in: ids } },
+      select: { id_material: true, nama_material: true, _count: { select: { baadetail: true } } },
+    });
+
+    if (materials.length !== ids.length) {
       return NextResponse.json(
-        { success: false, message: "ID tidak valid" },
+        { success: false, message: "Beberapa material tidak ditemukan." },
+        { status: 404 }
+      );
+    }
+
+    // Check for materials with dependencies
+    const materialsWithDeps = materials.filter((m) => m._count.baadetail > 0);
+
+    if (materialsWithDeps.length > 0) {
+      const names = materialsWithDeps.map((m) => m.nama_material).join(", ");
+      return NextResponse.json(
+        { success: false, message: `Material "${names}" tidak dapat dihapus karena masih digunakan di instalasi (BAA).` },
         { status: 400 }
       );
     }
 
-    const ids = idsParam.split(",").map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
-
-    if (ids.length === 0) {
-      return NextResponse.json(
-        { success: false, message: "Tidak ada data yang dipilih" },
-        { status: 400 }
-      );
-    }
-
-    // Delete material
+    // ======================================
+    // DELETE
+    // ======================================
     await prisma.material.deleteMany({
-      where: {
-        id_material: { in: ids },
-      },
+      where: { id_material: { in: ids } },
     });
 
     return NextResponse.json({
       success: true,
-      message: `Berhasil menghapus ${ids.length} data Material`,
+      message: `Berhasil menghapus ${ids.length} material.`,
     });
 
   } catch (error) {
-    console.error("BULK DELETE MATERIAL ERROR:", error);
-    return NextResponse.json(
-      { success: false, message: "Terjadi kesalahan saat menghapus data" },
-      { status: 500 }
-    );
+    return handleApiError(error, "MATERIAL_BULK_DELETE");
   }
 }

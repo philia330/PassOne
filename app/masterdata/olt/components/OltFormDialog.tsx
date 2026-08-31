@@ -226,6 +226,7 @@ export const OltFormDialog = ({
               defaultValue={data?.nama_olt}
               placeholder="Contoh: OLT Huawei Tanggerang 1"
               required
+              autoComplete="off"
               className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
@@ -253,6 +254,7 @@ export const OltFormDialog = ({
               defaultValue={data?.ip_olt ?? ""}
               placeholder="Contoh: 192.168.1.1"
               required
+              autoComplete="off"
               className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
@@ -266,6 +268,7 @@ export const OltFormDialog = ({
                 defaultValue={data?.username_olt ?? ""}
                 placeholder="admin"
                 required
+                autoComplete="off"
                 className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </div>

@@ -308,7 +308,6 @@ export function UserFormDialog({
 
         <form
           action={handleSubmit}
-          encType="multipart/form-data"
           className="
             flex
             min-h-0
@@ -398,6 +397,7 @@ export function UserFormDialog({
                 defaultValue={data?.nama}
                 placeholder="Masukkan nama lengkap"
                 required
+                autoComplete="off"
                 className="
   h-12
   rounded-2xl
@@ -421,6 +421,7 @@ export function UserFormDialog({
                 defaultValue={data?.username}
                 placeholder="Masukkan username"
                 required
+                autoComplete="off"
                 className="
   h-12
   rounded-2xl
@@ -449,6 +450,7 @@ export function UserFormDialog({
                       ? "Kosongkan jika tidak diubah"
                       : "Masukkan password"
                   }
+                  autoComplete="new-password"
                   className="
   h-12
   rounded-2xl
@@ -487,6 +489,7 @@ export function UserFormDialog({
                   type="email"
                   defaultValue={data?.email ?? ""}
                   placeholder="email@gmail.com"
+                  autoComplete="off"
                   className="
                     h-12
                     rounded-2xl
@@ -509,6 +512,7 @@ export function UserFormDialog({
                   defaultValue={data?.no_hp ?? ""}
                   onChange={handleNoHpChange}
                   placeholder="08xxxxxxxxxx"
+                  autoComplete="off"
                   className="
                     h-12
                     rounded-2xl

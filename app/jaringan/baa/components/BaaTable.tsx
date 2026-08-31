@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import {
   Search,
@@ -315,7 +315,78 @@ export const BaaTable = ({
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [selectAllPage, setSelectAllPage] = useState(false);
+
+  // Highlight state untuk Command Palette
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const highlightHandled = useRef(false);
+  const lastHighlightId = useRef<string | null>(null);
+  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
+
+  // Handle highlight dari Command Palette / notifikasi (query param: highlight=<id_baa>)
+  // PERBAIKAN BUG HIGHLIGHT: `data` yang diterima di sini SEKARANG SELALU
+  // berisi semua BAA (lihat perbaikan di actions.ts getBaaData) -- sebelumnya
+  // server memfilter jadi cuma 1 baris kalau ada highlightId. Di effect ini
+  // sendiri yang diubah cuma cara menghapus query param `highlight` dari URL,
+  // sekarang pakai router.replace() (bukan window.history langsung) supaya
+  // searchParams dari useSearchParams() ikut konsisten.
+  useEffect(() => {
+    const highlightId = searchParams.get("highlight");
+
+    // Reset highlightHandled jika nilai highlight berubah (navigasi baru)
+    if (highlightId !== lastHighlightId.current) {
+      highlightHandled.current = false;
+      lastHighlightId.current = highlightId;
+    }
+
+    if (!highlightId || highlightHandled.current) return;
+    highlightHandled.current = true;
+
+    const targetId = Number(highlightId);
+    if (isNaN(targetId)) return;
+
+    // Cari item di data
+    const item = data.find((b) => b.id_baa === targetId);
+    if (!item) return;
+
+    // Set search ke nama pelanggan FAB dan reset filters
+    setSearch(item.fab?.nama_pelanggan || "");
+    setFilterTeknisi("all");
+    setFilterTahun("all");
+    setFilterBulan("all");
+    setFilterOlt("all");
+    setFilterOdp("all");
+    setPage(1);
+
+    // Highlight baris setelah render
+    setTimeout(() => {
+      setHighlightedId(targetId);
+
+      // Scroll ke baris
+      setTimeout(() => {
+        const row = rowRefs.current.get(targetId);
+        if (row) {
+          row.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        // Hapus highlight setelah 3 detik
+        setTimeout(() => setHighlightedId(null), 3000);
+      }, 100);
+    }, 200);
+
+    // Hapus highlight param dari URL -- pakai router.replace (bukan
+    // window.history.replaceState langsung) supaya searchParams dari
+    // useSearchParams() ikut ter-update konsisten di sisi Next.js, bukan
+    // cuma tampilan address bar doang.
+    const timer = setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("highlight");
+      const queryString = url.searchParams.toString();
+      router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchParams, data]);
 
   // Detect when navigation happens (e.g., after router.refresh())
   useEffect(() => {
@@ -419,6 +490,8 @@ export const BaaTable = ({
     setSelectAllPage(false);
     setBulkDeleteOpen(false);
     setBulkDeleteIds([]);
+    setIsBulkDeleting(false);
+    router.refresh();
   };
 
   // Untuk TEKNISI, default filter ke diri sendiri
@@ -592,9 +665,14 @@ export const BaaTable = ({
                   size="sm"
                   variant="ghost"
                   onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
                   className="h-9 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
                 >
-                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  {isBulkDeleting ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-1.5 h-4 w-4" />
+                  )}
                   Hapus
                 </Button>
               )}
@@ -924,11 +1002,17 @@ export const BaaTable = ({
                 paginated.map((item) => (
                   <TableRow
                     key={item.id_baa}
-                    className={`border-b border-slate-200 dark:border-slate-800 transition-colors cursor-pointer ${
+                    ref={(el) => {
+                      if (el) rowRefs.current.set(item.id_baa, el);
+                      else rowRefs.current.delete(item.id_baa);
+                    }}
+                    className={cn(
+                      "border-b border-slate-200 dark:border-slate-800 transition-colors cursor-pointer",
                       selectedIds.has(item.id_baa)
                         ? "bg-purple-50 dark:bg-purple-500/10"
-                        : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                    }`}
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
+                      highlightedId === item.id_baa && "bg-yellow-100 dark:bg-yellow-500/20 ring-2 ring-yellow-400 dark:ring-yellow-500"
+                    )}
                     onDoubleClick={() => router.push(`/workspace?view=baa&id_baa=${item.id_baa}`)}
                   >
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
@@ -1134,6 +1218,7 @@ export const BaaTable = ({
               handleDeleteSuccess();
             }
           }}
+          onDeleteStart={() => setIsBulkDeleting(true)}
         />
       )}
     </Card>

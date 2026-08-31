@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { Role } from "@/lib/auth/roles";
+import { z } from "zod";
 
 /**
  * ======================================
@@ -37,12 +38,65 @@ async function requireAccess() {
   }
 
   const role = session.user.role;
-  if (role !== Role.ADMIN && role !== Role.LOGISTIK) {
+  if (role !== Role.ADMIN && role !== Role.LOGISTIK && role !== Role.TEKNISI) {
     throw new Error("Anda tidak memiliki akses untuk mengelola material.");
   }
 
   return session;
 }
+
+async function requireWriteAccess() {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  const role = session.user.role;
+  // Only ADMIN and LOGISTIK can create/update/delete material
+  if (role !== Role.ADMIN && role !== Role.LOGISTIK) {
+    throw new Error("Anda tidak memiliki akses untuk mengubah data material.");
+  }
+
+  return session;
+}
+
+// ======================================================
+// VALIDATION SCHEMA - Material
+// ======================================================
+
+const materialValidation = z.object({
+  nama_material: z
+    .string()
+    .min(1, "Nama material wajib diisi.")
+    .min(2, "Nama material minimal 2 karakter.")
+    .max(100, "Nama material maksimal 100 karakter."),
+  stok: z
+    .number()
+    .int("Stok harus berupa angka bulat.")
+    .min(0, "Stok tidak boleh kurang dari 0.")
+    .max(999999, "Stok maksimal 999999."),
+  minimal_stok: z
+    .number()
+    .int("Minimal stok harus berupa angka bulat.")
+    .min(0, "Minimal stok tidak boleh kurang dari 0.")
+    .max(999999, "Minimal stok maksimal 999999."),
+  satuan: z
+    .string()
+    .min(1, "Satuan wajib diisi.")
+    .max(20, "Satuan maksimal 20 karakter."),
+  harga: z
+    .number()
+    .positive("Harga harus lebih dari 0.")
+    .max(999999999999, "Harga terlalu besar."),
+  kondisi: z.enum(["BAIK", "RUSAK"], {
+    message: "Kondisi wajib dipilih.",
+  }),
+  keterangan: z
+    .string()
+    .max(500, "Keterangan maksimal 500 karakter.")
+    .optional()
+    .nullable(),
+});
 
 async function renumberKodeMaterial() {
   const semuaMaterial = await prisma.material.findMany({
@@ -62,71 +116,126 @@ async function renumberKodeMaterial() {
 
 /**
  * ======================================
+ * HELPER: Kirim notifikasi stok kritis ke Admin/Leader/Logistik
+ * Dipanggil setiap kali stok material diubah manual (create/update) dari
+ * Master Data -- supaya tetap ada notifikasi walau stoknya tidak berubah
+ * lewat pemakaian di BAA. TEKNISI sengaja TIDAK dikirimi notifikasi ini --
+ * teknisi cuma perlu tau FAB yang ditugaskan ke mereka, bukan urusan stok.
+ * ======================================
+ */
+async function notifyIfStockCritical(idMaterial: number) {
+  const material = await prisma.material.findUnique({
+    where: { id_material: idMaterial },
+  });
+
+  if (!material) return;
+  if (material.stok > material.minimal_stok) return;
+
+  const targets = await prisma.user.findMany({
+    where: {
+      role: { in: ["ADMIN", "LEADER", "LOGISTIK"] },
+      status: true,
+    },
+    select: { id_user: true },
+  });
+
+  if (targets.length === 0) return;
+
+  const notifications = targets.map((user) => ({
+    id_user: user.id_user,
+    title: "Stok Material Menipis",
+    message: `${material.nama_material} tersisa ${material.stok} ${material.satuan} (minimal: ${material.minimal_stok}). Segera lakukan restok.`,
+    link: `/masterdata/material`,
+    type: "SYSTEM" as const,
+    is_read: false,
+  }));
+
+  await prisma.notification.createMany({ data: notifications });
+}
+
+/**
+ * ======================================
  * CREATE MATERIAL
  * ======================================
  */
 export async function createMaterial(formData: FormData) {
-  const session = await requireAccess();
+  const session = await requireWriteAccess();
 
-  const nama_material = (formData.get("nama_material") as string)?.trim();
-  const stok = Number(formData.get("stok"));
-  const minimal_stok = Number(formData.get("minimal_stok"));
-  const satuan = (formData.get("satuan") as string)?.trim();
-  const harga = Number(formData.get("harga"));
-  const kondisi = formData.get("kondisi") as "BAIK" | "RUSAK";
-  const keterangan = (formData.get("keterangan") as string)?.trim();
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_material: (formData.get("nama_material") as string)?.trim() || "",
+    stok: parseFloat(formData.get("stok") as string) || 0,
+    minimal_stok: parseFloat(formData.get("minimal_stok") as string) || 0,
+    satuan: (formData.get("satuan") as string)?.trim() || "",
+    harga: parseFloat(formData.get("harga") as string) || 0,
+    kondisi: (formData.get("kondisi") as string) || "BAIK",
+    keterangan: (formData.get("keterangan") as string)?.trim() || undefined,
+  };
 
-  if (!nama_material || !satuan || isNaN(harga) || harga <= 0) {
-    throw new Error("Nama material, satuan, dan harga wajib diisi dengan benar.");
+  // Parse validation
+  const parseResult = materialValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.issues[0];
+    throw new Error(firstError.message);
   }
+
+  const validated = parseResult.data;
 
   // Cek duplikat nama material
   const existing = await prisma.material.findFirst({
     where: {
       nama_material: {
-        equals: nama_material,
-        
+        equals: validated.nama_material,
       },
     },
   });
 
   if (existing) {
-    throw new Error(`Material "${nama_material}" sudah ada. Gunakan nama yang berbeda.`);
+    throw new Error(`Material "${validated.nama_material}" sudah ada. Gunakan nama yang berbeda.`);
   }
 
   const kodeSementara = `TMP-${Date.now()}`;
 
-  await prisma.$transaction(async (tx) => {
+  const createdId = await prisma.$transaction(async (tx) => {
     // Double-check di dalam transaction
     const existingInTx = await tx.material.findFirst({
       where: {
         nama_material: {
-          equals: nama_material,
-          
+          equals: validated.nama_material,
         },
       },
     });
 
     if (existingInTx) {
-      throw new Error(`Material "${nama_material}" sudah ada.`);
+      throw new Error(`Material "${validated.nama_material}" sudah ada.`);
     }
 
-    await tx.material.create({
+    const created = await tx.material.create({
       data: {
         kode_material: kodeSementara,
-        nama_material,
-        stok: isNaN(stok) ? 0 : stok,
-        minimal_stok: isNaN(minimal_stok) ? 0 : minimal_stok,
-        satuan,
-        harga,
-        kondisi: kondisi || "BAIK",
-        keterangan: keterangan || null,
+        nama_material: validated.nama_material,
+        stok: validated.stok,
+        minimal_stok: validated.minimal_stok,
+        satuan: validated.satuan,
+        harga: validated.harga,
+        kondisi: validated.kondisi,
+        keterangan: validated.keterangan || null,
       },
     });
+
+    return created.id_material;
   });
 
   await renumberKodeMaterial();
-  await logActivity("MATERIAL_CREATED", `Material "${nama_material}" dibuat oleh ${session.user.nama}`);
+  await logActivity("MATERIAL_CREATED", `Material "${validated.nama_material}" dibuat oleh ${session.user.nama}`);
+
+  // Cek langsung -- kalau stok awal material baru ini sudah di bawah/sama
+  // dengan minimal stok, langsung kirim notifikasi kritis.
+  await notifyIfStockCritical(createdId);
+
   revalidatePath("/masterdata/material");
 }
 
@@ -136,7 +245,7 @@ export async function createMaterial(formData: FormData) {
  * ======================================
  */
 export async function updateMaterial(id: number, formData: FormData) {
-  const session = await requireAccess();
+  const session = await requireWriteAccess();
 
   // Ambil data lama
   const existing = await prisma.material.findUnique({
@@ -147,68 +256,82 @@ export async function updateMaterial(id: number, formData: FormData) {
     throw new Error("Material tidak ditemukan.");
   }
 
-  const nama_material = (formData.get("nama_material") as string)?.trim();
-  const stok = Number(formData.get("stok"));
-  const minimal_stok = Number(formData.get("minimal_stok"));
-  const satuan = (formData.get("satuan") as string)?.trim();
-  const harga = Number(formData.get("harga"));
-  const kondisi = formData.get("kondisi") as "BAIK" | "RUSAK";
-  const keterangan = (formData.get("keterangan") as string)?.trim();
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_material: (formData.get("nama_material") as string)?.trim() || "",
+    stok: parseFloat(formData.get("stok") as string) || 0,
+    minimal_stok: parseFloat(formData.get("minimal_stok") as string) || 0,
+    satuan: (formData.get("satuan") as string)?.trim() || "",
+    harga: parseFloat(formData.get("harga") as string) || 0,
+    kondisi: (formData.get("kondisi") as string) || "BAIK",
+    keterangan: (formData.get("keterangan") as string)?.trim() || undefined,
+  };
 
-  if (!nama_material || !satuan || isNaN(harga) || harga <= 0) {
-    throw new Error("Nama material, satuan, dan harga wajib diisi dengan benar.");
+  // Parse validation
+  const parseResult = materialValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.issues[0];
+    throw new Error(firstError.message);
   }
 
+  const validated = parseResult.data;
+
   // Cek duplikat jika nama berubah
-  if (nama_material.toLowerCase() !== existing.nama_material.toLowerCase()) {
+  if (validated.nama_material.toLowerCase() !== existing.nama_material.toLowerCase()) {
     const duplicate = await prisma.material.findFirst({
       where: {
         nama_material: {
-          equals: nama_material,
-          
+          equals: validated.nama_material,
         },
         id_material: { not: id },
       },
     });
 
     if (duplicate) {
-      throw new Error(`Material "${nama_material}" sudah ada.`);
+      throw new Error(`Material "${validated.nama_material}" sudah ada.`);
     }
   }
 
   await prisma.$transaction(async (tx) => {
     // Double-check di dalam transaction
-    if (nama_material.toLowerCase() !== existing.nama_material.toLowerCase()) {
+    if (validated.nama_material.toLowerCase() !== existing.nama_material.toLowerCase()) {
       const existingInTx = await tx.material.findFirst({
         where: {
           nama_material: {
-            equals: nama_material,
-            
+            equals: validated.nama_material,
           },
           id_material: { not: id },
         },
       });
 
       if (existingInTx) {
-        throw new Error(`Material "${nama_material}" sudah ada.`);
+        throw new Error(`Material "${validated.nama_material}" sudah ada.`);
       }
     }
 
     await tx.material.update({
       where: { id_material: id },
       data: {
-        nama_material,
-        stok: isNaN(stok) ? 0 : stok,
-        minimal_stok: isNaN(minimal_stok) ? 0 : minimal_stok,
-        satuan,
-        harga,
-        kondisi: kondisi || "BAIK",
-        keterangan: keterangan || null,
+        nama_material: validated.nama_material,
+        stok: validated.stok,
+        minimal_stok: validated.minimal_stok,
+        satuan: validated.satuan,
+        harga: validated.harga,
+        kondisi: validated.kondisi,
+        keterangan: validated.keterangan || null,
       },
     });
   });
 
-  await logActivity("MATERIAL_UPDATED", `Material "${nama_material}" diupdate oleh ${session.user.nama}`);
+  await logActivity("MATERIAL_UPDATED", `Material "${validated.nama_material}" diupdate oleh ${session.user.nama}`);
+
+  // Cek ulang setelah update -- stok/minimal_stok bisa saja baru berubah
+  // jadi kritis (atau sebaliknya, sudah aman lagi) lewat form ini.
+  await notifyIfStockCritical(id);
+
   revalidatePath("/masterdata/material");
 }
 
@@ -218,7 +341,7 @@ export async function updateMaterial(id: number, formData: FormData) {
  * ======================================
  */
 export async function deleteMaterial(id: number) {
-  const session = await requireAccess();
+  const session = await requireWriteAccess();
 
   // Ambil data sebelum hapus
   const material = await prisma.material.findUnique({

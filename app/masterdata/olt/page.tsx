@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Router } from "lucide-react";
 import { getOlts, getPops } from "./actions";
+import { prisma } from "@/lib/prisma";
 import { OltSortableTable } from "./components/OltSortableTable";
 import { requirePageAccess } from "@/lib/auth/guards";
 import { ExportButton } from "@/components/ui/ExportButton";
@@ -12,6 +13,7 @@ export default async function OltPage({
   searchParams: Promise<{
     search?: string;
     page?: string;
+    highlight?: string;
   }>;
 }) {
   const session = await requirePageAccess(["ADMIN", "LEADER"]);
@@ -20,8 +22,11 @@ export default async function OltPage({
 
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
+  const highlightId = params?.highlight ? Number(params.highlight) : null;
 
-  const [{ data: olts, total, totalPages }, pops] = await Promise.all([
+  // Hitung total SEMUA data (tanpa filter) untuk card statistik
+  const [totalCount, { data: olts, total, totalPages }, pops] = await Promise.all([
+    prisma.olt.count(),
     getOlts(search, page),
     getPops(),
   ]);
@@ -49,7 +54,7 @@ export default async function OltPage({
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="text-sm text-white/80">Total OLT</p>
-              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{total}</h2>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{totalCount}</h2>
               <p className="mt-1 text-sm text-white/80">Perangkat Terdaftar</p>
             </div>
             <div className="rounded-2xl bg-white/20 p-4">

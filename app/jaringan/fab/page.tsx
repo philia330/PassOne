@@ -6,7 +6,14 @@ import { FabDialog } from "@/app/jaringan/fab/components/FabDialog";
 import { FabTable } from "@/app/jaringan/fab/components/FabTable";
 import { ExportButton } from "@/components/ui/ExportButton";
 import { StatCardsDropdown } from "@/components/dashboard/StatCardsDropdown";
+import { getFabs } from "./actions";
 
+// PERBAIKAN BUG HIGHLIGHT: page ini sebelumnya menerima searchParams.highlight
+// dan meneruskannya ke getFabs(highlightId) untuk MEMFILTER data di server --
+// itu sumber bug "gak bisa balik nampilin semua data". Highlight sekarang
+// murni ditangani di client (FabTable.tsx baca query param `highlight` sendiri
+// via useSearchParams()), jadi page ini tidak perlu lagi searchParams sama
+// sekali; getFabs() selalu mengambil semua data.
 export default async function FabPage() {
   const session = await auth();
 
@@ -16,16 +23,8 @@ export default async function FabPage() {
     role: session!.user.role,
   };
 
-  const [rawFab, areaList, paketList, salesList, penginputListRaw, fabStats] = await Promise.all([
-    prisma.fab.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        area: true,
-        paket: true,
-        users: true,
-        penginput: true,
-      },
-    }),
+  const [rawFab, areaList, paketList, salesList, penginputListRaw, teknisiList, fabStats] = await Promise.all([
+    getFabs(),
     prisma.area.findMany({
       orderBy: { nama_area: "asc" },
       select: { id_area: true, nama_area: true },
@@ -48,6 +47,12 @@ export default async function FabPage() {
         },
       },
       distinct: ["id_penginput"],
+    }),
+    // Ambil daftar teknisi untuk dropdown assignment
+    prisma.user.findMany({
+      where: { role: "TEKNISI", status: true },
+      orderBy: { nama: "asc" },
+      select: { id_user: true, nama: true, username: true, foto: true },
     }),
     prisma.fab.groupBy({
       by: ["status"],
@@ -121,6 +126,7 @@ export default async function FabPage() {
         currentUser={currentUser}
         kodeOtomatis={kodeOtomatis}
         penginputOptions={penginputList}
+        teknisiOptions={teknisiList}
         actions={canExport ? <ExportButton key="fab-export" apiUrl="/api/fab/export" filenamePrefix="Export_FAB" /> : null}
       />
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   Pagination,
   PaginationContent,
@@ -11,13 +12,19 @@ import {
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+interface PortPonPaginationProps {
+  page: number;
+  totalPages: number;
+  totalItems?: number;
+  pageSize?: number;
+}
+
 export const PortPonPagination = ({
   page,
   totalPages,
-}: {
-  page: number;
-  totalPages: number;
-}) => {
+  totalItems,
+  pageSize = 10,
+}: PortPonPaginationProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -28,41 +35,106 @@ export const PortPonPagination = ({
     router.push(`${pathname}?${params.toString()}`);
   };
 
+  const pageRange = useMemo(() => {
+    const delta = 2;
+    const range: number[] = [];
+    const start = Math.max(1, page - delta);
+    const end = Math.min(totalPages, page + delta);
+
+    for (let i = start; i <= end; i++) {
+      range.push(i);
+    }
+
+    return range;
+  }, [page, totalPages]);
+
   if (totalPages <= 1) return null;
 
   return (
-    <Pagination>
-      <PaginationContent>
-        <PaginationItem>
-          <PaginationPrevious
-            className={`cursor-pointer ${
-              page === 1 ? "pointer-events-none opacity-50" : ""
-            }`}
-            onClick={() => page > 1 && goTo(page - 1)}
-          />
-        </PaginationItem>
+    <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {totalItems !== undefined && (
+        <div className="whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
+          Menampilkan {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, totalItems)} dari {totalItems} data
+        </div>
+      )}
 
-        {Array.from({ length: totalPages }).map((_, index) => (
-          <PaginationItem key={index}>
-            <PaginationLink
-              className="cursor-pointer"
-              isActive={page === index + 1}
-              onClick={() => goTo(index + 1)}
-            >
-              {index + 1}
-            </PaginationLink>
-          </PaginationItem>
-        ))}
+      <div className="overflow-x-auto">
+        <Pagination>
+          <PaginationContent className="justify-center gap-1">
+            <PaginationItem>
+              <PaginationPrevious
+                className={`cursor-pointer rounded-xl border-slate-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 dark:border-slate-800 dark:hover:bg-purple-500/10 dark:hover:text-purple-400 ${
+                  page === 1 ? "pointer-events-none opacity-50 dark:opacity-40" : ""
+                }`}
+                onClick={() => page > 1 && goTo(page - 1)}
+              />
+            </PaginationItem>
 
-        <PaginationItem>
-          <PaginationNext
-            className={`cursor-pointer ${
-              page === totalPages ? "pointer-events-none opacity-50" : ""
-            }`}
-            onClick={() => page < totalPages && goTo(page + 1)}
-          />
-        </PaginationItem>
-      </PaginationContent>
-    </Pagination>
+            {pageRange[0] > 1 && (
+              <>
+                <PaginationItem>
+                  <PaginationLink
+                    className="cursor-pointer rounded-xl border-slate-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 dark:border-slate-800 dark:hover:bg-purple-500/10 dark:hover:text-purple-400"
+                    onClick={() => goTo(1)}
+                  >
+                    1
+                  </PaginationLink>
+                </PaginationItem>
+                {pageRange[0] > 2 && (
+                  <PaginationItem>
+                    <span className="px-2 text-slate-400">...</span>
+                  </PaginationItem>
+                )}
+              </>
+            )}
+
+            {pageRange.map((p) => (
+              <PaginationItem key={p}>
+                <PaginationLink
+                  className={`cursor-pointer rounded-xl border-slate-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 dark:border-slate-800 dark:hover:bg-purple-500/10 dark:hover:text-purple-400 ${
+                    p === page
+                      ? "bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white hover:bg-purple-600 hover:text-white border-transparent"
+                      : ""
+                  }`}
+                  isActive={p === page}
+                  onClick={() => goTo(p)}
+                >
+                  {p}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+
+            {pageRange[pageRange.length - 1] < totalPages && (
+              <>
+                {pageRange[pageRange.length - 1] < totalPages - 1 && (
+                  <PaginationItem>
+                    <span className="px-2 text-slate-400">...</span>
+                  </PaginationItem>
+                )}
+                <PaginationItem>
+                  <PaginationLink
+                    className="cursor-pointer rounded-xl border-slate-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 dark:border-slate-800 dark:hover:bg-purple-500/10 dark:hover:text-purple-400"
+                    onClick={() => goTo(totalPages)}
+                  >
+                    {totalPages}
+                  </PaginationLink>
+                </PaginationItem>
+              </>
+            )}
+
+            <PaginationItem>
+              <PaginationNext
+                className={`cursor-pointer rounded-xl border-slate-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 dark:border-slate-800 dark:hover:bg-purple-500/10 dark:hover:text-purple-400 ${
+                  page === totalPages
+                    ? "pointer-events-none opacity-50 dark:opacity-40"
+                    : ""
+                }`}
+                onClick={() => page < totalPages && goTo(page + 1)}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    </div>
   );
 };

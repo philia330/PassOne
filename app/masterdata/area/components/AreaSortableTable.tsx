@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useMemo, ReactNode, useEffect } from "react";
+import { useState, useMemo, ReactNode, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -50,6 +52,7 @@ export function AreaSortableTable({
   currentUser: CurrentUser;
   actions?: ReactNode;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -59,7 +62,14 @@ export function AreaSortableTable({
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [selectAllPage, setSelectAllPage] = useState(false);
+
+  // Highlight state untuk Command Palette
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const highlightHandled = useRef(false);
+  const lastHighlightId = useRef<string | null>(null);
+  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
 
   const canDelete = currentUser.role === "ADMIN";
 
@@ -68,6 +78,52 @@ export function AreaSortableTable({
     setSelectedIds(new Set());
     setSelectAllPage(false);
   }, [search]);
+
+  // Handle highlight dari Command Palette (query param: highlight=<id_area>)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlightId = params.get("highlight");
+
+    // Reset highlightHandled jika nilai highlight berubah (软导航后新值)
+    if (highlightId !== lastHighlightId.current) {
+      highlightHandled.current = false;
+      lastHighlightId.current = highlightId;
+    }
+
+    if (!highlightId || highlightHandled.current) return;
+    highlightHandled.current = true;
+
+    const targetId = Number(highlightId);
+    if (isNaN(targetId)) return;
+
+    const item = initialData.find((a) => a.id_area === targetId);
+    if (!item) return;
+
+    // Set search ke nama area - ini akan sync ke AreaSearch via onChange
+    setSearch(item.nama_area);
+    setPage(1);
+
+    // Update URL search param agar sinkron dengan state
+    const timer = setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("search", item.nama_area);
+      url.searchParams.delete("highlight");
+      url.searchParams.set("page", "1");
+      window.history.replaceState({}, "", url.toString());
+    }, 100);
+
+    setTimeout(() => {
+      setHighlightedId(targetId);
+      setTimeout(() => {
+        const row = rowRefs.current.get(targetId);
+        if (row) row.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => setHighlightedId(null), 3000);
+      }, 100);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
 
   const toggleSort = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -189,6 +245,8 @@ export function AreaSortableTable({
     setSelectAllPage(false);
     setBulkDeleteOpen(false);
     setBulkDeleteIds([]);
+    setIsBulkDeleting(false);
+    router.refresh();
   };
 
   return (
@@ -211,9 +269,14 @@ export function AreaSortableTable({
                   size="sm"
                   variant="ghost"
                   onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
                   className="h-9 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
                 >
-                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  {isBulkDeleting ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-1.5 h-4 w-4" />
+                  )}
                   Hapus
                 </Button>
               )}
@@ -245,7 +308,7 @@ export function AreaSortableTable({
         )}
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <AreaSearch defaultValue={search} />
+          <AreaSearch value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
             {actions}
             <AreaFormDialog mode="create" />
@@ -309,11 +372,14 @@ export function AreaSortableTable({
                 paginated.map((area) => (
                   <TableRow
                     key={area.id_area}
-                    className={`border-b border-slate-200 dark:border-slate-800 transition-colors ${
+                    ref={(el) => { if (el) rowRefs.current.set(area.id_area, el); else rowRefs.current.delete(area.id_area); }}
+                    className={cn(
+                      "border-b border-slate-200 dark:border-slate-800 transition-colors",
                       selectedIds.has(area.id_area)
                         ? "bg-purple-50 dark:bg-purple-500/10"
-                        : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                    }`}
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
+                      highlightedId === area.id_area && "bg-yellow-100 dark:bg-yellow-500/20 ring-2 ring-yellow-400 dark:ring-yellow-500"
+                    )}
                   >
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <button
@@ -441,6 +507,7 @@ export function AreaSortableTable({
               handleDeleteSuccess();
             }
           }}
+          onDeleteStart={() => setIsBulkDeleting(true)}
         />
       )}
     </Card>

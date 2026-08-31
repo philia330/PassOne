@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { auth } from "@/lib/auth";
 import { Role } from "@/lib/auth/roles";
 import { optimizeImageToWebP } from "@/lib/image-utils";
+import { z } from "zod";
 
 /**
  * ======================================
@@ -67,6 +68,104 @@ async function renumberKodeBaa() {
   );
 }
 
+// ======================================================
+// VALIDATION SCHEMAS - BAA
+// ======================================================
+
+const baaDetailValidation = z.object({
+  id_material: z.number().int().positive("Material wajib dipilih."),
+  jumlah: z
+    .number()
+    .int("Jumlah harus berupa angka bulat.")
+    .min(1, "Jumlah minimal 1."),
+  keterangan: z.string().max(255).nullable().optional(),
+});
+
+const baaValidation = z.object({
+  tanggal_instalasi: z.string().min(1, "Tanggal instalasi wajib diisi."),
+  id_fab: z.number().int().positive("FAB wajib dipilih."),
+  id_user: z.number().int().positive("Teknisi utama wajib dipilih."),
+  id_olt: z.number().int().positive("OLT wajib dipilih."),
+  id_odp: z.number().int().positive("ODP wajib dipilih."),
+  id_ont: z.number().int().positive("ONT wajib dipilih."),
+  port_olt: z
+    .number()
+    .int("Port OLT harus berupa angka bulat.")
+    .min(0, "Port OLT tidak boleh kurang dari 0.")
+    .max(9999, "Port OLT maksimal 9999.")
+    .nullable()
+    .optional(),
+  port_odp: z
+    .number()
+    .int("Port ODP harus berupa angka bulat.")
+    .min(0, "Port ODP tidak boleh kurang dari 0.")
+    .max(9999, "Port ODP maksimal 9999.")
+    .nullable()
+    .optional(),
+  rx_power_dbm: z
+    .number()
+    .min(-60, "RX Power minimal -60 dBm.")
+    .max(10, "RX Power maksimal 10 dBm.")
+    .nullable()
+    .optional(),
+  tx_power_dbm: z
+    .number()
+    .min(-10, "TX Power minimal -10 dBm.")
+    .max(20, "TX Power maksimal 20 dBm.")
+    .nullable()
+    .optional(),
+  speed_download: z.string().max(20, "Kecepatan maksimal 20 karakter.").nullable().optional(),
+  speed_upload: z.string().max(20, "Kecepatan maksimal 20 karakter.").nullable().optional(),
+  ping_ms: z
+    .number()
+    .int("Ping harus berupa angka bulat.")
+    .min(0, "Ping tidak boleh kurang dari 0.")
+    .max(10000, "Ping maksimal 10000 ms.")
+    .nullable()
+    .optional(),
+  catatan: z.string().max(1000, "Catatan maksimal 1000 karakter.").nullable().optional(),
+  baa_details: z.array(baaDetailValidation).min(1, "Minimal harus ada 1 material."),
+  teknisi_tambahan: z.array(z.number()).optional(),
+});
+
+const teknisiValidation = z.object({
+  nama_teknisi: z
+    .string()
+    .min(1, "Nama teknisi wajib diisi.")
+    .min(2, "Nama minimal 2 karakter.")
+    .max(100, "Nama maksimal 100 karakter."),
+  username_teknisi: z
+    .string()
+    .min(1, "Username wajib diisi.")
+    .min(3, "Username minimal 3 karakter.")
+    .max(30, "Username maksimal 30 karakter.")
+    .regex(/^[a-zA-Z0-9_]+$/, "Username hanya boleh huruf, angka, dan underscore.")
+    .toLowerCase(),
+  email_teknisi: z
+    .string()
+    .email("Format email tidak valid.")
+    .max(254, "Email maksimal 254 karakter.")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+});
+
+/**
+ * ======================================
+ * HELPER: Konversi FormDataEntryValue ke number untuk keperluan VALIDASI ZOD
+ * ======================================
+ * formData.get() SELALU mengembalikan string (atau File/null), padahal
+ * schema Zod untuk field seperti port_olt, rx_power_dbm, dll didefinisikan
+ * sebagai z.number(). Tanpa konversi ini, safeParse() akan SELALU gagal
+ * dengan error "Expected number, received string" -- akibatnya createBaa/
+ * updateBaa langsung throw di awal dan data tidak pernah tersimpan ke DB,
+ * walau form sudah diisi dengan benar dan lengkap oleh user.
+ */
+function toValidationNumber(value: FormDataEntryValue | null): number | undefined {
+  if (value === null || value === "") return undefined;
+  const num = Number(value);
+  return Number.isNaN(num) ? undefined : num;
+}
+
 function toOptionalNumber(
   value: FormDataEntryValue | null,
   minValue = 0,
@@ -89,7 +188,7 @@ function toOptionalString(value: FormDataEntryValue | null): string | null {
 interface ParsedDetail {
   id_material: number;
   jumlah: number;
-  keterangan: string | null;
+  keterangan?: string | null;
 }
 
 function parseBaaDetails(raw: string | null): ParsedDetail[] {
@@ -210,6 +309,73 @@ async function getLowStockWarnings(materialIds: number[]): Promise<string[]> {
 
 /**
  * ======================================
+ * HELPER: Kirim notifikasi material stok rendah ke Admin/Leader/Logistik
+ * TEKNISI sengaja tidak dikirimi -- teknisi cuma perlu tau FAB yang
+ * ditugaskan ke mereka, bukan urusan stok material.
+ * ======================================
+ */
+async function notifyLowStockToAdmins(materialIds: number[]) {
+  if (materialIds.length === 0) return;
+
+  const uniqueIds = [...new Set(materialIds)];
+
+  // Ambil material yang stoknya rendah
+  const lowStockMaterials = await prisma.material.findMany({
+    where: { id_material: { in: uniqueIds } },
+  });
+
+  const materialsNeedingNotification = lowStockMaterials.filter(
+    (m) => m.stok <= m.minimal_stok
+  );
+
+  if (materialsNeedingNotification.length === 0) return;
+
+  // Ambil semua admin, leader, dan logistik (TEKNISI dihapus dari daftar)
+  const adminsAndLeaders = await prisma.user.findMany({
+    where: {
+      role: { in: ["ADMIN", "LEADER", "LOGISTIK"] },
+      status: true,
+    },
+    select: { id_user: true, nama: true },
+  });
+
+  if (adminsAndLeaders.length === 0) return;
+
+  // Buat notification untuk setiap admin/leader/logistik
+  // Jika banyak material, buat 1 notifikasi ringkasan
+  if (materialsNeedingNotification.length === 1) {
+    const m = materialsNeedingNotification[0];
+    const notifications = adminsAndLeaders.map((user) => ({
+      id_user: user.id_user,
+      title: "Stok Material Menipis",
+      message: `${m.nama_material} tersisa ${m.stok} ${m.satuan} (minimal: ${m.minimal_stok}). Segera lakukan restok.`,
+      link: `/workspace?view=material`,
+      type: "SYSTEM" as const,
+      is_read: false,
+    }));
+
+    await prisma.notification.createMany({ data: notifications });
+  } else {
+    // Banyak material - buat notifikasi ringkasan
+    const materialList = materialsNeedingNotification
+      .map((m) => `${m.nama_material} (${m.stok} ${m.satuan})`)
+      .join(", ");
+
+    const notifications = adminsAndLeaders.map((user) => ({
+      id_user: user.id_user,
+      title: "Beberapa Material Stok Menipis",
+      message: `${materialsNeedingNotification.length} material perlu restok: ${materialList}`,
+      link: `/workspace?view=material`,
+      type: "SYSTEM" as const,
+      is_read: false,
+    }));
+
+    await prisma.notification.createMany({ data: notifications });
+  }
+}
+
+/**
+ * ======================================
  * HELPER: Validasi izin Edit/Hapus BAA
  * ======================================
  */
@@ -247,21 +413,32 @@ export async function createTeknisi(formData: FormData) {
     throw new Error("Sesi tidak valid, silakan login ulang.");
   }
 
-  const nama = (formData.get("nama_teknisi") as string)?.trim();
-  const username = (formData.get("username_teknisi") as string)?.trim().toLowerCase();
-  const email = (formData.get("email_teknisi") as string)?.trim();
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
+  const rawData = {
+    nama_teknisi: (formData.get("nama_teknisi") as string)?.trim() || "",
+    username_teknisi: (formData.get("username_teknisi") as string)?.trim().toLowerCase() || "",
+    email_teknisi: (formData.get("email_teknisi") as string)?.trim() || undefined,
+  };
 
-  if (!nama || !username) {
-    throw new Error("Nama dan Username wajib diisi");
+  // Parse validation
+  const parseResult = teknisiValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.issues[0];
+    throw new Error(firstError.message);
   }
+
+  const validated = parseResult.data;
 
   // Cek duplikat username
   const existing = await prisma.user.findUnique({
-    where: { username },
+    where: { username: validated.username_teknisi },
   });
 
   if (existing) {
-    throw new Error(`Username "${username}" sudah terdaftar. Gunakan username lain.`);
+    throw new Error(`Username "${validated.username_teknisi}" sudah terdaftar. Gunakan username lain.`);
   }
 
   const lastUser = await prisma.user.findFirst({
@@ -278,14 +455,14 @@ export async function createTeknisi(formData: FormData) {
   }
   const kodeUser = `USR${String(nextNumber).padStart(3, "0")}`;
 
-  const hashedPassword = await bcrypt.hash(`${username}123`, 10);
+  const hashedPassword = await bcrypt.hash(`${validated.username_teknisi}123`, 10);
 
   const newUser = await prisma.user.create({
     data: {
       kode_user: kodeUser,
-      nama,
-      username,
-      email: email || `${username}@passnet.id`,
+      nama: validated.nama_teknisi,
+      username: validated.username_teknisi,
+      email: validated.email_teknisi || `${validated.username_teknisi}@passnet.id`,
       password: hashedPassword,
       jkl: "LAKI_LAKI",
       role: "TEKNISI",
@@ -293,7 +470,7 @@ export async function createTeknisi(formData: FormData) {
     },
   });
 
-  await logActivity("USER_CREATED", `Teknisi "${nama}" (${username}) dibuat oleh ${session.user.nama}`);
+  await logActivity("USER_CREATED", `Teknisi "${validated.nama_teknisi}" (${validated.username_teknisi}) dibuat oleh ${session.user.nama}`);
   revalidatePath("/jaringan/baa");
 
   return {
@@ -304,7 +481,7 @@ export async function createTeknisi(formData: FormData) {
       nama: newUser.nama,
       username: newUser.username,
       email: newUser.email,
-      defaultPassword: `${username}123`,
+      defaultPassword: `${validated.username_teknisi}123`,
     },
   };
 }
@@ -400,53 +577,79 @@ export async function createBaa(formData: FormData) {
     throw new Error("Sesi tidak valid, silakan login ulang.");
   }
 
-  const tanggal_instalasi = formData.get("tanggal_instalasi") as string;
-  const status = "SELESAI" as const;
-  const id_fab = Number(formData.get("id_fab"));
-  const id_user = Number(formData.get("id_user"));
-  const id_olt = Number(formData.get("id_olt"));
-  const id_odp = Number(formData.get("id_odp"));
-  const id_ont = Number(formData.get("id_ont"));
-
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
   const teknisiTambahanRaw = formData.get("teknisi_tambahan") as string | null;
   const teknisiTambahanIds: number[] = teknisiTambahanRaw ? JSON.parse(teknisiTambahanRaw) : [];
 
-  if (!tanggal_instalasi || !id_fab || !id_user || !id_olt || !id_odp || !id_ont) {
-    throw new Error("Tanggal instalasi, FAB, Teknisi Utama, OLT, ODP, dan ONT wajib diisi.");
+  const rawData = {
+    tanggal_instalasi: (formData.get("tanggal_instalasi") as string) || "",
+    id_fab: parseInt(formData.get("id_fab") as string, 10) || 0,
+    id_user: parseInt(formData.get("id_user") as string, 10) || 0,
+    id_olt: parseInt(formData.get("id_olt") as string, 10) || 0,
+    id_odp: parseInt(formData.get("id_odp") as string, 10) || 0,
+    id_ont: parseInt(formData.get("id_ont") as string, 10) || 0,
+    port_olt: toValidationNumber(formData.get("port_olt")),
+    port_odp: toValidationNumber(formData.get("port_odp")),
+    rx_power_dbm: toValidationNumber(formData.get("rx_power_dbm")),
+    tx_power_dbm: toValidationNumber(formData.get("tx_power_dbm")),
+    speed_download: formData.get("speed_download") as string || undefined,
+    speed_upload: formData.get("speed_upload") as string || undefined,
+    ping_ms: toValidationNumber(formData.get("ping_ms")),
+    catatan: formData.get("catatan") as string || undefined,
+    baa_details: parseBaaDetails(formData.get("baa_details") as string | null),
+    teknisi_tambahan: teknisiTambahanIds,
+  };
+
+  // Parse validation
+  const parseResult = baaValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.issues[0];
+    throw new Error(firstError.message);
   }
 
-  const details = parseBaaDetails(formData.get("baa_details") as string | null);
+  const validated = parseResult.data;
 
-  // Validasi material WAJIB ADA minimal 1
-  if (details.length === 0) {
-    throw new Error("Minimal harus ada 1 material yang dipakai pada instalasi ini.");
-  }
+  const status = "SELESAI" as const;
 
   // Validasi stok SEBELUM ada perubahan
-  await validateMaterialStock(details);
-  await validateOdpStock(id_odp);
-  await validateOntAvailability(id_ont);
+  await validateMaterialStock(validated.baa_details);
+  await validateOdpStock(validated.id_odp);
+  await validateOntAvailability(validated.id_ont);
+
+  // Ambil nama pelanggan FAB -- akan ikut disimpan ke Ont.pelanggan supaya
+  // data pelanggan di ONT selalu sinkron dan real dari instalasi aktualnya.
+  const fabForOnt = await prisma.fab.findUnique({
+    where: { id_fab: validated.id_fab },
+    select: { nama_pelanggan: true },
+  });
 
   const foto_instalasi = await saveFotoInstalasi(formData, null);
   const kodeSementara = `TMP-${Date.now()}`;
 
   const newBaa = await prisma.$transaction(async (tx) => {
-    // Update status ONT ke TERPASANG
+    // Update status ONT ke TERPASANG, sekaligus catat nama pelanggan dari
+    // FAB ini -- supaya Ont.pelanggan selalu sinkron dengan BAA aktif.
     await tx.ont.update({
-      where: { id_ont },
-      data: { status: "TERPASANG" as const },
+      where: { id_ont: validated.id_ont },
+      data: {
+        status: "TERPASANG" as const,
+        pelanggan: fabForOnt?.nama_pelanggan ?? "",
+      },
     });
 
     const created = await tx.baa.create({
       data: {
         kode_baa: kodeSementara,
-        tanggal_instalasi: new Date(tanggal_instalasi),
+        tanggal_instalasi: new Date(validated.tanggal_instalasi),
         status,
-        id_fab,
-        id_user,
-        id_olt,
-        id_odp,
-        id_ont,
+        id_fab: validated.id_fab,
+        id_user: validated.id_user,
+        id_olt: validated.id_olt,
+        id_odp: validated.id_odp,
+        id_ont: validated.id_ont,
         port_olt: toOptionalNumber(formData.get("port_olt"), 0, 9999),
         port_odp: toOptionalNumber(formData.get("port_odp"), 0, 9999),
         rx_power_dbm: toOptionalNumber(formData.get("rx_power_dbm"), -60, 10),
@@ -457,7 +660,7 @@ export async function createBaa(formData: FormData) {
         catatan: toOptionalString(formData.get("catatan")),
         foto_instalasi,
         baadetail: {
-          create: details.map((d) => ({
+          create: validated.baa_details.map((d) => ({
             id_material: d.id_material,
             jumlah: d.jumlah,
             keterangan: d.keterangan,
@@ -467,7 +670,7 @@ export async function createBaa(formData: FormData) {
     });
 
     // Kurangi stok material
-    for (const d of details) {
+    for (const d of validated.baa_details) {
       await tx.material.update({
         where: { id_material: d.id_material },
         data: { stok: { decrement: d.jumlah } },
@@ -476,7 +679,7 @@ export async function createBaa(formData: FormData) {
 
     // Update status FAB ke AKTIF
     await tx.fab.update({
-      where: { id_fab },
+      where: { id_fab: validated.id_fab },
       data: { status: "AKTIF" },
     });
 
@@ -484,9 +687,9 @@ export async function createBaa(formData: FormData) {
   });
 
   // Tambah teknisi tambahan
-  if (teknisiTambahanIds.length > 0) {
+  if (validated.teknisi_tambahan && validated.teknisi_tambahan.length > 0) {
     await prisma.baateknisi.createMany({
-      data: teknisiTambahanIds.map((id_user) => ({
+      data: validated.teknisi_tambahan.map((id_user) => ({
         id_baa: newBaa.id_baa,
         id_user,
       })),
@@ -502,7 +705,10 @@ export async function createBaa(formData: FormData) {
   revalidatePath("/masterdata/odp");
   revalidatePath("/masterdata/ont");
 
-  const lowStockMaterials = await getLowStockWarnings(details.map((d) => d.id_material));
+  // Cek material stok rendah dan kirim notifikasi ke admin/leader
+  const lowStockMaterials = await getLowStockWarnings(validated.baa_details.map((d) => d.id_material));
+  await notifyLowStockToAdmins(validated.baa_details.map((d) => d.id_material));
+
   return { success: true, lowStockMaterials };
 }
 
@@ -525,26 +731,40 @@ export async function updateBaa(id: number, formData: FormData) {
 
   await requireBaaAccess("edit", oldBaa.id_user);
 
-  const tanggal_instalasi = formData.get("tanggal_instalasi") as string;
-  const id_fab = Number(formData.get("id_fab"));
-  const id_user = Number(formData.get("id_user"));
-  const id_olt = Number(formData.get("id_olt"));
-  const id_odp = Number(formData.get("id_odp"));
-  const id_ont = Number(formData.get("id_ont"));
-
+  // ======================================
+  // VALIDASI INPUT
+  // ======================================
   const teknisiTambahanRaw = formData.get("teknisi_tambahan") as string | null;
   const teknisiTambahanIds: number[] = teknisiTambahanRaw ? JSON.parse(teknisiTambahanRaw) : [];
 
-  if (!tanggal_instalasi || !id_fab || !id_user || !id_olt || !id_odp || !id_ont) {
-    throw new Error("Tanggal instalasi, FAB, Teknisi Utama, OLT, ODP, dan ONT wajib diisi.");
+  const rawData = {
+    tanggal_instalasi: (formData.get("tanggal_instalasi") as string) || "",
+    id_fab: parseInt(formData.get("id_fab") as string, 10) || 0,
+    id_user: parseInt(formData.get("id_user") as string, 10) || 0,
+    id_olt: parseInt(formData.get("id_olt") as string, 10) || 0,
+    id_odp: parseInt(formData.get("id_odp") as string, 10) || 0,
+    id_ont: parseInt(formData.get("id_ont") as string, 10) || 0,
+    port_olt: toValidationNumber(formData.get("port_olt")),
+    port_odp: toValidationNumber(formData.get("port_odp")),
+    rx_power_dbm: toValidationNumber(formData.get("rx_power_dbm")),
+    tx_power_dbm: toValidationNumber(formData.get("tx_power_dbm")),
+    speed_download: formData.get("speed_download") as string || undefined,
+    speed_upload: formData.get("speed_upload") as string || undefined,
+    ping_ms: toValidationNumber(formData.get("ping_ms")),
+    catatan: formData.get("catatan") as string || undefined,
+    baa_details: parseBaaDetails(formData.get("baa_details") as string | null),
+    teknisi_tambahan: teknisiTambahanIds,
+  };
+
+  // Parse validation
+  const parseResult = baaValidation.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const firstError = parseResult.error.issues[0];
+    throw new Error(firstError.message);
   }
 
-  const details = parseBaaDetails(formData.get("baa_details") as string | null);
-
-  // Validasi material WAJIB ADA minimal 1
-  if (details.length === 0) {
-    throw new Error("Minimal harus ada 1 material yang dipakai pada instalasi ini.");
-  }
+  const validated = parseResult.data;
 
   const existingFoto = (formData.get("foto_instalasi_existing") as string | null) || null;
   const foto_instalasi = await saveFotoInstalasi(formData, existingFoto);
@@ -555,16 +775,23 @@ export async function updateBaa(id: number, formData: FormData) {
     restoredStockMap.set(d.id_material, (restoredStockMap.get(d.id_material) ?? 0) + d.jumlah);
   }
 
-  await validateMaterialStock(details, restoredStockMap);
-  if (oldBaa.id_odp !== id_odp) {
-    await validateOdpStock(id_odp);
+  await validateMaterialStock(validated.baa_details, restoredStockMap);
+  if (oldBaa.id_odp !== validated.id_odp) {
+    await validateOdpStock(validated.id_odp);
   }
   // ONT cuma perlu dicek ulang kalau memang diganti -- kalau tetap pakai ONT
   // yang sama seperti sebelumnya, tidak perlu divalidasi lagi (dia sudah
   // "milik" BAA ini).
-  if (oldBaa.id_ont !== id_ont) {
-    await validateOntAvailability(id_ont, id);
+  if (oldBaa.id_ont !== validated.id_ont) {
+    await validateOntAvailability(validated.id_ont, id);
   }
+
+  // Nama pelanggan FAB terbaru -- dipakai untuk sinkronisasi Ont.pelanggan
+  // di bawah, baik saat ONT-nya berubah maupun tidak.
+  const fabForOnt = await prisma.fab.findUnique({
+    where: { id_fab: validated.id_fab },
+    select: { nama_pelanggan: true },
+  });
 
   await prisma.$transaction(async (tx) => {
     // Kembalikan stok material lama
@@ -581,13 +808,13 @@ export async function updateBaa(id: number, formData: FormData) {
     await tx.baa.update({
       where: { id_baa: id },
       data: {
-        tanggal_instalasi: new Date(tanggal_instalasi),
+        tanggal_instalasi: new Date(validated.tanggal_instalasi),
         status: "SELESAI",
-        id_fab,
-        id_user,
-        id_olt,
-        id_odp,
-        id_ont,
+        id_fab: validated.id_fab,
+        id_user: validated.id_user,
+        id_olt: validated.id_olt,
+        id_odp: validated.id_odp,
+        id_ont: validated.id_ont,
         port_olt: toOptionalNumber(formData.get("port_olt"), 0, 9999),
         port_odp: toOptionalNumber(formData.get("port_odp"), 0, 9999),
         rx_power_dbm: toOptionalNumber(formData.get("rx_power_dbm"), -60, 10),
@@ -598,7 +825,7 @@ export async function updateBaa(id: number, formData: FormData) {
         catatan: toOptionalString(formData.get("catatan")),
         foto_instalasi,
         baadetail: {
-          create: details.map((d) => ({
+          create: validated.baa_details.map((d) => ({
             id_material: d.id_material,
             jumlah: d.jumlah,
             keterangan: d.keterangan,
@@ -608,38 +835,48 @@ export async function updateBaa(id: number, formData: FormData) {
     });
 
     // Kurangi stok material sesuai data baru
-    for (const d of details) {
+    for (const d of validated.baa_details) {
       await tx.material.update({
         where: { id_material: d.id_material },
         data: { stok: { decrement: d.jumlah } },
       });
     }
 
-    // Tangani perubahan ONT
-    if (oldBaa.id_ont !== id_ont) {
+    // Tangani perubahan ONT + sinkronisasi nama pelanggan
+    if (oldBaa.id_ont !== validated.id_ont) {
       if (oldBaa.id_ont !== null) {
-        // ONT lama dikembalikan ke TERSEDIA
+        // ONT lama dikembalikan ke TERSEDIA, pelanggan dikosongkan lagi
         await tx.ont.update({
           where: { id_ont: oldBaa.id_ont },
-          data: { status: "TERSEDIA" as const },
+          data: { status: "TERSEDIA" as const, pelanggan: "" },
         });
       }
-      // ONT baru diset ke TERPASANG
+      // ONT baru diset ke TERPASANG dengan nama pelanggan dari FAB saat ini
       await tx.ont.update({
-        where: { id_ont },
-        data: { status: "TERPASANG" as const },
+        where: { id_ont: validated.id_ont },
+        data: {
+          status: "TERPASANG" as const,
+          pelanggan: fabForOnt?.nama_pelanggan ?? "",
+        },
+      });
+    } else {
+      // ONT sama, tapi FAB bisa saja berubah (mis. edit nama pelanggan di
+      // FAB) -- pastikan Ont.pelanggan tetap ikut yang terbaru.
+      await tx.ont.update({
+        where: { id_ont: validated.id_ont },
+        data: { pelanggan: fabForOnt?.nama_pelanggan ?? "" },
       });
     }
 
     await tx.fab.update({
-      where: { id_fab },
+      where: { id_fab: validated.id_fab },
       data: { status: "AKTIF" },
     });
   });
 
-  if (teknisiTambahanIds.length > 0) {
+  if (validated.teknisi_tambahan && validated.teknisi_tambahan.length > 0) {
     await prisma.baateknisi.createMany({
-      data: teknisiTambahanIds.map((id_user) => ({
+      data: validated.teknisi_tambahan.map((id_user) => ({
         id_baa: id,
         id_user,
       })),
@@ -654,7 +891,10 @@ export async function updateBaa(id: number, formData: FormData) {
   revalidatePath("/masterdata/odp");
   revalidatePath("/masterdata/ont");
 
-  const lowStockMaterials = await getLowStockWarnings(details.map((d) => d.id_material));
+  // Cek material stok rendah dan kirim notifikasi ke admin/leader
+  const lowStockMaterials = await getLowStockWarnings(validated.baa_details.map((d) => d.id_material));
+  await notifyLowStockToAdmins(validated.baa_details.map((d) => d.id_material));
+
   return { success: true, lowStockMaterials };
 }
 
@@ -686,11 +926,12 @@ export async function deleteBaa(id: number) {
       });
     }
 
-    // Kembalikan status ONT ke TERSEDIA (jika BAA memang punya ONT)
+    // Kembalikan status ONT ke TERSEDIA (jika BAA memang punya ONT),
+    // sekaligus kosongkan nama pelanggan karena ONT sudah tidak terpasang
     if (baa.id_ont !== null) {
       await tx.ont.update({
         where: { id_ont: baa.id_ont },
-        data: { status: "TERSEDIA" as const },
+        data: { status: "TERSEDIA" as const, pelanggan: "" },
       });
     }
 
@@ -748,11 +989,11 @@ export async function deleteMultipleBaa(ids: number[]) {
         });
       }
 
-      // Kembalikan status ONT ke TERSEDIA
+      // Kembalikan status ONT ke TERSEDIA, kosongkan pelanggan
       if (baa.id_ont !== null) {
         await tx.ont.update({
           where: { id_ont: baa.id_ont },
-          data: { status: "TERSEDIA" as const },
+          data: { status: "TERSEDIA" as const, pelanggan: "" },
         });
       }
 
@@ -775,10 +1016,126 @@ export async function deleteMultipleBaa(ids: number[]) {
 
 /**
  * ======================================
+ * QUICK CREATE ONT (dari form BAA)
+ * ======================================
+ * Dipakai saat teknisi scan barcode/QR pabrik untuk ONT fisik baru yang
+ * belum terdaftar di sistem. id_odp WAJIB dikirim dan harus sama dengan
+ * ODP yang sedang dipilih di form BAA saat itu -- id_pop diturunkan
+ * otomatis dari ODP tersebut (satu ODP selalu berada di bawah satu POP
+ * tertentu). Nama pelanggan sengaja TIDAK ditangani di sini -- field itu
+ * baru terisi otomatis saat BAA yang memakai ONT ini disubmit (lihat
+ * sinkronisasi pelanggan di createBaa/updateBaa).
+ */
+export async function quickCreateOnt(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Sesi tidak valid, silakan login ulang.");
+  }
+
+  const serial_number = (formData.get("serial_number") as string)?.trim();
+  const rawIdOdp = formData.get("id_odp") as string | null;
+
+  if (!serial_number) {
+    throw new Error("Serial number wajib diisi.");
+  }
+
+  const id_odp = rawIdOdp ? parseInt(rawIdOdp, 10) : NaN;
+  if (isNaN(id_odp)) {
+    throw new Error("Pilih ODP di form BAA terlebih dahulu sebelum menambahkan ONT baru.");
+  }
+
+  // Cek apakah ONT sudah terdaftar di tabel ONT
+  const existing = await prisma.ont.findUnique({
+    where: { serial_number },
+    include: { baa: true },
+  });
+
+  if (existing) {
+    // Jika ONT sudah terdaftar
+    if (existing.baa && existing.baa.length > 0) {
+      // ONT sudah dipakai di BAA lain, tidak bisa dipakai lagi
+      throw new Error(`ONT dengan serial number "${serial_number}" sudah dipakai oleh BAA lain.`);
+    }
+
+    if (existing.status === "RUSAK") {
+      throw new Error(`ONT dengan serial number "${serial_number}" berstatus RUSAK. Gunakan ONT lain.`);
+    }
+
+    // ONT sudah terdaftar dan TERSEDIA - gunakan ONT ini
+    return {
+      success: true,
+      data: {
+        id_ont: existing.id_ont,
+        serial_number: existing.serial_number,
+        alreadyExists: true,
+      },
+    };
+  }
+
+  // POP ditentukan otomatis mengikuti ODP yang sedang dipilih di form BAA --
+  // satu ODP memang selalu berada di bawah satu POP tertentu, jadi tidak
+  // perlu (dan tidak boleh) dipilih terpisah supaya tidak salah pasang.
+  const odp = await prisma.odp.findUnique({
+    where: { id_odp },
+    select: { olt: { select: { id_pop: true } } },
+  });
+
+  if (!odp || !odp.olt) {
+    throw new Error("ODP atau relasi OLT tidak ditemukan.");
+  }
+
+  const id_pop = odp.olt.id_pop;
+
+  // Buat ONT baru dalam transaksi
+  const newOnt = await prisma.$transaction(async (tx) => {
+    // Double-check dalam transaction
+    const existingInTx = await tx.ont.findUnique({ where: { serial_number } });
+    if (existingInTx) {
+      // Race condition - ONT sudah dibuat oleh request lain, gunakan yang ada
+      return existingInTx;
+    }
+
+    // pelanggan sengaja dikosongkan -- baru terisi otomatis saat BAA yang
+    // memakai ONT ini disubmit (lihat createBaa).
+    return await tx.ont.create({
+      data: {
+        serial_number,
+        pelanggan: "",
+        status: "TERSEDIA",
+        id_pop,
+        id_odp,
+      },
+    });
+  });
+
+  await logActivity("ONT_CREATED", `ONT "${serial_number}" dibuat oleh ${session.user.nama}`);
+  revalidatePath("/masterdata/ont");
+
+  return {
+    success: true,
+    data: {
+      id_ont: newOnt.id_ont,
+      serial_number: newOnt.serial_number,
+      alreadyExists: false,
+    },
+  };
+}
+
+/**
+ * ======================================
  * GET DATA
  * ======================================
  */
-export async function getBaaData() {
+// PERBAIKAN BUG HIGHLIGHT (sama seperti FAB): sebelumnya highlightId dipakai
+// untuk memfilter where: { id_baa: highlightId }, jadi begitu masuk dari
+// notifikasi (?highlight=123) server cuma balikin SATU baris BAA -- akibatnya
+// tabel gak bisa balik nampilin semua data walau pencarian dikosongkan.
+// Highlight/scroll-ke-baris itu sepenuhnya urusan client (BaaTable.tsx baca
+// query param `highlight` sendiri lewat useSearchParams()), jadi di sini
+// SELALU ambil semua data. Parameter highlightId sengaja dibiarkan ada di
+// signature (biar pemanggil lama yang masih mengirim argumen ini tidak error
+// kompilasi), tapi sudah tidak dipakai untuk memfilter apa pun.
+export async function getBaaData(highlightId?: number | null) {
   return await prisma.baa.findMany({
     include: {
       fab: true,
@@ -786,7 +1143,11 @@ export async function getBaaData() {
       olt: true,
       odp: true,
       ont: true,
-      baadetail: true,
+      baadetail: {
+        include: {
+          material: true,
+        },
+      },
       teknisiTambahan: {
         include: {
           users: true,
@@ -798,7 +1159,6 @@ export async function getBaaData() {
     },
   });
 }
-
 export async function getFabOptions() {
   return await prisma.fab.findMany({
     where: { status: "OPEN" },
@@ -810,6 +1170,12 @@ export async function getTeknisiOptions() {
   return await prisma.user.findMany({
     where: { role: "TEKNISI" },
     orderBy: { nama: "asc" },
+  });
+}
+
+export async function getPopOptions() {
+  return await prisma.pop.findMany({
+    orderBy: { nama_pop: "asc" },
   });
 }
 
@@ -833,6 +1199,11 @@ export async function getOntOptions() {
       baa: { none: {} },
     },
     orderBy: { serial_number: "asc" },
+    select: {
+      id_ont: true,
+      serial_number: true,
+      model: true,
+    },
   });
 }
 
@@ -857,7 +1228,13 @@ export async function getBaaById(id: number) {
       users: true,
       olt: true,
       odp: true,
-      ont: true,
+      ont: {
+        select: {
+          id_ont: true,
+          serial_number: true,
+          model: true,
+        },
+      },
       baadetail: {
         include: {
           material: true,

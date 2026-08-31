@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, ReactNode, useEffect } from "react";
+import { useState, useMemo, ReactNode, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -20,6 +21,7 @@ import { PopMapDialog } from "./PopMapDialog";
 import { OpenGoogleMaps } from "@/components/ui/OpenGoogleMaps";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type Pop = {
   id_pop: number;
@@ -56,6 +58,7 @@ export function PopSortableTable({
   actions?: ReactNode;
   currentUser?: CurrentUser;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -65,7 +68,14 @@ export function PopSortableTable({
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [selectAllPage, setSelectAllPage] = useState(false);
+
+  // Highlight state untuk Command Palette
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const highlightHandled = useRef(false);
+  const lastHighlightId = useRef<string | null>(null);
+  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
 
   const isAdmin = currentUser?.role === "ADMIN";
   const canBulkDelete = isAdmin;
@@ -75,6 +85,52 @@ export function PopSortableTable({
     setSelectedIds(new Set());
     setSelectAllPage(false);
   }, [search]);
+
+  // Handle highlight dari Command Palette (query param: highlight=<id_pop>)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlightId = params.get("highlight");
+
+    // Reset highlightHandled jika nilai highlight berubah (软导航后新值)
+    if (highlightId !== lastHighlightId.current) {
+      highlightHandled.current = false;
+      lastHighlightId.current = highlightId;
+    }
+
+    if (!highlightId || highlightHandled.current) return;
+    highlightHandled.current = true;
+
+    const targetId = Number(highlightId);
+    if (isNaN(targetId)) return;
+
+    const item = initialData.find((p) => p.id_pop === targetId);
+    if (!item) return;
+
+    // Set search ke nama POP - ini akan sync ke PopSearch via onChange
+    setSearch(item.nama_pop);
+    setPage(1);
+
+    // Update URL search param agar sinkron dengan state
+    const timer = setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("search", item.nama_pop);
+      url.searchParams.delete("highlight");
+      url.searchParams.set("page", "1");
+      window.history.replaceState({}, "", url.toString());
+    }, 100);
+
+    setTimeout(() => {
+      setHighlightedId(targetId);
+      setTimeout(() => {
+        const row = rowRefs.current.get(targetId);
+        if (row) row.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => setHighlightedId(null), 3000);
+      }, 100);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
 
   const toggleSort = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -187,6 +243,7 @@ export function PopSortableTable({
       toast.error("Pilih item yang ingin dihapus");
       return;
     }
+    setIsBulkDeleting(true);
     setBulkDeleteIds(ids);
     setBulkDeleteOpen(true);
   };
@@ -197,6 +254,8 @@ export function PopSortableTable({
     setSelectAllPage(false);
     setBulkDeleteOpen(false);
     setBulkDeleteIds([]);
+    setIsBulkDeleting(false);
+    router.refresh();
   };
 
   return (
@@ -219,9 +278,14 @@ export function PopSortableTable({
                   size="sm"
                   variant="ghost"
                   onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
                   className="h-9 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
                 >
-                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  {isBulkDeleting ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-1.5 h-4 w-4" />
+                  )}
                   Hapus
                 </Button>
               )}
@@ -253,7 +317,7 @@ export function PopSortableTable({
         )}
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <PopSearch defaultValue={search} />
+          <PopSearch value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
             {actions}
             <PopFormDialog mode="create" areas={areas} />
@@ -318,11 +382,12 @@ export function PopSortableTable({
                 paginated.map((pop) => (
                   <TableRow
                     key={pop.id_pop}
-                    className={`border-b border-slate-200 dark:border-slate-800 transition-colors ${
-                      selectedIds.has(pop.id_pop)
-                        ? "bg-purple-50 dark:bg-purple-500/10"
-                        : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                    }`}
+                    ref={(el) => { if (el) rowRefs.current.set(pop.id_pop, el); else rowRefs.current.delete(pop.id_pop); }}
+                    className={cn("border-b border-slate-200 dark:border-slate-800 transition-colors", {
+                      "bg-purple-50 dark:bg-purple-500/10": selectedIds.has(pop.id_pop),
+                      "hover:bg-slate-50 dark:hover:bg-slate-800/50": !selectedIds.has(pop.id_pop),
+                      "bg-yellow-100 dark:bg-yellow-500/20 ring-2 ring-yellow-400 dark:ring-yellow-500": highlightedId === pop.id_pop,
+                    })}
                   >
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <button
@@ -477,6 +542,7 @@ export function PopSortableTable({
           namaPop={`${bulkDeleteIds.length} POP`}
           bulkIds={bulkDeleteIds}
           open={bulkDeleteOpen}
+          onDeleteStart={() => setIsBulkDeleting(true)}
           onOpenChange={(isOpen) => {
             setBulkDeleteOpen(isOpen);
             if (!isOpen) {

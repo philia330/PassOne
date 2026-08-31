@@ -167,11 +167,15 @@
   html {
     @apply font-sans;
      font-size: 20px;
+     height: 100%;
+     overflow: hidden;
   }
 
   body {
     @apply bg-background text-foreground;
      font-size: 20px;
+     height: 100%;
+     overflow: hidden;
   }
 }
 .no-scrollbar::-webkit-scrollbar {
@@ -328,43 +332,156 @@ button svg,
    Custom Scrollbar untuk Dropdown / Combobox
    ============================================ */
 
-/* Scrollbar untuk dropdown list */
 .dropdown-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: rgb(186 230 253) rgb(241 245 249); /* sky-100 / slate-100 */
+  scrollbar-width: thin !important;
+  scrollbar-color: rgb(196 181 253) rgb(241 245 249) !important; /* purple-300 / slate-100 */
 }
 
 .dropdown-scroll::-webkit-scrollbar {
-  width: 6px;
+  width: 8px !important;
+  display: block !important;
 }
 
 .dropdown-scroll::-webkit-scrollbar-track {
-  background: rgb(241 245 249); /* slate-100 */
-  border-radius: 9999px;
+  background: rgb(241 245 249) !important; /* slate-100 */
+  border-radius: 9999px !important;
 }
 
 .dropdown-scroll::-webkit-scrollbar-thumb {
-  background-color: rgb(186 230 253); /* sky-200 */
-  border-radius: 9999px;
+  background-color: rgb(167 139 250) !important; /* purple-400, lebih pekat biar keliatan */
+  border-radius: 9999px !important;
+  border: 2px solid rgb(241 245 249) !important;
 }
 
 .dropdown-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: rgb(125 211 252); /* sky-300 */
+  background-color: rgb(124 58 237) !important; /* purple-600 */
 }
 
 /* Dark mode scrollbar untuk dropdown */
 .dark .dropdown-scroll {
-  scrollbar-color: rgb(71 85 105) rgb(30 41 59); /* slate-600 / slate-800 */
+  scrollbar-color: rgb(124 58 237) rgb(30 41 59) !important;
 }
 
 .dark .dropdown-scroll::-webkit-scrollbar-track {
-  background: rgb(30 41 59); /* slate-800 */
+  background: rgb(30 41 59) !important;
 }
 
 .dark .dropdown-scroll::-webkit-scrollbar-thumb {
-  background-color: rgb(71 85 105); /* slate-600 */
+  background-color: rgb(124 58 237) !important;
+  border: 2px solid rgb(30 41 59) !important;
 }
 
 .dark .dropdown-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(139 92 246) !important;
+}
+/* ============================================
+   Global Custom Scrollbar (Light Mode)
+   Otomatis berlaku untuk semua elemen scroll
+   ============================================ */
+
+/* Light mode - scrollbar global */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(241 245 249); /* slate-100 */
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgb(203 213 225); /* slate-300 */
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(148 163 184); /* slate-400 */
+}
+
+/* Firefox - light mode */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(203 213 225) rgb(241 245 249); /* thumb / track */
+}
+
+/* ============================================
+   Global Custom Scrollbar (Dark Mode)
+   Otomatis berlaku untuk semua elemen scroll
+   ============================================ */
+
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: rgb(30 41 59); /* slate-800 */
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: rgb(71 85 105); /* slate-600 */
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
   background-color: rgb(100 116 139); /* slate-500 */
+}
+
+/* Firefox - dark mode */
+.dark * {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(71 85 105) rgb(30 41 59); /* thumb / track */
+}
+
+/* ============================================
+   Scrollbar Global untuk Container Tertentu
+   ============================================ */
+
+/* Table container scrollbar */
+.table-container::-webkit-scrollbar,
+.dark .table-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-container::-webkit-scrollbar-track,
+.dark .table-container::-webkit-scrollbar-track {
+  background: rgb(241 245 249); /* slate-100 */
+}
+
+.table-container::-webkit-scrollbar-thumb,
+.dark .table-container::-webkit-scrollbar-thumb {
+  background-color: rgb(203 213 225); /* slate-300 */
+}
+
+.dark .table-container::-webkit-scrollbar-track {
+  background: rgb(30 41 59); /* slate-800 */
+}
+
+.dark .table-container::-webkit-scrollbar-thumb {
+  background-color: rgb(71 85 105); /* slate-600 */
+}
+
+/* Chart scroll-x global override untuk dark mode */
+.chart-scroll-x::-webkit-scrollbar-thumb {
+  background-color: rgb(203 213 225); /* slate-300 - light mode */
+}
+
+.dark .chart-scroll-x::-webkit-scrollbar-thumb {
+  background-color: rgb(71 85 105); /* slate-600 - dark mode */
+}
+
+.teknisi-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.teknisi-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.teknisi-scroll::-webkit-scrollbar-thumb {
+  background-color: #c4b5fd; /* purple-300 */
+  border-radius: 9999px;
+}
+.dark .teknisi-scroll::-webkit-scrollbar-thumb {
+  background-color: #7c3aed; /* purple-600 */
 }

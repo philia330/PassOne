@@ -12,6 +12,7 @@ export default async function MaterialPage({
   searchParams: Promise<{
     search?: string;
     page?: string;
+    highlight?: string;
   }>;
 }) {
   const session = await requirePageAccess(["ADMIN", "LOGISTIK", "TEKNISI"]);
@@ -19,6 +20,7 @@ export default async function MaterialPage({
   const params = (await searchParams) ?? {};
   const search = params.search ?? "";
   const page = Number(params.page ?? 1);
+  const highlightId = params?.highlight ? Number(params.highlight) : null;
 
   const currentRole = session.user.role;
   // Hanya Admin yang bisa delete material
@@ -53,7 +55,7 @@ export default async function MaterialPage({
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="text-sm text-white/80">Total Material</p>
-              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{total}</h2>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">{totalAll}</h2>
               <p className="mt-1 text-sm text-white/80">Material Terdaftar</p>
             </div>
 

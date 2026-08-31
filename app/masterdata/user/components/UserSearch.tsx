@@ -9,29 +9,23 @@ import {
 import {
   useEffect,
   useRef,
-  useState,
   useTransition,
 } from "react";
 
 interface UserSearchProps {
-  defaultValue: string;
+  value: string;
+  onChange: (value: string) => void;
 }
 
 export function UserSearch({
-  defaultValue,
+  value,
+  onChange,
 }: UserSearchProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-
-  const [search, setSearch] = useState(defaultValue);
   const [isPending, startTransition] = useTransition();
 
-  const firstRender = useRef(true);
-
-  // Simpan pathname & searchParams terbaru di ref,
-  // supaya effect debounce di bawah TIDAK perlu "watch" objek ini
-  // (objeknya selalu baru tiap navigasi, kalau dijadikan dependency bikin infinite loop)
   const pathnameRef = useRef(pathname);
   const searchParamsRef = useRef(searchParams);
 
@@ -40,25 +34,21 @@ export function UserSearch({
     searchParamsRef.current = searchParams;
   });
 
-  // Sinkronkan input jika URL berubah dari luar (misal tombol back browser)
+  // Sinkronisasi jika URL berubah dari luar (misal: highlight dari Command Palette)
   useEffect(() => {
-    if (defaultValue !== search) {
-      setSearch(defaultValue);
+    const urlSearch = searchParams.get("search") ?? "";
+    if (value !== urlSearch) {
+      onChange(urlSearch);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultValue]);
+  }, [searchParams]);
 
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
-
     const timeout = setTimeout(() => {
       const params = new URLSearchParams(searchParamsRef.current.toString());
 
-      if (search.trim().length > 0) {
-        params.set("search", search.trim());
+      if (value.trim().length > 0) {
+        params.set("search", value.trim());
       } else {
         params.delete("search");
       }
@@ -70,12 +60,12 @@ export function UserSearch({
           scroll: false,
         });
       });
-    }, 500);
+    }, 400);
 
     return () => clearTimeout(timeout);
-    // Sengaja HANYA depend ke `search` — pathname/searchParams diakses lewat ref
+    // Sengaja HANYA depend ke `value` — pathname/searchParams diakses lewat ref
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, router]);
+  }, [value]);
 
   return (
     <div className="relative w-full max-w-sm">
@@ -86,9 +76,10 @@ export function UserSearch({
 
       <input
         type="text"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         placeholder="Cari nama, username, email..."
+        disabled={isPending}
         className="
           h-11
           w-full

@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import React, { useState } from "react";
-import { Eye, MapPin, User, Phone, Package, Users, Calendar, Hash, FileText, CreditCard, Briefcase, Clock, CheckCircle } from "lucide-react";
+import { Eye, MapPin, User, Phone, Package, Users, Calendar, Hash, FileText, CreditCard, Briefcase, Clock, CheckCircle, ExternalLink } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -92,6 +92,14 @@ export function FabViewDialog({ fab, children, open: controlledOpen, onOpenChang
   const lng = Number(fab.longitude);
   const hasValidCoords = !Number.isNaN(lat) && !Number.isNaN(lng);
 
+  // Link Google Maps: pakai koordinat kalau ada, kalau nggak fallback ke
+  // pencarian berdasarkan teks alamat.
+  const googleMapsUrl = hasValidCoords
+    ? `https://www.google.com/maps?q=${lat},${lng}`
+    : fab.alamat
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fab.alamat)}`
+      : null;
+
   const formatDateLong = (date: Date) => {
     return new Date(date).toLocaleDateString("id-ID", {
       weekday: "long",
@@ -149,10 +157,13 @@ export function FabViewDialog({ fab, children, open: controlledOpen, onOpenChang
                 </span>
               </div>
             </div>
+            {/* mr-8: geser badge ke kiri supaya nggak numpuk sama tombol X
+                (close button) yang posisinya absolute di pojok kanan-atas
+                dialog. */}
             <Badge
               variant="secondary"
               className={cn(
-                "shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold",
+                "shrink-0 mr-8 rounded-xl px-3 py-1.5 text-xs font-bold",
                 fab.status === "AKTIF"
                   ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
                   : "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-400"
@@ -203,8 +214,26 @@ export function FabViewDialog({ fab, children, open: controlledOpen, onOpenChang
 
           {/* Alamat */}
           <div className="space-y-2">
-            <SectionDivider>Alamat</SectionDivider>
+            <div className="flex items-center justify-between gap-3 py-1">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent dark:via-slate-600" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 whitespace-nowrap">Alamat</span>
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent dark:via-slate-600" />
+            </div>
+
             <InfoCardFull icon={MapPin} label="Alamat Lengkap" value={fab.alamat} iconBg="bg-sky-100 dark:bg-sky-500/20" iconColor="text-sky-600 dark:text-sky-400" />
+
+            {/* Tombol buka Google Maps */}
+            {googleMapsUrl && (
+              <a
+                href={googleMapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-600 transition-colors hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-500/10 dark:text-sky-400 dark:hover:bg-sky-500/20"
+              >
+                <ExternalLink size={12} />
+                Buka di Google Maps
+              </a>
+            )}
 
             {/* Map Preview */}
             <div className="rounded-2xl border border-slate-200 overflow-hidden dark:border-slate-700">

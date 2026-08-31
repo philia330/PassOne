@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useMemo, ReactNode, useEffect } from "react";
+import { useState, useMemo, ReactNode, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -57,6 +59,7 @@ export function PaketSortableTable({
   currentUser: CurrentUser;
   actions?: ReactNode;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -66,7 +69,14 @@ export function PaketSortableTable({
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [selectAllPage, setSelectAllPage] = useState(false);
+
+  // Highlight state untuk Command Palette
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const highlightHandled = useRef(false);
+  const lastHighlightId = useRef<string | null>(null);
+  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
 
   const canDelete = currentUser.role === "ADMIN";
 
@@ -75,6 +85,58 @@ export function PaketSortableTable({
     setSelectedIds(new Set());
     setSelectAllPage(false);
   }, [search]);
+
+  // Handle highlight dari Command Palette (query param: highlight=<id_paket>)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlightId = params.get("highlight");
+
+    // Reset highlightHandled jika nilai highlight berubah (软导航后新值)
+    if (highlightId !== lastHighlightId.current) {
+      highlightHandled.current = false;
+      lastHighlightId.current = highlightId;
+    }
+
+    if (!highlightId || highlightHandled.current) return;
+    highlightHandled.current = true;
+
+    const targetId = Number(highlightId);
+    if (isNaN(targetId)) return;
+
+    const item = initialData.find((p) => p.id_paket === targetId);
+    if (!item) return;
+
+    // Set search ke nama paket - ini akan sync ke PaketSearch via onChange
+    setSearch(item.nama_paket);
+    setPage(1);
+
+    // Update URL search param agar sinkron dengan state
+    const timer = setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("search", item.nama_paket);
+      url.searchParams.delete("highlight");
+      url.searchParams.set("page", "1");
+      window.history.replaceState({}, "", url.toString());
+    }, 100);
+
+    // Highlight baris setelah render
+    setTimeout(() => {
+      setHighlightedId(targetId);
+
+      // Scroll ke baris
+      setTimeout(() => {
+        const row = rowRefs.current.get(targetId);
+        if (row) {
+          row.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        // Hapus highlight setelah 3 detik
+        setTimeout(() => setHighlightedId(null), 3000);
+      }, 100);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
 
   const toggleSort = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -196,6 +258,8 @@ export function PaketSortableTable({
     setSelectAllPage(false);
     setBulkDeleteOpen(false);
     setBulkDeleteIds([]);
+    setIsBulkDeleting(false);
+    router.refresh();
   };
 
   return (
@@ -218,9 +282,14 @@ export function PaketSortableTable({
                   size="sm"
                   variant="ghost"
                   onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
                   className="h-9 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
                 >
-                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  {isBulkDeleting ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-1.5 h-4 w-4" />
+                  )}
                   Hapus
                 </Button>
               )}
@@ -252,7 +321,7 @@ export function PaketSortableTable({
         )}
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <PaketSearch defaultValue={search} />
+          <PaketSearch value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
             {actions}
             <PaketDialog mode="create" kodeOtomatis={kodeOtomatis} />
@@ -317,11 +386,14 @@ export function PaketSortableTable({
                 paginated.map((item) => (
                   <TableRow
                     key={item.id_paket}
-                    className={`border-b border-slate-200 dark:border-slate-800 transition-colors ${
+                    ref={(el) => { if (el) rowRefs.current.set(item.id_paket, el); else rowRefs.current.delete(item.id_paket); }}
+                    className={cn(
+                      "border-b border-slate-200 dark:border-slate-800 transition-colors",
                       selectedIds.has(item.id_paket)
                         ? "bg-purple-50 dark:bg-purple-500/10"
-                        : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                    }`}
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
+                      highlightedId === item.id_paket && "bg-yellow-100 dark:bg-yellow-500/20 ring-2 ring-yellow-400 dark:ring-yellow-500"
+                    )}
                   >
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <button
@@ -368,9 +440,11 @@ export function PaketSortableTable({
           {paginated.map((item) => (
             <div
               key={item.id_paket}
-              className={`space-y-2 rounded-2xl border p-4 dark:border-slate-800 dark:bg-slate-800/40 ${
-                selectedIds.has(item.id_paket) ? "border-purple-300 bg-purple-50 dark:bg-purple-500/10" : ""
-              }`}
+              className={cn(
+                "space-y-2 rounded-2xl border p-4 dark:border-slate-800 dark:bg-slate-800/40",
+                selectedIds.has(item.id_paket) ? "border-purple-300 bg-purple-50 dark:bg-purple-500/10" : "",
+                highlightedId === item.id_paket && "border-yellow-400 bg-yellow-100 ring-2 ring-yellow-400 dark:border-yellow-500 dark:bg-yellow-500/20 dark:ring-yellow-500"
+              )}
             >
               <div className="flex items-start justify-between gap-2">
                 <button
@@ -423,6 +497,7 @@ export function PaketSortableTable({
               handleDeleteSuccess();
             }
           }}
+          onDeleteStart={() => setIsBulkDeleting(true)}
         />
       )}
     </Card>

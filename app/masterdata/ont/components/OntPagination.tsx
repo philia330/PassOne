@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   Pagination,
   PaginationContent,
@@ -28,50 +29,105 @@ export const OntPagination = ({
     router.push(`${pathname}?${params.toString()}`);
   };
 
+  // Sama seperti UserPagination: tampilkan rentang halaman di sekitar
+  // halaman aktif (delta 2), bukan semua nomor halaman sekaligus.
+  const pageRange = useMemo(() => {
+    const delta = 2;
+    const range: number[] = [];
+    const start = Math.max(1, page - delta);
+    const end = Math.min(totalPages, page + delta);
+
+    for (let i = start; i <= end; i++) {
+      range.push(i);
+    }
+
+    return range;
+  }, [page, totalPages]);
+
   if (totalPages <= 1) return null;
 
   return (
-    <Pagination className="mx-0 w-auto">
-      <PaginationContent className="gap-1">
-        <PaginationItem>
-          <PaginationPrevious
-            className={`cursor-pointer border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 ${
-              page === 1 ? "pointer-events-none opacity-40" : ""
-            }`}
-            onClick={() => page > 1 && goTo(page - 1)}
-          />
-        </PaginationItem>
+    <div className="overflow-x-auto">
+      <Pagination>
+        <PaginationContent className="justify-center gap-1">
+          {/* Previous Button */}
+          <PaginationItem>
+            <PaginationPrevious
+              className={`cursor-pointer rounded-xl border-slate-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 dark:border-slate-800 dark:hover:bg-purple-500/10 dark:hover:text-purple-400 ${
+                page === 1 ? "pointer-events-none opacity-50 dark:opacity-40" : ""
+              }`}
+              onClick={() => page > 1 && goTo(page - 1)}
+            />
+          </PaginationItem>
 
-        {Array.from({ length: totalPages }).map((_, index) => {
-          const pageNumber = index + 1;
-          const isActive = page === pageNumber;
+          {/* First Page (if not in range) */}
+          {pageRange[0] > 1 && (
+            <>
+              <PaginationItem>
+                <PaginationLink
+                  className="cursor-pointer rounded-xl border-slate-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 dark:border-slate-800 dark:hover:bg-purple-500/10 dark:hover:text-purple-400"
+                  onClick={() => goTo(1)}
+                >
+                  1
+                </PaginationLink>
+              </PaginationItem>
+              {pageRange[0] > 2 && (
+                <PaginationItem>
+                  <span className="px-2 text-slate-400">...</span>
+                </PaginationItem>
+              )}
+            </>
+          )}
 
-          return (
-            <PaginationItem key={index}>
+          {/* Page Numbers */}
+          {pageRange.map((p) => (
+            <PaginationItem key={p}>
               <PaginationLink
-                className={`cursor-pointer rounded-xl transition-colors ${
-                  isActive
-                    ? "bg-slate-900 font-semibold text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
-                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className={`cursor-pointer rounded-xl border-slate-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 dark:border-slate-800 dark:hover:bg-purple-500/10 dark:hover:text-purple-400 ${
+                  p === page
+                    ? "bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white hover:bg-purple-600 hover:text-white border-transparent"
+                    : ""
                 }`}
-                isActive={isActive}
-                onClick={() => goTo(pageNumber)}
+                isActive={p === page}
+                onClick={() => goTo(p)}
               >
-                {pageNumber}
+                {p}
               </PaginationLink>
             </PaginationItem>
-          );
-        })}
+          ))}
 
-        <PaginationItem>
-          <PaginationNext
-            className={`cursor-pointer border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 ${
-              page === totalPages ? "pointer-events-none opacity-40" : ""
-            }`}
-            onClick={() => page < totalPages && goTo(page + 1)}
-          />
-        </PaginationItem>
-      </PaginationContent>
-    </Pagination>
+          {/* Last Page (if not in range) */}
+          {pageRange[pageRange.length - 1] < totalPages && (
+            <>
+              {pageRange[pageRange.length - 1] < totalPages - 1 && (
+                <PaginationItem>
+                  <span className="px-2 text-slate-400">...</span>
+                </PaginationItem>
+              )}
+              <PaginationItem>
+                <PaginationLink
+                  className="cursor-pointer rounded-xl border-slate-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 dark:border-slate-800 dark:hover:bg-purple-500/10 dark:hover:text-purple-400"
+                  onClick={() => goTo(totalPages)}
+                >
+                  {totalPages}
+                </PaginationLink>
+              </PaginationItem>
+            </>
+          )}
+
+          {/* Next Button */}
+          <PaginationItem>
+            <PaginationNext
+              className={`cursor-pointer rounded-xl border-slate-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 dark:border-slate-800 dark:hover:bg-purple-500/10 dark:hover:text-purple-400 ${
+                page === totalPages
+                  ? "pointer-events-none opacity-50 dark:opacity-40"
+                  : ""
+              }`}
+              onClick={() => page < totalPages && goTo(page + 1)}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    </div>
   );
 };

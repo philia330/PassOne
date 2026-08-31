@@ -1,24 +1,41 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-export const AreaSearch = ({ defaultValue }: { defaultValue: string }) => {
+interface AreaSearchProps {
+  value: string;
+  onChange: (value: string) => void;
+}
+
+export const AreaSearch = ({ value, onChange }: AreaSearchProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
-  const [value, setValue] = useState(defaultValue);
+  const pathnameRef = useRef(pathname);
+  const searchParamsRef = useRef(searchParams);
 
   useEffect(() => {
-    if (value === (searchParams.get("search") ?? "")) {
-      return;
-    }
+    pathnameRef.current = pathname;
+    searchParamsRef.current = searchParams;
+  });
 
+  // Sinkronisasi jika URL berubah dari luar (misal: highlight dari Command Palette)
+  useEffect(() => {
+    const urlSearch = searchParams.get("search") ?? "";
+    if (value !== urlSearch) {
+      onChange(urlSearch);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  useEffect(() => {
     const timeout = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParamsRef.current.toString());
 
       if (value.trim()) {
         params.set("search", value);
@@ -28,7 +45,11 @@ export const AreaSearch = ({ defaultValue }: { defaultValue: string }) => {
 
       params.set("page", "1");
 
-      router.replace(`${pathname}?${params.toString()}`);
+      startTransition(() => {
+        router.replace(`${pathnameRef.current}?${params.toString()}`, {
+          scroll: false,
+        });
+      });
     }, 400);
 
     return () => clearTimeout(timeout);
@@ -41,9 +62,11 @@ export const AreaSearch = ({ defaultValue }: { defaultValue: string }) => {
 
       <Input
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         placeholder="Cari kode, nama, atau keterangan..."
-        className="h-11 rounded-2xl border-slate-200 bg-white pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"></Input>
-        </div>
-  )
+        disabled={isPending}
+        className="h-11 rounded-2xl border-slate-200 bg-white pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
+      />
+    </div>
+  );
 };

@@ -7,6 +7,7 @@ import {
   Trash2,
   Globe,
   MessageCircle,
+  UserCog,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ import {
 import { FabViewDialog } from "./FabViewDialog";
 import { FabDeleteDialog } from "./FabDeleteDialog";
 import { FabDialog } from "./FabDialog";
+import { FabAssignDialog } from "./FabAssignDialog";
 import type { FabData, AreaOption, PaketOption, UserOption, CurrentUser } from "@/types/fab";
 
 type FabActionsDropdownProps = {
@@ -29,6 +31,8 @@ type FabActionsDropdownProps = {
   currentUser: CurrentUser;
   canEdit: boolean;
   canDelete: boolean;
+  // Untuk assign dialog
+  teknisiOptions?: Array<{ id_user: number; nama: string; username: string; foto: string | null }>;
 };
 
 export function FabActionsDropdown({
@@ -39,9 +43,17 @@ export function FabActionsDropdown({
   currentUser,
   canEdit,
   canDelete,
+  teknisiOptions = [],
 }: FabActionsDropdownProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+
+  // Role yang boleh assign FAB ke teknisi
+  const canAssign =
+    currentUser.role === "ADMIN" ||
+    currentUser.role === "LEADER" ||
+    currentUser.role === "SALES";
 
   const openGoogleMaps = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -71,6 +83,12 @@ export function FabActionsDropdown({
     e.preventDefault();
     e.stopPropagation();
     setDeleteOpen(true);
+  };
+
+  const handleAssign = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setAssignOpen(true);
   };
 
   return (
@@ -119,6 +137,43 @@ export function FabActionsDropdown({
             <MessageCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Hubungi via WhatsApp</span>
           </DropdownMenuItem>
+
+          {/* Assign ke Teknisi - hanya untuk ADMIN, LEADER, SALES dan FAB berstatus OPEN */}
+          {canAssign && fab.status !== "AKTIF" && (
+            <>
+              <div className="my-1.5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-700" />
+              <DropdownMenuItem
+                onSelect={(e) => e.preventDefault()}
+                onClick={handleAssign}
+                className="rounded-xl gap-3 px-3 py-2 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+              >
+                <UserCog className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Tugaskan ke Teknisi
+                </span>
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {/* Info: FAB sudah aktif tidak bisa ditugaskan */}
+          {canAssign && fab.status === "AKTIF" && (
+            <>
+              <div className="my-1.5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-700" />
+              <div className="rounded-xl gap-3 px-3 py-2 opacity-50 cursor-not-allowed">
+                <div className="flex items-center gap-2">
+                  <UserCog className="h-4 w-4 text-slate-400" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-slate-400">
+                      Tugaskan ke Teknisi
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      FAB sudah Aktif
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Edit */}
           {canEdit && (
@@ -173,6 +228,21 @@ export function FabActionsDropdown({
           kodeFab={fab.kode_fab}
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
+        />
+      )}
+
+      {/* Assign Dialog */}
+      {canAssign && (
+        <FabAssignDialog
+          open={assignOpen}
+          onOpenChange={setAssignOpen}
+          fab={{
+            id_fab: fab.id_fab,
+            kode_fab: fab.kode_fab,
+            nama_pelanggan: fab.nama_pelanggan,
+            teknisiDitugaskan: (fab as any).teknisiDitugaskan,
+          }}
+          teknisiOptions={teknisiOptions}
         />
       )}
     </>
