@@ -77,7 +77,7 @@ export default function Navbar({
         <button
           onClick={openCommandPalette}
           className={cn(
-            "flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2",
+            "flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 min-w-[140px]",
             "transition-all duration-200",
             "hover:bg-slate-100 hover:scale-105 active:scale-95",
             "dark:border-slate-700 dark:hover:bg-slate-800",
@@ -86,12 +86,12 @@ export default function Navbar({
           )}
           title="Cari cepat (Ctrl+K)"
         >
-          <Search size={18} className="transition-transform group-hover:scale-110" />
-          <span className="hidden text-sm font-medium sm:inline">Cari</span>
+          <Search size={18} className="transition-transform group-hover:scale-110 flex-shrink-0" />
+          <span className="text-sm font-medium flex-1 text-left">Cari semua data langsung</span>
           <kbd className={cn(
-            "hidden sm:flex items-center gap-0.5 rounded border bg-muted px-1.5 py-0.5",
+            "flex items-center gap-0.5 rounded border bg-muted px-1.5 py-0.5",
             "font-mono text-[10px] font-medium text-muted-foreground",
-            "group-hover:border-slate-300 dark:group-hover:border-slate-600"
+            "group-hover:border-slate-300 dark:group-hover:border-slate-600 flex-shrink-0"
           )}>
             <span className="text-xs">⌘</span>K
           </kbd>

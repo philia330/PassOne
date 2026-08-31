@@ -17,10 +17,6 @@ export const credentialsProvider = Credentials({
       label: "Password",
       type: "password",
     },
-    rememberMe: {
-      label: "Remember Me",
-      type: "text",
-    },
   },
 
   async authorize(credentials) {
@@ -28,7 +24,6 @@ export const credentialsProvider = Credentials({
       .object({
         username: z.string().min(1),
         password: z.string().min(1),
-        rememberMe: z.string().optional(),
       })
       .safeParse(credentials);
 
@@ -36,7 +31,7 @@ export const credentialsProvider = Credentials({
       return null;
     }
 
-    const { username, password, rememberMe } = validated.data;
+    const { username, password } = validated.data;
 
     const user = await prisma.user.findFirst({
       where: {
@@ -77,7 +72,6 @@ export const credentialsProvider = Credentials({
       role: user.role,
       foto: user.foto,
       theme_preference: user.theme_preference,
-      rememberMe: rememberMe === "true",
     };
   },
 });

@@ -207,6 +207,7 @@ export const OdpFormDialog = ({
               defaultValue={data?.nama_odp}
               placeholder="Contoh: ODP Tanggerang Blok A"
               required
+              autoComplete="off"
               className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
@@ -218,6 +219,7 @@ export const OdpFormDialog = ({
               defaultValue={data?.alamat}
               placeholder="Contoh: Jl. Sukup No.15, Tanggerang"
               required
+              autoComplete="off"
               className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>

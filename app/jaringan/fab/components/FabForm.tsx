@@ -435,6 +435,7 @@ export const FabForm = ({
           name="nama_pelanggan"
           placeholder="Masukkan nama pelanggan"
           defaultValue={defaultValues?.nama_pelanggan}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           required
         />
@@ -457,6 +458,7 @@ export const FabForm = ({
           maxLength={NIK_LENGTH}
           value={nik}
           onChange={handleNikChange}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           required
         />
@@ -484,6 +486,7 @@ export const FabForm = ({
           maxLength={NO_HP_MAX_LENGTH}
           value={noHp}
           onChange={handleNoHpChange}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           required
         />
@@ -503,6 +506,7 @@ export const FabForm = ({
           placeholder="Masukkan alamat lengkap pelanggan"
           value={alamat}
           onChange={(e) => setAlamat(e.target.value)}
+          autoComplete="off"
           className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 resize-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           required
         />
@@ -646,6 +650,7 @@ export const FabForm = ({
             value={mapSearchQuery}
             onChange={(e) => setMapSearchQuery(e.target.value)}
             placeholder="Cari daerah atau alamat untuk menggeser peta"
+            autoComplete="off"
             className="rounded-2xl h-11 pl-10 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           />
           {mapSearching && (
@@ -746,6 +751,7 @@ export const FabForm = ({
           placeholder="Terisi otomatis dari alamat/peta"
           value={latitude}
           onChange={(e) => setLatitude(e.target.value)}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           required
         />
@@ -766,6 +772,7 @@ export const FabForm = ({
           placeholder="Terisi otomatis dari alamat/peta"
           value={longitude}
           onChange={(e) => setLongitude(e.target.value)}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           required
         />

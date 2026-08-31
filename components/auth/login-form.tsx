@@ -22,7 +22,6 @@ export default function LoginForm({ settings }: { settings: Settings }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -51,7 +50,6 @@ export default function LoginForm({ settings }: { settings: Settings }) {
       const result = await signIn("credentials", {
         username,
         password,
-        rememberMe: rememberMe ? "true" : "false",
         redirect: false,
       });
 
@@ -109,6 +107,7 @@ export default function LoginForm({ settings }: { settings: Settings }) {
   value={username}
   onChange={(e) => setUsername(e.target.value)}
   placeholder="Masukkan Username atau Email"
+  autoComplete="off"
   className="
     h-14
     rounded-2xl
@@ -143,6 +142,7 @@ export default function LoginForm({ settings }: { settings: Settings }) {
   value={password}
   onChange={(e) => setPassword(e.target.value)}
   placeholder="Masukkan Password"
+  autoComplete="current-password"
   className="
     h-14
     rounded-2xl
@@ -171,22 +171,6 @@ export default function LoginForm({ settings }: { settings: Settings }) {
                 )}
               </button>
             </div>
-          </div>
-
-          {/* Remember Me */}
-          <div className="flex items-center">
-            <label className="flex cursor-pointer items-center gap-3">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-purple-600"
-              />
-
-              <span className="text-sm text-slate-600">
-                Remember Me
-              </span>
-            </label>
           </div>
 
           {/* Button */}

@@ -379,6 +379,7 @@ export const OntFormDialog = ({
                 placeholder="Contoh: SN-HW-00123456"
                 maxLength={50}
                 required
+                autoComplete="off"
                 className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
               <p className="text-xs text-slate-400">
@@ -396,6 +397,7 @@ export const OntFormDialog = ({
                 onChange={handleModelChange}
                 placeholder="Contoh: Huawei HG8245H"
                 maxLength={100}
+                autoComplete="off"
                 className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
               <p className="text-xs text-slate-400">{model.length}/100 karakter</p>

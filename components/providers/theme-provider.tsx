@@ -72,7 +72,7 @@ export function ThemeProvider({
     applyTheme(newPreference.toLowerCase());
 
     // Simpan ke database via API
-    fetch("/api/users/theme", {
+    fetch("/api/user/theme", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ theme_preference: newPreference }),
@@ -89,11 +89,15 @@ export function ThemeProvider({
 
     // Simpan ke database via API
     try {
-      await fetch("/api/users/theme", {
+      await fetch("/api/user/theme", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ theme_preference: preference }),
       });
+
+      // Trigger session refresh agar theme_preference di JWT token ikut ter-update
+      // Ini penting agar setelah server restart, nilai theme dari token masih benar
+      await fetch("/api/auth/session");
     } catch (error) {
       console.error("Failed to save theme preference:", error);
     }

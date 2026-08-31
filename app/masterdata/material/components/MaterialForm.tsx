@@ -104,6 +104,7 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
           value={namaMaterial}
           onChange={handleNamaMaterialChange}
           maxLength={100}
+          autoComplete="off"
           className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 ${
             errors.nama_material ? "border-red-500 focus-visible:ring-red-500" : ""
           }`}
@@ -184,6 +185,7 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
           value={satuan}
           onChange={handleSatuanChange}
           maxLength={20}
+          autoComplete="off"
           className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 ${
             errors.satuan ? "border-red-500 focus-visible:ring-red-500" : ""
           }`}
@@ -260,6 +262,7 @@ export const MaterialForm = ({ defaultValues, kodeOtomatis }: MaterialFormProps)
           maxLength={500}
           placeholder="Tulis keterangan tambahan di sini (opsional)"
           defaultValue={defaultValues?.keterangan ?? ""}
+          autoComplete="off"
           className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 resize-none"
         />
         <p className="text-xs text-slate-400">Maksimal 500 karakter</p>

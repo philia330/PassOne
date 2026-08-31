@@ -31,7 +31,6 @@ declare module "next-auth" {
       | "LOGISTIK";
     foto?: string | null;
     theme_preference?: string;
-    rememberMe?: boolean;
   }
 }
 
@@ -49,6 +48,5 @@ declare module "next-auth/jwt" {
       | "LOGISTIK";
     foto?: string | null;
     theme_preference?: string;
-    exp?: number;
   }
 }

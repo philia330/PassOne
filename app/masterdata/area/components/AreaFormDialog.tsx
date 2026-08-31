@@ -128,6 +128,7 @@ export const AreaFormDialog = ({
               placeholder="Contoh: Tangerang Selatan"
               maxLength={100}
               required
+              autoComplete="off"
               className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
             <p className="text-xs text-slate-400">{namaArea.length}/100 karakter</p>
@@ -144,6 +145,7 @@ export const AreaFormDialog = ({
               defaultValue={data?.keterangan ?? ""}
               placeholder="Contoh: Mencakup wilayah Ciputat dan sekitarnya"
               maxLength={255}
+              autoComplete="off"
               className="h-12 rounded-2xl border-slate-200 placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
             <p className="text-xs text-slate-400">Maksimal 255 karakter</p>

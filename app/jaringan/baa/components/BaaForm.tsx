@@ -728,6 +728,7 @@ export const BaaForm = ({
           min={1}
           max={9999}
           defaultValue={defaultValues?.port_olt ?? ""}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           required
         />
@@ -749,6 +750,7 @@ export const BaaForm = ({
           min={1}
           max={9999}
           defaultValue={defaultValues?.port_odp ?? ""}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           required
         />
@@ -770,6 +772,7 @@ export const BaaForm = ({
           placeholder="Contoh: -18.5 (biasanya minus)"
           required
           defaultValue={defaultValues?.rx_power_dbm ?? ""}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
@@ -790,6 +793,7 @@ export const BaaForm = ({
           placeholder="Contoh: 3.2"
           required
           defaultValue={defaultValues?.tx_power_dbm ?? ""}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
@@ -808,6 +812,7 @@ export const BaaForm = ({
           placeholder="Contoh: 50 Mbps"
           required
           defaultValue={defaultValues?.speed_download ?? ""}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
@@ -826,6 +831,7 @@ export const BaaForm = ({
           placeholder="Contoh: 20 Mbps"
           required
           defaultValue={defaultValues?.speed_upload ?? ""}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
@@ -846,6 +852,7 @@ export const BaaForm = ({
           placeholder="Contoh: 12"
           required
           defaultValue={defaultValues?.ping_ms ?? ""}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
@@ -949,6 +956,7 @@ export const BaaForm = ({
           rows={2}
           placeholder="Catatan tambahan (opsional)"
           defaultValue={defaultValues?.catatan ?? ""}
+          autoComplete="off"
           className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 resize-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
         />
       </div>
@@ -1014,6 +1022,7 @@ export const BaaForm = ({
                     placeholder="Keterangan (opsional)"
                     value={row.keterangan}
                     onChange={(e) => updateRow(row.rowId, "keterangan", e.target.value)}
+                    autoComplete="off"
                     className="rounded-xl h-10 border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
@@ -1078,6 +1087,7 @@ export const BaaForm = ({
                 value={scannedSerial}
                 onChange={(e) => setScannedSerial(e.target.value)}
                 placeholder="Serial number ONT"
+                autoComplete="off"
                 className="rounded-2xl h-11 border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>

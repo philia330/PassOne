@@ -133,6 +133,7 @@ export default function NetworkMap({ points, fullHeight = false }: { points: Net
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari nama POP, OLT, ODP, atau pelanggan FAB..."
+            autoComplete="off"
             className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-9 text-sm text-slate-700 outline-none transition-all duration-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500"
           />
           {searchQuery && (

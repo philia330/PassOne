@@ -86,6 +86,7 @@ export const PaketForm = ({ defaultValues, kodeOtomatis }: PaketFormProps) => {
           value={namaPaket}
           onChange={handleNamaPaketChange}
           maxLength={100}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
           required
         />
@@ -108,6 +109,7 @@ export const PaketForm = ({ defaultValues, kodeOtomatis }: PaketFormProps) => {
           value={kecepatan}
           onChange={handleKecepatanChange}
           maxLength={50}
+          autoComplete="off"
           className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400"
           required
         />
@@ -157,6 +159,7 @@ export const PaketForm = ({ defaultValues, kodeOtomatis }: PaketFormProps) => {
           maxLength={255}
           placeholder="Keterangan tambahan (opsional)"
           defaultValue={defaultValues?.keterangan ?? ""}
+          autoComplete="off"
           className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 resize-none"
         />
         <p className="text-xs text-slate-400">Maksimal 255 karakter</p>

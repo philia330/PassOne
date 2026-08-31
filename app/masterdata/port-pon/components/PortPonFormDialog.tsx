@@ -302,6 +302,7 @@ export const PortPonFormDialog = ({
                 placeholder="GTGO, GTGH"
                 maxLength={50}
                 required
+                autoComplete="off"
                 className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
               <p className="text-xs text-slate-400">{tipeKartu.length}/50 karakter</p>

@@ -211,6 +211,7 @@ export const PopFormDialog = ({
               defaultValue={data?.nama_pop}
               placeholder="Contoh: POP Tanggerang Pusat"
               required
+              autoComplete="off"
               className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             />
           </div>
@@ -222,6 +223,7 @@ export const PopFormDialog = ({
               defaultValue={data?.alamat}
               placeholder="Contoh: Jl. Merdeka No.10, Tanggerang"
               required
+              autoComplete="off"
               className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             />
           </div>
