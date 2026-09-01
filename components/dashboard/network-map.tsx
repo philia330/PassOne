@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import { Search, X } from "lucide-react";
@@ -56,8 +57,14 @@ export default function NetworkMap({ points, fullHeight = false }: { points: Net
   const [mapKey] = useState(() => `map-${Math.random().toString(36).slice(2)}`);
   const [selectedPoint, setSelectedPoint] = useState<NetworkPoint | null>(null);
   const [routes, setRoutes] = useState<Record<string, LatLng[]>>({});
+  const [tileError, setTileError] = useState(false);
   const fetchedRef = useRef<Set<string>>(new Set());
-  const mapIdRef = useRef(`leaflet-map-${Math.random().toString(36).slice(2)}`);
+
+  // Ganti Math.random() + useRef di body render (melanggar react-hooks/purity
+  // & react-hooks/refs) dengan useId() bawaan React, yang aman dipanggil saat
+  // render dan hasilnya stabil sepanjang lifetime komponen.
+  const reactId = useId();
+  const mapId = `leaflet-map-${reactId.replace(/[^a-zA-Z0-9-]/g, "")}`;
 
   function toggleType(type: NetworkPoint["type"]) {
     setActiveTypes((prev) => {
@@ -125,9 +132,51 @@ export default function NetworkMap({ points, fullHeight = false }: { points: Net
   return (
     <div className={`relative flex flex-col bg-white dark:bg-slate-900 ${fullHeight ? "h-full" : "rounded-2xl border border-slate-200 dark:border-slate-800"}`}>
       {/* Search bar */}
-      <div className="flex-shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-4 py-3 dark:border-slate-800 dark:bg-slate-900/80">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-500 dark:text-purple-400 transition-colors duration-200" size={16} />
+      {/*
+        style={ transform: translateZ(0) } SENGAJA ditambahkan di sini.
+        Leaflet menggerakkan tile peta pakai CSS transform: translate3d()
+        (GPU-accelerated) setiap kali map di-klik/di-geser/di-zoom. Kombinasi
+        ini dengan parent overflow-hidden bersarang (lihat NetworkMapPage) dan
+        search bar yang juga punya properti `transition-all` adalah kombinasi
+        yang dikenal punya bug compositing di browser Chromium: begitu tile
+        peta di-pan/zoom, search bar (sibling-nya) gagal di-repaint dengan
+        benar dan terlihat kosong sampai di-hard-refresh manual.
+        translateZ(0) memaksa search bar punya GPU layer sendiri yang
+        terisolasi dari perubahan layer si peta, sehingga tidak ikut kena
+        imbas repaint yang salah.
+      */}
+      <div
+        className="flex-shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-4 py-3 dark:border-slate-800 dark:bg-slate-900/80"
+        style={{ transform: "translateZ(0)", willChange: "transform" }}
+      >
+        {/* isolate: bikin wrapper search punya stacking context sendiri.
+            willChange: "transform" di icon & tombol X: keduanya pakai
+            -translate-y-1/2 (CSS transform) buat center vertikal -- elemen
+            kecil ber-transform absolute kayak gini paling sering jadi korban
+            bug "vanish/gak ke-repaint" di Chromium waktu ada transform besar
+            (pan/zoom peta) kejadian di dekatnya. willChange memaksa browser
+            kasih GPU layer sendiri buat elemen ini dari awal. */}
+        {/* isolate: bikin wrapper search punya stacking context sendiri.
+            Icon di-center pakai flexbox (inset-y-0 + flex items-center),
+            BUKAN transform (-translate-y-1/2) seperti sebelumnya -- supaya
+            gak bentrok waktu icon-nya dianimasikan scale lewat Framer
+            Motion (animasi scale juga jalan lewat CSS transform, jadi kalau
+            dua-duanya sama-sama pakai transform buat hal yang beda,
+            salah satu bakal ke-timpa). willChange: "transform" tetap
+            dipasang di kontainer icon supaya dapat GPU layer sendiri,
+            terisolasi dari transform besar punya peta pas di-pan/zoom. */}
+        <div className="relative isolate">
+          <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center" style={{ willChange: "transform" }}>
+            <motion.div
+              // Animasi "membesar sebentar lalu balik normal" -- muncul
+              // sekali tiap kali komponen pertama kali muncul di layar.
+              initial={{ scale: 1 }}
+              animate={{ scale: [1, 1.35, 1] }}
+              transition={{ duration: 0.6, ease: "easeInOut", delay: 0.3 }}
+            >
+              <Search size={16} className="text-purple-500 dark:text-purple-400 transition-colors duration-200" />
+            </motion.div>
+          </div>
           <input
             type="text"
             value={searchQuery}
@@ -135,9 +184,14 @@ export default function NetworkMap({ points, fullHeight = false }: { points: Net
             placeholder="Cari nama POP, OLT, ODP, atau pelanggan FAB..."
             autoComplete="off"
             className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-9 text-sm text-slate-700 outline-none transition-all duration-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500"
+            style={{ willChange: "transform" }}
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-500 dark:text-slate-500 dark:hover:text-purple-400 transition-colors duration-200 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-500 dark:text-slate-500 dark:hover:text-purple-400 transition-colors duration-200 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"
+              style={{ willChange: "transform" }}
+            >
               <X size={16} />
             </button>
           )}
@@ -145,7 +199,10 @@ export default function NetworkMap({ points, fullHeight = false }: { points: Net
       </div>
 
       {/* Filter controls */}
-      <div className="flex-shrink-0 flex flex-wrap items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-3 dark:border-slate-800 dark:from-slate-800/50 dark:to-slate-900/50">
+      <div
+        className="flex-shrink-0 flex flex-wrap items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-3 dark:border-slate-800 dark:from-slate-800/50 dark:to-slate-900/50"
+        style={{ transform: "translateZ(0)", willChange: "transform" }}
+      >
         <div className="flex flex-wrap gap-2">
           {TYPE_LABELS.map((type) => {
             const active = activeTypes.has(type);
@@ -175,18 +232,38 @@ export default function NetworkMap({ points, fullHeight = false }: { points: Net
         <span className="text-xs text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">{filteredPoints.length} dari {points.length} titik</span>
       </div>
 
-      {/* Map Container */}
-      <div className="relative flex-1" style={{ minHeight: fullHeight ? "calc(100vh - 8rem)" : "400px" }}>
+      {/* Map Container -- className "isolate" bikin Leaflet punya stacking &
+          compositing context sendiri, jadi transform pan/zoom-nya gak
+          "bocor" ke elemen sibling di luar wrapper ini.
+          minHeight sekarang cuma jaring pengaman minimum (300px), BUKAN
+          lagi maksa ketinggian besar (calc(100vh - 8rem)) -- ukuran
+          sebenarnya sekarang mengikuti tinggi parent (diatur di halaman
+          NetworkMapPage lewat flex-1 dari <div style={{ height: "60vh" }}>). */}
+      <div className="relative flex-1 isolate" style={{ minHeight: fullHeight ? "300px" : "400px" }}>
+        {tileError && (
+          <div className="absolute inset-x-0 top-0 z-[1000] bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 dark:bg-amber-950/60 dark:border-amber-900 dark:text-amber-300">
+            Gagal memuat gambar peta (tile). Kemungkinan diblokir ad blocker/extension browser, atau koneksi internet
+            ke tile.openstreetmap.org bermasalah. Coba nonaktifkan ad blocker atau buka di mode Incognito.
+          </div>
+        )}
         <MapContainer
           key={mapKey}
-          id={mapIdRef.current}
+          id={mapId}
           center={center}
           zoom={12}
           style={{ height: "100%", width: "100%", position: "absolute", top: 0, left: 0 }}
           scrollWheelZoom={true}
         >
           <MapAutoPan searchQuery={searchQuery} filteredPoints={filteredPoints} />
-          <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <TileLayer
+            attribution='&copy; OpenStreetMap contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            subdomains={["a", "b", "c"]}
+            eventHandlers={{
+              tileerror: () => setTileError(true),
+              tileload: () => setTileError(false),
+            }}
+          />
           <MarkerClusterGroup chunkedLoading maxClusterRadius={60} spiderfyOnMaxZoom={false}>
             {filteredPoints.map((p) => (
               <Marker key={p.id} position={[p.lat, p.lng]} icon={createMarkerIcon(p)} eventHandlers={{ click: () => handleMarkerClick(p) }} />

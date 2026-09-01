@@ -485,3 +485,8 @@ button svg,
 .dark .teknisi-scroll::-webkit-scrollbar-thumb {
   background-color: #7c3aed; /* purple-600 */
 }
+
+.leaflet-container ~ * input,
+input[placeholder] {
+  transform: translateZ(0);
+}
