@@ -486,7 +486,28 @@ button svg,
   background-color: #7c3aed; /* purple-600 */
 }
 
-.leaflet-container ~ * input,
-input[placeholder] {
-  transform: translateZ(0);
+/* ============================================
+   Search Icon Pulse Animation
+   Runs once on first mount, then stops
+   ============================================ */
+
+@keyframes search-pulse-once {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.35);
+  }
+}
+
+.animate-search-pulse-once {
+  animation: search-pulse-once 0.6s ease-in-out 0.3s 1;
+  /* delay: 0.3s, iteration: 1 (runs once) */
+  /* Using transform: scale() ensures no layout shift */
+}
+
+/* Ensure the icon is always visible (base state) */
+.animate-search-pulse-once svg {
+  transform: scale(1);
+  display: block;
 }

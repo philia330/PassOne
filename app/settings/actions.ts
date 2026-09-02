@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { Role } from "@/lib/auth/roles";
 import { logActivity } from "@/lib/activity-log";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "logo");
@@ -13,7 +14,7 @@ const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "logo");
 export async function updateSettings(formData: FormData) {
   const session = await auth();
 
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user || session.user.role !== Role.ADMIN) {
     throw new Error("Tidak memiliki akses.");
   }
 

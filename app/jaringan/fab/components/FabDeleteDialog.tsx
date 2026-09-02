@@ -82,7 +82,8 @@ export const FabDeleteDialog = ({
       <AlertDialogContent
         className="
           flex h-full max-h-[100dvh] w-full max-w-full flex-col
-          overflow-hidden rounded-none
+          overflow-hidden rounded-none bg-white text-slate-900
+          dark:bg-slate-900 dark:text-slate-50
           sm:h-auto sm:max-h-[90vh] sm:max-w-[400px] sm:rounded-3xl
         "
       >
@@ -97,19 +98,19 @@ export const FabDeleteDialog = ({
             </div>
           </div>
 
-          <AlertDialogTitle className="w-full text-lg font-bold text-slate-900 text-center">
+          <AlertDialogTitle className="w-full text-center text-lg font-bold text-slate-900 dark:text-slate-50">
             {isBulk ? `Hapus ${itemCount} data FAB?` : "Hapus data FAB ini?"}
           </AlertDialogTitle>
-          <AlertDialogDescription className="w-full text-sm text-slate-500 leading-relaxed text-center">
+          <AlertDialogDescription className="w-full text-center text-sm leading-relaxed text-slate-500 dark:text-slate-300">
             {isBulk ? (
               <>
-                Kamu akan menghapus <strong className="text-slate-700">{itemCount} data FAB</strong>.
+                Kamu akan menghapus <strong className="text-slate-700 dark:text-slate-100">{itemCount} data FAB</strong>.
                 Data yang sudah dihapus tidak bisa dikembalikan.
               </>
             ) : (
               <>
                 Kamu akan menghapus pengajuan FAB{" "}
-                <strong className="text-slate-700">&quot;{kodeFab}&quot;</strong>. Data yang
+                <strong className="text-slate-700 dark:text-slate-100">&quot;{kodeFab}&quot;</strong>. Data yang
                 sudah dihapus tidak bisa dikembalikan.
               </>
             )}
@@ -117,7 +118,7 @@ export const FabDeleteDialog = ({
         </AlertDialogHeader>
 
         {errorMsg && (
-          <p className="mx-4 sm:mx-6 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+          <p className="mx-4 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-600 dark:bg-red-950/30 dark:text-red-300 sm:mx-6">
             {errorMsg}
           </p>
         )}
@@ -125,7 +126,7 @@ export const FabDeleteDialog = ({
         <div className="flex-1" />
 
         <AlertDialogFooter className="sm:justify-center gap-2 mt-2 flex-shrink-0 px-4 pb-4 sm:px-6 sm:pb-6">
-          <AlertDialogCancel disabled={isPending} className="rounded-2xl h-11 flex-1 active:scale-95 transition-transform">
+          <AlertDialogCancel disabled={isPending} className="h-11 flex-1 rounded-2xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50 active:scale-95 transition-transform dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
             Batal
           </AlertDialogCancel>
           <AlertDialogAction

@@ -318,6 +318,7 @@ export const OdpFormDialog = ({
               disabled={isSubmitting || !oltValue}
               className="h-11 cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 font-semibold text-white active:scale-95 hover:scale-105 transition-transform"
             >
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSubmitting ? "Menyimpan..." : "Simpan"}
             </Button>
           </DialogFooter>

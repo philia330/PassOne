@@ -9,8 +9,10 @@ import { Role, JenisKelamin } from "@prisma/client";
 import path from "path";
 import fs from "fs/promises";
 import { requireRole } from "@/lib/auth/guards";
+import { auth } from "@/lib/auth";
 import { optimizeImageToWebP } from "@/lib/image-utils";
 import { z } from "zod";
+import { normalizeRole } from "@/lib/auth/roles";
 import {
   userNameSchema,
   usernameSchema,
@@ -20,6 +22,31 @@ import {
 } from "@/lib/validations";
 
 const PAGE_SIZE = 10;
+
+const LEADER_ALLOWED_ROLES: Role[] = [Role.SALES, Role.TEKNISI];
+
+function assertRoleAssignmentAllowed(currentUserRole: string | undefined, targetRole: string) {
+  const normalizedCurrentRole = normalizeRole(currentUserRole);
+  const normalizedTargetRole = normalizeRole(targetRole);
+
+  if (!normalizedTargetRole) {
+    throw new Error("Role tidak valid.");
+  }
+
+  if (normalizedCurrentRole === Role.ADMIN) {
+    return;
+  }
+
+  if (normalizedCurrentRole === Role.LEADER) {
+    if (LEADER_ALLOWED_ROLES.includes(normalizedTargetRole)) {
+      return;
+    }
+
+    throw new Error("Leader hanya dapat menambahkan user dengan role SALES atau TEKNISI.");
+  }
+
+  throw new Error("Anda tidak memiliki izin untuk mengatur role user.");
+}
 
 // ======================================================
 // VALIDATION SCHEMAS - User specific
@@ -91,10 +118,11 @@ const generateKodeUser = async (): Promise<string> => {
 // ======================================================
 
 export const getUsers = async (search = "", page = 1) => {
-  await requireRole(["ADMIN"]); // sebelumnya requireAuth()
-  // ...sisanya tetap sama
+  const session = await requireRole(["ADMIN", "LEADER"]);
+  const currentRole = normalizeRole(session.user.role);
 
-  const where = search
+  const leaderAllowedRoles = [Role.SALES, Role.TEKNISI];
+  const searchWhere = search
     ? {
         OR: [
           { nama: { contains: search } },
@@ -103,7 +131,19 @@ export const getUsers = async (search = "", page = 1) => {
           { kode_user: { contains: search } },
         ],
       }
-    : {};
+    : undefined;
+
+  const where =
+    currentRole === Role.LEADER
+      ? searchWhere
+        ? {
+            AND: [
+              searchWhere,
+              { role: { in: leaderAllowedRoles } },
+            ],
+          }
+        : { role: { in: leaderAllowedRoles } }
+      : searchWhere ?? {};
 
   const [data, total] = await Promise.all([
     prisma.user.findMany({
@@ -168,7 +208,7 @@ const uploadFoto = async (file: File | null): Promise<string | null> => {
 // ======================================================
 
 export const createUser = async (formData: FormData) => {
-  const session = await requireRole(["ADMIN"]);
+  const session = await requireRole(["ADMIN", "LEADER"]);
 
   // ======================================================
   // VALIDASI INPUT
@@ -193,6 +233,7 @@ export const createUser = async (formData: FormData) => {
   }
 
   const validated = parseResult.data;
+  assertRoleAssignmentAllowed(session.user.role, validated.role);
 
   // ======================================================
   // Generate kode user
@@ -256,7 +297,7 @@ export const createUser = async (formData: FormData) => {
 // ======================================================
 
 export const updateUser = async (id: number, formData: FormData) => {
-  const session = await requireRole(["ADMIN"]);
+  const session = await requireRole(["ADMIN", "LEADER"]);
 
   // ======================================================
   // VALIDASI INPUT
@@ -281,6 +322,7 @@ export const updateUser = async (id: number, formData: FormData) => {
   }
 
   const validated = parseResult.data;
+  assertRoleAssignmentAllowed(session.user.role, validated.role);
 
   // ======================================================
   // Cek Username Sudah Digunakan User Lain

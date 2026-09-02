@@ -2,7 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Pencil, Plus, Upload, Eye, EyeOff } from "lucide-react";
+import {
+  Pencil,
+  Plus,
+  Upload,
+  Eye,
+  EyeOff,
+  Loader2,
+  ShieldCheck,
+  Users,
+  BriefcaseBusiness,
+  Wrench,
+  Truck,
+  ChevronDown,
+} from "lucide-react";
 import { toast } from "sonner";
 import { JenisKelamin, Role } from "@prisma/client";
 
@@ -51,6 +64,7 @@ type UserData = {
 type Props = {
   mode: "create" | "edit";
   data?: UserData;
+  currentUserRole?: string;
 };
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -66,9 +80,21 @@ const JKL_LABEL: Record<JenisKelamin, string> = {
   PEREMPUAN: "Perempuan",
 };
 
+const ROLE_META: Record<
+  "ADMIN" | "LEADER" | "SALES" | "TEKNISI" | "LOGISTIK",
+  { icon: typeof ShieldCheck; color: string; label: string }
+> = {
+  ADMIN: { icon: ShieldCheck, color: "text-pink-600", label: "ADMIN" },
+  LEADER: { icon: Users, color: "text-violet-600", label: "LEADER" },
+  SALES: { icon: BriefcaseBusiness, color: "text-blue-600", label: "SALES" },
+  TEKNISI: { icon: Wrench, color: "text-orange-600", label: "TEKNISI" },
+  LOGISTIK: { icon: Truck, color: "text-emerald-600", label: "LOGISTIK" },
+};
+
 export function UserFormDialog({
   mode,
   data,
+  currentUserRole,
 }: Props) {
   const [open, setOpen] =
     useState(false);
@@ -99,6 +125,27 @@ export function UserFormDialog({
     );
 
   const [showPassword, setShowPassword] = useState(false);
+
+  const selectableRoles =
+    currentUserRole === "LEADER"
+      ? (["SALES", "TEKNISI"] as const)
+      : (["ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"] as const);
+
+  useEffect(() => {
+    if (mode === "create") {
+      setRole(currentUserRole === "LEADER" ? "SALES" : "");
+      return;
+    }
+
+    if (data?.role && selectableRoles.includes(data.role as any)) {
+      setRole(data.role as Role);
+      return;
+    }
+
+    if (data?.role) {
+      setRole(selectableRoles[0] as Role);
+    }
+  }, [currentUserRole, data?.role, mode, selectableRoles]);
 
   useEffect(() => {
     return () => {
@@ -197,6 +244,11 @@ export function UserFormDialog({
       toast.error(
         "Role dan Jenis Kelamin wajib dipilih."
       );
+      return;
+    }
+
+    if (currentUserRole === "LEADER" && !selectableRoles.includes(role as any)) {
+      toast.error("Leader hanya bisa membuat user dengan role SALES atau TEKNISI.");
       return;
     }
 
@@ -571,32 +623,31 @@ export function UserFormDialog({
                   setRole(value as Role)
                 }
               >
-                <SelectTrigger className="h-12 w-full rounded-2xl border-slate-200 hover:scale-105 active:scale-95 transition-all">
-                  <SelectValue placeholder="Pilih Role">
-                    {(value: string) => ROLE_LABEL[value as Role] ?? "Pilih Role"}
-                  </SelectValue>
+                <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 bg-white px-3 text-sm shadow-sm transition-all hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                  <div className="flex items-center gap-2">
+                    {role && (() => {
+                      const meta = ROLE_META[role as keyof typeof ROLE_META];
+                      const Icon = meta.icon;
+                      return <Icon className={`h-4 w-4 ${meta.color}`} />;
+                    })()}
+                    <SelectValue placeholder="Pilih Role" />
+                  </div>
                 </SelectTrigger>
 
-                <SelectContent>
-                  <SelectItem value="ADMIN">
-                    ADMIN
-                  </SelectItem>
+                <SelectContent side="bottom" align="start" className="max-h-60 overflow-y-auto rounded-2xl border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+                  {selectableRoles.map((item) => {
+                    const meta = ROLE_META[item as keyof typeof ROLE_META];
+                    const Icon = meta.icon;
 
-                  <SelectItem value="LEADER">
-                    LEADER
-                  </SelectItem>
-
-                  <SelectItem value="SALES">
-                    SALES
-                  </SelectItem>
-
-                  <SelectItem value="TEKNISI">
-                    TEKNISI
-                  </SelectItem>
-
-                  <SelectItem value="LOGISTIK">
-                    LOGISTIK
-                  </SelectItem>
+                    return (
+                      <SelectItem key={item} value={item} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                        <span className="flex items-center gap-2">
+                          <Icon className={`h-3.5 w-3.5 ${meta.color} shrink-0`} />
+                          <span>{meta.label}</span>
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
 
@@ -686,6 +737,7 @@ export function UserFormDialog({
                 active:scale-95 hover:scale-105 transition-transform
               "
             >
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSubmitting
                 ? "Menyimpan..."
                 : mode === "create"

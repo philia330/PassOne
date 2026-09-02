@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { logActivity } from "@/lib/activity-log";
 
 import { prisma } from "@/lib/prisma";
+import { normalizeRole } from "@/lib/auth/roles";
 
 export const credentialsProvider = Credentials({
   name: "Credentials",
@@ -69,7 +70,7 @@ export const credentialsProvider = Credentials({
       nama: user.nama,
       username: user.username,
       email: user.email,
-      role: user.role,
+      role: normalizeRole(user.role) ?? user.role,
       foto: user.foto,
       theme_preference: user.theme_preference,
     };

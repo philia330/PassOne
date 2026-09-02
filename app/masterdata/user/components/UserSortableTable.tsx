@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { ArrowUp, ArrowDown, MessageCircle, Check, Trash2, Download, X, Loader2 } from "lucide-react";
+import { ArrowUp, ArrowDown, MessageCircle, Check, Trash2, Download, X, Loader2, Filter, ShieldCheck, Users, BriefcaseBusiness, Wrench, Truck, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -14,6 +14,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { UserFormDialog } from "./UserFormDialog";
 import { DeleteUserDialog } from "./DeleteUserDialog";
 import { UserSearch } from "./UserSearch";
@@ -71,6 +78,7 @@ export function UserSortableTable({
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(initialPage);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [activeRoleFilter, setActiveRoleFilter] = useState<"ALL" | User["role"]>("ALL");
 
   // BUG FIX: useState(initialPage) cuma dibaca sekali waktu mount pertama.
   // Waktu user pindah halaman, UserPagination push URL baru -> server
@@ -101,6 +109,20 @@ export function UserSortableTable({
 
   const isAdmin = currentUser?.role === "ADMIN";
   const canBulkDelete = isAdmin;
+  const roleFilterOptions = currentUser?.role === "LEADER"
+    ? (["ALL", "SALES", "TEKNISI"] as const)
+    : (["ALL", "ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"] as const);
+
+  const roleFilterMeta: Record<"ALL" | User["role"], { icon: typeof Filter; color: string; label: string }> = {
+    ALL: { icon: Filter, color: "text-violet-600 dark:text-violet-400", label: "Semua Role" },
+    ADMIN: { icon: ShieldCheck, color: "text-violet-600 dark:text-violet-400", label: "ADMIN" },
+    LEADER: { icon: Users, color: "text-violet-600 dark:text-violet-400", label: "LEADER" },
+    SALES: { icon: BriefcaseBusiness, color: "text-violet-600 dark:text-violet-400", label: "SALES" },
+    TEKNISI: { icon: Wrench, color: "text-violet-600 dark:text-violet-400", label: "TEKNISI" },
+    LOGISTIK: { icon: Truck, color: "text-violet-600 dark:text-violet-400", label: "LOGISTIK" },
+  };
+
+  const selectedRoleFilter = roleFilterMeta[activeRoleFilter];
 
   // Clear selection when filters/search change
   useEffect(() => {
@@ -168,14 +190,17 @@ export function UserSortableTable({
 
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
-    return initialData.filter(
-      (user) =>
+    return initialData.filter((user) => {
+      const matchesRole = activeRoleFilter === "ALL" || user.role === activeRoleFilter;
+      const matchesSearch =
         user.kode_user.toLowerCase().includes(query) ||
         user.nama.toLowerCase().includes(query) ||
         user.username.toLowerCase().includes(query) ||
-        (user.email?.toLowerCase().includes(query) ?? false)
-    );
-  }, [initialData, search]);
+        (user.email?.toLowerCase().includes(query) ?? false);
+
+      return matchesRole && matchesSearch;
+    });
+  }, [activeRoleFilter, initialData, search]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -356,9 +381,36 @@ export function UserSortableTable({
         )}
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <UserSearch value={search} onChange={setSearch} />
+          <div className="flex flex-1 flex-col gap-3">
+            <UserSearch value={search} onChange={setSearch} />
+            <div className="flex items-center gap-2">
+              <Select value={activeRoleFilter} onValueChange={(value) => setActiveRoleFilter(value as typeof activeRoleFilter)}>
+                <SelectTrigger className="h-11 w-[180px] rounded-2xl border-purple-200 bg-gradient-to-r from-violet-50 to-fuchsia-50 shadow-sm transition-colors hover:border-violet-300 focus:ring-violet-500 dark:border-violet-700/60 dark:from-slate-800 dark:to-slate-800 dark:hover:border-violet-500">
+                  <div className="flex items-center gap-2">
+                    <selectedRoleFilter.icon className={`h-4 w-4 ${selectedRoleFilter.color}`} />
+                    <SelectValue placeholder="Semua Role" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent side="bottom" align="start" className="max-h-64 overflow-y-auto rounded-2xl border-violet-200 bg-white p-1.5 shadow-lg dark:border-violet-700/60 dark:bg-slate-900 z-[100]">
+                  {roleFilterOptions.map((role) => {
+                    const meta = roleFilterMeta[role];
+                    const Icon = meta.icon;
+
+                    return (
+                      <SelectItem key={role} value={role} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-violet-50 dark:focus:bg-violet-500/10">
+                        <span className="flex items-center gap-2">
+                          <Icon className={`h-3.5 w-3.5 ${meta.color} shrink-0`} />
+                          <span>{meta.label}</span>
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <div className="add-button">
-            <UserFormDialog mode="create" />
+            <UserFormDialog mode="create" currentUserRole={currentUser?.role} />
           </div>
         </div>
 
@@ -501,7 +553,7 @@ export function UserSortableTable({
                     </TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center gap-2">
-                        <UserFormDialog mode="edit" data={user} />
+                        <UserFormDialog mode="edit" data={user} currentUserRole={currentUser?.role} />
                         <DeleteUserDialog id={user.id_user} name={user.nama ?? ""} />
                       </div>
                     </TableCell>
@@ -555,7 +607,7 @@ export function UserSortableTable({
                       <p className="text-xs text-slate-400 dark:text-slate-500">{user.kode_user}</p>
                     </div>
                     <div className="flex shrink-0 gap-1">
-                      <UserFormDialog mode="edit" data={user} />
+                      <UserFormDialog mode="edit" data={user} currentUserRole={currentUser?.role} />
                       <DeleteUserDialog id={user.id_user} name={user.nama ?? ""} />
                     </div>
                   </div>

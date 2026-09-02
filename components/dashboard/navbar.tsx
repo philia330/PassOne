@@ -90,7 +90,9 @@ export default function Navbar({
           title="Cari cepat (Ctrl+K)"
           aria-label="Buka command palette"
         >
-          <Search size={18} className="transition-transform group-hover:scale-110 flex-shrink-0" />
+          <div className="animate-search-pulse-once flex-shrink-0">
+            <Search size={18} className="transition-transform group-hover:scale-110" />
+          </div>
           {/* Desktop only: text label and keyboard hint */}
           <span className="hidden text-sm font-medium text-left sm:flex-1 sm:block">Cari semua data langsung</span>
           <kbd className={cn(

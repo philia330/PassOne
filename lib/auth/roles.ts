@@ -6,6 +6,15 @@ export enum Role {
   LOGISTIK = "LOGISTIK",
 }
 
+export function normalizeRole(role?: string | null): Role | undefined {
+  if (!role) return undefined;
+
+  const normalized = role.trim().toUpperCase();
+  return Object.values(Role).includes(normalized as Role)
+    ? (normalized as Role)
+    : undefined;
+}
+
 export const RoleLabel = {
   ADMIN: "Administrator",
   LEADER: "Leader",

@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { Role } from "@prisma/client";
+import { Role, normalizeRole } from "@/lib/auth/roles";
 import { redirect } from "next/navigation";
 import { checkPermission, PermissionModule, PermissionAction } from "./check-permissions";
 
@@ -20,10 +20,12 @@ export async function requireAuth() {
   return session;
 }
 
-export async function requireRole(allowedRoles: Role[]) {
+export async function requireRole(allowedRoles: Array<Role | string>) {
   const session = await requireAuth();
+  const userRole = normalizeRole(session.user.role);
+  const allowedSet = allowedRoles.map((role) => normalizeRole(role)).filter(Boolean) as Role[];
 
-  if (!allowedRoles.includes(session.user.role)) {
+  if (!userRole || !allowedSet.includes(userRole)) {
     throw new UnauthorizedError(
       `Aksi ini hanya bisa dilakukan oleh: ${allowedRoles.join(", ")}.`
     );
@@ -51,10 +53,14 @@ export async function requirePermission(module: PermissionModule, action: Permis
   return session;
 }
 
-export async function requirePageAccess(allowedRoles: Role[]) {
+export async function requirePageAccess(allowedRoles: Array<Role | string>) {
   const session = await auth();
+  const userRole = normalizeRole(session?.user?.role);
+  const allowedSet = allowedRoles
+    .map((role) => normalizeRole(role))
+    .filter(Boolean) as Role[];
 
-  if (!session?.user || !allowedRoles.includes(session.user.role)) {
+  if (!session?.user || !userRole || !allowedSet.includes(userRole)) {
     redirect("/dashboard");
   }
 
