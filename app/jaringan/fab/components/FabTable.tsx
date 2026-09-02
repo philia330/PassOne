@@ -167,6 +167,20 @@ export const FabTable = ({
 
   // Bulk assign state
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [bulkAssignSelection, setBulkAssignSelection] = useState<number[]>([]);
+  const [bulkAssignSelectionData, setBulkAssignSelectionData] = useState<Array<{ id_fab: number; status: "OPEN" | "AKTIF"; id_penginput?: number | null }>>([]);
+  const [selectionHintVisible, setSelectionHintVisible] = useState(false);
+  const [hasShownInitialSelectionHint, setHasShownInitialSelectionHint] = useState(false);
+
+  useEffect(() => {
+    if (hasShownInitialSelectionHint) return;
+
+    setSelectionHintVisible(true);
+    setHasShownInitialSelectionHint(true);
+
+    const timer = setTimeout(() => setSelectionHintVisible(false), 15000);
+    return () => clearTimeout(timer);
+  }, [hasShownInitialSelectionHint]);
 
   // Highlight state untuk Command Palette
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
@@ -491,6 +505,63 @@ export const FabTable = ({
     currentUser.role === "LEADER" ||
     currentUser.role === "SALES";
 
+  const handleBulkAssignClick = () => {
+    const ids = Array.from(selectedIds);
+
+    if (currentUser.role === "SALES") {
+      const ownedIds = ids.filter((id) => {
+        const item = data.find((fab) => fab.id_fab === id);
+        return Number(item?.id_penginput ?? item?.penginput?.id_user ?? 0) === Number(currentUser.id_user);
+      });
+
+      const nonOwnedIds = ids.filter((id) => !ownedIds.includes(id));
+
+      if (ownedIds.length === 0) {
+        toast.error("Tidak ada FAB milik Anda yang dipilih. Hanya FAB yang Anda buat yang bisa ditugaskan.");
+        return;
+      }
+
+      if (nonOwnedIds.length > 0) {
+        toast.warning(`${nonOwnedIds.length} FAB bukan milik Anda dan akan dilewati.`, {
+          duration: 4000,
+        });
+      }
+
+      const ownedData = ids
+        .map((id) => data.find((fab) => fab.id_fab === id))
+        .filter((fab): fab is NonNullable<typeof fab> => !!fab)
+        .filter((fab) => Number(fab.id_penginput ?? fab.penginput?.id_user ?? 0) === Number(currentUser.id_user));
+
+      setBulkAssignSelection(ownedIds);
+      setBulkAssignSelectionData(
+        ownedData.map((fab) => ({
+          id_fab: fab.id_fab,
+          kode_fab: fab.kode_fab,
+          nama_pelanggan: fab.nama_pelanggan,
+          status: fab.status,
+          id_penginput: fab.id_penginput ?? fab.penginput?.id_user ?? null,
+        }))
+      );
+      setBulkAssignOpen(true);
+      return;
+    }
+
+    setBulkAssignSelection(ids);
+    setBulkAssignSelectionData(
+      ids
+        .map((id) => data.find((fab) => fab.id_fab === id))
+        .filter((fab): fab is NonNullable<typeof fab> => !!fab)
+        .map((fab) => ({
+          id_fab: fab.id_fab,
+          kode_fab: fab.kode_fab,
+          nama_pelanggan: fab.nama_pelanggan,
+          status: fab.status,
+          id_penginput: fab.id_penginput ?? fab.penginput?.id_user ?? null,
+        }))
+    );
+    setBulkAssignOpen(true);
+  };
+
   return (
     <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
       <div className="space-y-4 p-4 sm:p-6">
@@ -511,7 +582,7 @@ export const FabTable = ({
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => setBulkAssignOpen(true)}
+                  onClick={handleBulkAssignClick}
                   className="h-9 rounded-xl text-purple-600 hover:bg-purple-50 hover:text-purple-700 dark:text-purple-400 dark:hover:bg-purple-500/10"
                 >
                   <UserCog className="mr-1.5 h-4 w-4" />
@@ -771,6 +842,19 @@ export const FabTable = ({
         {/* ====================================================== */}
         {/* Versi Tabel - hanya muncul di layar medium ke atas (md:) */}
         {/* ====================================================== */}
+        <div
+          className={cn(
+            "mb-2 flex items-center gap-2 overflow-hidden rounded-xl border px-3 py-2 text-xs font-medium transition-all duration-700 ease-out",
+            selectionHintVisible
+              ? "max-h-12 translate-y-0 scale-100 border-violet-200 bg-violet-50 text-violet-700 opacity-100 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300"
+              : "max-h-0 translate-y-[-6px] scale-95 border-transparent bg-transparent px-0 py-0 text-transparent opacity-0"
+          )}
+          aria-live="polite"
+        >
+          <span className="h-2 w-2 shrink-0 rounded-full bg-violet-500" />
+          <span>Pilih data untuk menugaskan ke teknisi</span>
+        </div>
+
         <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 md:block">
           <Table>
             <TableHeader>
@@ -976,6 +1060,7 @@ export const FabTable = ({
                         currentUser={currentUser}
                         canEdit={canEdit(item)}
                         canDelete={canDelete}
+                        teknisiOptions={teknisiOptions}
                       />
                     </div>
                   </div>
@@ -1066,20 +1151,53 @@ export const FabTable = ({
       )}
 
       {/* Bulk Assign Dialog */}
-      {bulkAssignOpen && selectedIds.size > 0 && (
+      {bulkAssignOpen && bulkAssignSelection.length > 0 && (
         <FabAssignDialog
           open={bulkAssignOpen}
           onOpenChange={(isOpen) => {
             setBulkAssignOpen(isOpen);
             if (!isOpen) {
-              setSelectedIds(new Set());
-              setSelectAllPage(false);
+              setSelectionHintVisible(false);
             }
           }}
-          selectedIds={Array.from(selectedIds).filter((id) => {
-            const fab = data.find((f) => f.id_fab === id);
-            return fab?.status === "OPEN";
-          })}
+          onBulkWarningContinue={(filteredSelectedIds) => {
+            const nextSelection = filteredSelectedIds;
+
+            setSelectedIds(new Set(nextSelection));
+            setBulkAssignSelection(nextSelection);
+            setBulkAssignSelectionData(
+              nextSelection
+                .map((id) => data.find((fab) => fab.id_fab === id))
+                .filter((fab): fab is NonNullable<typeof fab> => !!fab)
+                .map((fab) => ({
+                  id_fab: fab.id_fab,
+                  kode_fab: fab.kode_fab,
+                  nama_pelanggan: fab.nama_pelanggan,
+                  status: fab.status,
+                  id_penginput: fab.id_penginput ?? fab.penginput?.id_user ?? null,
+                }))
+            );
+
+            if (nextSelection.length === 0) {
+              setSelectedIds(new Set());
+              setSelectAllPage(false);
+              setBulkAssignSelection([]);
+              setBulkAssignSelectionData([]);
+              setBulkAssignOpen(false);
+              return;
+            }
+
+            setBulkAssignOpen(true);
+          }}
+          onBulkAssignSuccess={() => {
+            setSelectedIds(new Set());
+            setSelectAllPage(false);
+            setBulkAssignSelection([]);
+            setBulkAssignSelectionData([]);
+            setBulkAssignOpen(false);
+          }}
+          selectedIds={bulkAssignSelection}
+          selectedFabData={bulkAssignSelectionData}
           teknisiOptions={teknisiOptions}
         />
       )}

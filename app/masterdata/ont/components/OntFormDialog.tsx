@@ -258,7 +258,8 @@ export const OntFormDialog = ({
   return (
     <>
       <Dialog open={open} onOpenChange={setOpen}>
-        {!isOdpLocked && mode === "create" && (
+        {/* Hanya render trigger button kalau ini uncontrolled mode (bukan dipanggil dari BaaForm) */}
+        {!isOdpLocked && mode === "create" && !isControlled && (
           <DialogTrigger asChild>{createTriggerButton}</DialogTrigger>
         )}
 

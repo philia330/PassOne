@@ -100,7 +100,7 @@ export const OltFormDialog = ({
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setGpsError("Geolocation tidak didukung browser ini.");
+      setGpsLoading(false);
       return;
     }
 
@@ -114,25 +114,13 @@ export const OltFormDialog = ({
         setLng(parseFloat(longitude.toFixed(6)));
         setGpsLoading(false);
       },
-      (error) => {
+      () => {
+        // GPS gagal - einfach saja, peta tetap bisa dipakai
         setGpsLoading(false);
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            setGpsError("Izin lokasi ditolak. Aktifkan di pengaturan browser.");
-            break;
-          case error.POSITION_UNAVAILABLE:
-            setGpsError("Lokasi tidak tersedia.");
-            break;
-          case error.TIMEOUT:
-            setGpsError("Waktu habis mencari lokasi.");
-            break;
-          default:
-            setGpsError("Gagal mendapatkan lokasi.");
-        }
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000,
         maximumAge: 0,
       }
     );
@@ -398,10 +386,7 @@ export const OltFormDialog = ({
                 {gpsLoading ? "Mencari..." : "GPS Saya"}
               </Button>
             </div>
-            {gpsError && (
-              <p className="text-xs text-red-500 dark:text-red-400">{gpsError}</p>
-            )}
-            {lat !== 0 && lng !== 0 && !gpsError && (
+            {lat !== 0 && lng !== 0 && (
               <p className="text-xs text-emerald-500 dark:text-emerald-400">
                 Lokasi tersimpan: {lat}, {lng}
               </p>

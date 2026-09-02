@@ -55,6 +55,15 @@ export function FabActionsDropdown({
     currentUser.role === "LEADER" ||
     currentUser.role === "SALES";
 
+  const isSalesOwner =
+    currentUser.role !== "SALES" ||
+    Number(fab.id_penginput ?? fab.penginput?.id_user ?? 0) === Number(currentUser.id_user);
+
+  const canAssignFab =
+    canAssign &&
+    (currentUser.role !== "SALES" || isSalesOwner) &&
+    fab.status !== "AKTIF";
+
   const openGoogleMaps = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -138,8 +147,8 @@ export function FabActionsDropdown({
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Hubungi via WhatsApp</span>
           </DropdownMenuItem>
 
-          {/* Assign ke Teknisi - hanya untuk ADMIN, LEADER, SALES dan FAB berstatus OPEN */}
-          {canAssign && fab.status !== "AKTIF" && (
+          {/* Assign ke Teknisi - hanya untuk ADMIN, LEADER, SALES dan FAB milik mereka */}
+          {canAssign && canAssignFab && (
             <>
               <div className="my-1.5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-700" />
               <DropdownMenuItem
@@ -155,8 +164,8 @@ export function FabActionsDropdown({
             </>
           )}
 
-          {/* Info: FAB sudah aktif tidak bisa ditugaskan */}
-          {canAssign && fab.status === "AKTIF" && (
+          {/* Info: FAB tidak bisa ditugaskan */}
+          {canAssign && !canAssignFab && (
             <>
               <div className="my-1.5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-700" />
               <div className="rounded-xl gap-3 px-3 py-2 opacity-50 cursor-not-allowed">
@@ -167,7 +176,11 @@ export function FabActionsDropdown({
                       Tugaskan ke Teknisi
                     </span>
                     <span className="text-xs text-slate-400">
-                      FAB sudah Aktif
+                      {currentUser.role === "SALES" && !isSalesOwner
+                        ? "Bukan milik Anda"
+                        : fab.status === "AKTIF"
+                          ? "FAB sudah Aktif"
+                          : "Tidak dapat ditugaskan"}
                     </span>
                   </div>
                 </div>

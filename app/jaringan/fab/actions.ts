@@ -530,6 +530,10 @@ export async function assignFabToTeknisi(idFab: number, idTeknisi: number) {
     throw new Error("Data FAB tidak ditemukan.");
   }
 
+  if (session.user.role === "SALES" && fab.id_penginput !== Number(session.user.id_user)) {
+    throw new Error("FAB ini bukan milik Anda. Hanya FAB yang Anda buat yang bisa ditugaskan.");
+  }
+
   // Validasi: FAB harus berstatus OPEN untuk bisa ditugaskan
   if (fab.status === "AKTIF") {
     throw new Error("FAB ini sudah berstatus Aktif, tidak bisa ditugaskan lagi.");
@@ -631,19 +635,43 @@ export async function bulkAssignFabToTeknisi(idFabs: number[], idTeknisi: number
   // Ambil semua FAB yang dipilih beserta statusnya
   const fabs = await prisma.fab.findMany({
     where: { id_fab: { in: idFabs } },
-    select: { id_fab: true, kode_fab: true, nama_pelanggan: true, status: true },
+    select: {
+      id_fab: true,
+      kode_fab: true,
+      nama_pelanggan: true,
+      status: true,
+      id_penginput: true,
+    },
   });
 
   if (fabs.length !== idFabs.length) {
     throw new Error("Beberapa FAB tidak ditemukan.");
   }
 
+  const allowedFabs =
+    session.user.role === "SALES"
+      ? fabs.filter((f) => f.id_penginput === Number(session.user.id_user))
+      : fabs;
+
+  const unauthorizedFabs =
+    session.user.role === "SALES"
+      ? fabs.filter((f) => f.id_penginput !== Number(session.user.id_user))
+      : [];
+
+  if (session.user.role === "SALES" && allowedFabs.length === 0) {
+    throw new Error("Tidak ada FAB milik Anda yang dipilih. Hanya FAB yang Anda buat yang bisa ditugaskan.");
+  }
+
   // Filter FABs yang bisa ditugaskan (hanya OPEN) vs yang dilewati (AKTIF)
-  const fabsToAssign = fabs.filter((f) => f.status === "OPEN");
-  const skippedFabs = fabs.filter((f) => f.status === "AKTIF");
+  const fabsToAssign = allowedFabs.filter((f) => f.status === "OPEN");
+  const skippedFabs = allowedFabs.filter((f) => f.status === "AKTIF");
 
   if (fabsToAssign.length === 0) {
-    throw new Error("Semua FAB yang dipilih sudah berstatus Aktif, tidak bisa ditugaskan.");
+    throw new Error(
+      session.user.role === "SALES"
+        ? "Semua FAB milik Anda yang dipilih sudah berstatus Aktif, tidak bisa ditugaskan."
+        : "Semua FAB yang dipilih sudah berstatus Aktif, tidak bisa ditugaskan."
+    );
   }
 
   // Bulk update hanya FABs yang berstatus OPEN
@@ -668,9 +696,10 @@ export async function bulkAssignFabToTeknisi(idFabs: number[], idTeknisi: number
 
   // Log activity
   const skippedMsg = skippedFabs.length > 0 ? ` (${skippedFabs.length} FAB berstatus Aktif dilewati)` : "";
+  const unauthorizedMsg = unauthorizedFabs.length > 0 ? ` (${unauthorizedFabs.length} FAB bukan milik Anda dilewati)` : "";
   await logActivity(
     "FAB_UPDATED",
-    `${fabsToAssign.length} FAB ditugaskan ke teknisi ${teknisi.nama}${skippedMsg} oleh ${session.user.nama}`
+    `${fabsToAssign.length} FAB ditugaskan ke teknisi ${teknisi.nama}${skippedMsg}${unauthorizedMsg} oleh ${session.user.nama}`
   );
 
   revalidatePath("/jaringan/fab");
@@ -678,7 +707,9 @@ export async function bulkAssignFabToTeknisi(idFabs: number[], idTeknisi: number
     success: true,
     count: fabsToAssign.length,
     skippedCount: skippedFabs.length,
-    skippedFabs: skippedFabs.map((f) => f.kode_fab)
+    unauthorizedCount: unauthorizedFabs.length,
+    skippedFabs: skippedFabs.map((f) => f.kode_fab),
+    unauthorizedFabs: unauthorizedFabs.map((f) => f.kode_fab),
   };
 }
 

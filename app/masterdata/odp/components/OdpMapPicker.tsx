@@ -8,11 +8,17 @@ import { Search, Loader2, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+// FIX: Delete default icon prototype dan gunakan custom icon
+// @ts-expect-error - properti internal Leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+
 const markerIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
 });
 
 type OdpMapPickerProps = {
@@ -167,6 +173,15 @@ export const OdpMapPicker = ({ lat, lng, onPick }: OdpMapPickerProps) => {
 
       {/* Map */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 transition-all duration-200 hover:shadow-lg">
+        <style>{`
+          .leaflet-marker-icon {
+            background: transparent !important;
+            border: none !important;
+          }
+          .leaflet-marker-icon img {
+            display: block !important;
+          }
+        `}</style>
         <MapContainer
           center={center}
           zoom={hasPosition ? 15 : 12}

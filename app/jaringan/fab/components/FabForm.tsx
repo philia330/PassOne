@@ -278,13 +278,15 @@ export const FabForm = ({
   // Fungsi untuk mendapatkan lokasi GPS saat ini
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setGpsError("Geolocation tidak didukung browser ini.");
+      setGpsLoading(false);
       return;
     }
 
     setGpsLoading(true);
     setGpsError(null);
 
+    // Langsung panggil getCurrentPosition - browser akan otomatis munculkan popup izin Chrome
+    // Jika user sebelumnya sudah "deny", popup tidak akan muncul lagi (tergantung browser)
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
@@ -292,26 +294,16 @@ export const FabForm = ({
         setLongitude(longitude.toFixed(6));
         setGpsLoading(false);
         setGeocodeError(null);
+        setGpsError(null);
       },
-      (error) => {
+      () => {
+        // GPS gagal - einfach saja, peta tetap bisa dipakai, tidak ada error message
         setGpsLoading(false);
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            setGpsError("Izin lokasi ditolak. Aktifkan di pengaturan browser.");
-            break;
-          case error.POSITION_UNAVAILABLE:
-            setGpsError("Lokasi tidak tersedia.");
-            break;
-          case error.TIMEOUT:
-            setGpsError("Waktu habis mencari lokasi.");
-            break;
-          default:
-            setGpsError("Gagal mendapatkan lokasi.");
-        }
+        setGpsError(null);
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000,
         maximumAge: 0,
       }
     );
@@ -641,9 +633,6 @@ export const FabForm = ({
           Terisi otomatis dari Alamat Lengkap. Atau ketik nama daerah/alamat di kolom ini khusus
           buat geser peta, bisa juga digeser/klik langsung di peta di bawah, atau gunakan tombol GPS di atas peta.
         </p>
-        {gpsError && (
-          <p className="text-xs text-red-500 mt-1 dark:text-red-400">{gpsError}</p>
-        )}
         <div className="relative mt-2">
           <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
           <Input
@@ -716,11 +705,11 @@ export const FabForm = ({
           </div>
         </div>
 
-        {!gpsError && hasValidCoords && (
+        {hasValidCoords ? (
           <p className="text-xs text-emerald-500 dark:text-emerald-400">
             Lokasi tersimpan: {latitude}, {longitude}
           </p>
-        )}
+        ) : null}
 
         <LocationPickerMap
           lat={displayLat}
