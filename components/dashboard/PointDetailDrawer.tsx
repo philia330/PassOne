@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   X,
@@ -107,6 +108,17 @@ function DetailRow({
 // AnimatePresence otomatis "menahan" komponen yang lagi di-exit (termasuk
 // props terakhirnya) sampai animasi exit-nya selesai -- jadi masalah
 // "animasi keluar gak kesempatan muncul" beres tanpa trik manual apapun.
+//
+// CATATAN PENTING soal overlay:
+// Sebelumnya overlay pakai `backdrop-blur-sm` (backdrop-filter: blur()).
+// Kombinasi backdrop-filter + elemen yang di-unmount lewat animasi (bukan
+// langsung display:none) punya bug lama di browser berbasis Chromium: area
+// yang sempat ke-blur kadang GAGAL di-repaint dengan benar setelah elemen
+// dihapus dari DOM, sehingga bagian UI di baliknya (dalam kasus kita:
+// search bar) keliatan rusak/kosong secara PERMANEN walau drawer sudah
+// ditutup. Makanya backdrop-blur-sm di sini SENGAJA dihapus, diganti overlay
+// solid tanpa blur -- efek dim/gelapnya tetap dapat, tapi gak trigger bug
+// compositing itu.
 const overlayVariants: Variants = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.3 } },
@@ -145,6 +157,14 @@ export default function PointDetailDrawer({
 }) {
   const [showPassword, setShowPassword] = useState(false);
 
+  // Portal cuma boleh dipakai setelah mount di client (document.body belum
+  // pasti ada saat SSR/hydration awal). `mounted` memastikan createPortal
+  // baru dipanggil setelah komponen benar-benar hidup di browser.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Reset showPassword saat point berubah -- gunakan useEffect yang benar
   // untuk menghindari infinite re-render dari pola "adjusting state during render"
   useEffect(() => {
@@ -161,26 +181,51 @@ export default function PointDetailDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  return (
-    <AnimatePresence>
+  if (!mounted) return null;
+
+  // PENTING: drawer di-render lewat createPortal langsung ke document.body,
+  // BUKAN di posisi aslinya di dalam tree <NetworkMap>. Kenapa: halaman Peta
+  // Jaringan membungkus NetworkMap di dalam beberapa div ber-`overflow-hidden`
+  // bersarang. Kombinasi overflow-hidden + elemen `position: fixed` yang
+  // dianimasikan masuk/keluar (Framer Motion) adalah kombinasi yang punya bug
+  // repaint terkenal di browser berbasis Chromium: browser salah menghitung
+  // area mana yang perlu di-invalidate/repaint ulang setelah elemen fixed itu
+  // di-unmount, sehingga elemen SIBLING di luar drawer (dalam kasus kita:
+  // search bar) gagal digambar ulang dan terlihat rusak/kosong secara visual
+  // -- padahal HTML & CSS-nya sendiri sebenarnya sudah benar (hard refresh
+  // langsung memperbaikinya karena itu memaksa full repaint).
+  //
+  // Dengan createPortal, drawer jadi anak langsung dari <body>, sepenuhnya
+  // di luar struktur overflow-hidden manapun, sehingga bug layer-squashing
+  // ini tidak lagi punya kesempatan terjadi.
+  return createPortal(
+    <AnimatePresence
+      onExitComplete={() => {
+        // Tetap dipertahankan sebagai jaring pengaman tambahan: paksa browser
+        // recalculate layout & repaint kalau ada sisa masalah lain.
+        window.dispatchEvent(new Event("resize"));
+      }}
+    >
       {point && (
         <>
-          {/* Overlay */}
+          {/* Overlay -- SOLID, TANPA backdrop-blur (lihat catatan di atas) */}
           <motion.div
             key="drawer-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { duration: 0.3 } }}
-            exit={{ opacity: 0, transition: { duration: 0.25 } }}
+            variants={overlayVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
             onClick={onClose}
-            className="fixed inset-0 z-[1000] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[1000] bg-black/60"
           />
 
           {/* Panel */}
           <motion.div
             key="drawer-panel"
-            initial={{ x: "100%", opacity: 0 }}
-            animate={{ x: 0, opacity: 1, transition: { type: "spring", damping: 30, stiffness: 220, duration: 0.35 } }}
-            exit={{ x: "100%", opacity: 0, transition: { type: "spring", damping: 30, stiffness: 220, duration: 0.3 } }}
+            variants={panelVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
             className="fixed right-0 top-0 z-[1001] flex h-full w-full max-w-sm flex-col overflow-hidden bg-white shadow-2xl dark:bg-slate-900"
           >
             {(() => {
@@ -522,6 +567,7 @@ export default function PointDetailDrawer({
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

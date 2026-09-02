@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Pencil, Plus, Check } from "lucide-react";
+import { Pencil, Plus, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -472,7 +472,12 @@ export const OntFormDialog = ({
                 disabled={isSubmitting}
                 className="bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white hover:opacity-90 rounded-xl"
               >
-                {isSubmitting ? "Menyimpan..." : (
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : (
                   <>
                     <Check className="mr-2 h-4 w-4" />
                     Ya, Simpan

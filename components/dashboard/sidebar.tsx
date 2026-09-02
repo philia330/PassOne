@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { LogOut, UserCircle2, X } from "lucide-react";
+import { LogOut, UserCircle2, X, ChevronDown } from "lucide-react";
 import ImagePreview from "@/components/shared/image-preview";
+import { cn } from "@/lib/utils";
 
-import { importExcelOptions, navigation } from "@/app/config/navigation";
+import {
+  importExcelOptions,
+  navigation,
+  hasAccessToRole,
+  normalizeRole,
+} from "@/app/config/navigation";
 import { RoleLabel, Role } from "@/lib/auth/roles";
 
 type Settings = {
@@ -21,6 +27,59 @@ function isActiveNavItem(href: string, pathname: string, searchParams: URLSearch
   if (!hrefQuery) return true;
   const view = new URLSearchParams(hrefQuery).get("view");
   return view ? searchParams.get("view") === view : true;
+}
+
+function getGroupStorageKey(groupTitle: string): string {
+  const normalized = groupTitle.toLowerCase().replace(/\s+/g, "-");
+  return `sidebar-group-${normalized}-expanded`;
+}
+
+function useCollapsibleGroups(initialGroups: typeof navigation) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+
+    const stored: Record<string, boolean> = {};
+    initialGroups.forEach((group) => {
+      const key = getGroupStorageKey(group.title);
+      const storedValue = localStorage.getItem(key);
+      if (storedValue !== null) {
+        stored[group.title] = storedValue === "true";
+      } else {
+        stored[group.title] = true;
+      }
+    });
+
+    return stored;
+  });
+
+  const groupContainsActive = useCallback(
+    (group: typeof navigation[0]) => {
+      return group.items.some((item) => isActiveNavItem(item.href, pathname, searchParams));
+    },
+    [pathname, searchParams]
+  );
+
+  const toggleGroup = useCallback((groupTitle: string) => {
+    setExpandedGroups((prev) => {
+      const nextState = { ...prev, [groupTitle]: !(prev[groupTitle] ?? true) };
+      localStorage.setItem(getGroupStorageKey(groupTitle), String(nextState[groupTitle]));
+      return nextState;
+    });
+  }, []);
+
+  useEffect(() => {
+    initialGroups.forEach((group) => {
+      const key = getGroupStorageKey(group.title);
+      if (localStorage.getItem(key) === null) {
+        localStorage.setItem(key, String(groupContainsActive(group) || true));
+      }
+    });
+  }, [initialGroups, groupContainsActive]);
+
+  return { expandedGroups, toggleGroup, groupContainsActive };
 }
 
 export default function Sidebar({
@@ -41,7 +100,14 @@ export default function Sidebar({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingImportRoute, setPendingImportRoute] = useState<string | null>(null);
 
-  const role = session?.user?.role;
+  const { expandedGroups, toggleGroup, groupContainsActive } = useCollapsibleGroups(navigation);
+
+  const role =
+    normalizeRole(session?.user?.role) ??
+    (session?.user?.role ? (String(session.user.role).toUpperCase() as Role) : undefined);
+
+  const visibleItemsForGroup = (group: (typeof navigation)[number]) =>
+    group.items.filter((item) => hasAccessToRole(item.roles, role));
 
   const handleImportSelect = (route: string) => {
     setImportMenuOpen(false);
@@ -131,88 +197,109 @@ export default function Sidebar({
         />
 
         {navigation.map((group) => {
-          const visibleItems = role
-            ? group.items.filter((item) => item.roles.includes(role as Role))
-            : [];
+          const visibleItems = visibleItemsForGroup(group);
 
           if (visibleItems.length === 0) return null;
 
+          const isExpanded = expandedGroups[group.title] ?? true;
+          const hasActiveItem = groupContainsActive(group);
+
           return (
-            <div key={group.title} className="mb-8">
-              <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                {group.title}
-              </p>
+            <div key={group.title} className="mb-2">
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.title)}
+                className={`mb-1 flex w-full items-center justify-between rounded-lg px-3 py-2 transition-all duration-200 hover:bg-slate-800/50 ${
+                  hasActiveItem ? "text-indigo-400" : "text-slate-400"
+                }`}
+              >
+                <span className="text-xs font-semibold uppercase tracking-[0.2em]">
+                  {group.title}
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform duration-300 ease-out ${
+                    isExpanded ? "rotate-0" : "-rotate-90"
+                  } text-slate-500 group-hover:text-slate-300`}
+                />
+              </button>
 
-              <div className="space-y-1">
-                {visibleItems.map((item) => {
-                  const Icon = item.icon;
-                  const active = isActiveNavItem(item.href, pathname, searchParams);
-                  const count = counts[item.href];
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-out ${
+                  isExpanded ? "max-h-[1200px] opacity-100" : "max-h-0 opacity-0"
+                }`}
+              >
+                <div className="space-y-1 pt-1">
+                  {visibleItems.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActiveNavItem(item.href, pathname, searchParams);
+                    const count = counts[item.href];
 
-                  if (item.title === "Import Excel") {
+                    if (item.title === "Import Excel") {
+                      return (
+                        <div key={item.title} className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setImportMenuOpen((prev) => !prev)}
+                            className={`flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 transition-all duration-200 hover:scale-105 active:scale-95 ${
+                              active
+                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                                : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                            }`}
+                          >
+                            <span className="flex items-center gap-3">
+                              <Icon size={20} />
+                              <span>{item.title}</span>
+                            </span>
+                          </button>
+
+                          {importMenuOpen && (
+                            <div className="mt-2 rounded-xl border border-slate-700 bg-slate-800 p-2 shadow-lg">
+                              {importExcelOptions.map((option) => (
+                                <button
+                                  key={option.label}
+                                  type="button"
+                                  onClick={() => handleImportSelect(option.route)}
+                                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 hover:scale-105 active:scale-95 transition-all"
+                                >
+                                  <span>{option.label}</span>
+                                  <span className="text-xs text-slate-400">Excel</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
                     return (
-                      <div key={item.title} className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setImportMenuOpen((prev) => !prev)}
-                          className={`flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 transition-all duration-200 hover:scale-105 active:scale-95 ${
-                            active
-                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                              : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                          }`}
-                        >
-                          <span className="flex items-center gap-3">
-                            <Icon size={20} />
-                            <span>{item.title}</span>
-                          </span>
-                        </button>
-
-                        {importMenuOpen && (
-                          <div className="mt-2 rounded-xl border border-slate-700 bg-slate-800 p-2 shadow-lg">
-                            {importExcelOptions.map((option) => (
-                              <button
-                                key={option.label}
-                                type="button"
-                                onClick={() => handleImportSelect(option.route)}
-                                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 hover:scale-105 active:scale-95 transition-all"
-                              >
-                                <span>{option.label}</span>
-                                <span className="text-xs text-slate-400">Excel</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <Link
-                      key={item.title}
-                      href={item.href}
-                      className={`flex items-center justify-between gap-3 rounded-xl px-4 py-3 transition-all duration-200 hover:scale-105 active:scale-95 ${
-                        active
-                          ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                          : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                      }`}
-                    >
-                      <span className="flex items-center gap-3">
-                        <Icon size={20} />
-                        <span>{item.title}</span>
-                      </span>
-
-                      {typeof count === "number" && (
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                            active ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"
-                          }`}
-                        >
-                          {count}
+                      <Link
+                        key={item.title}
+                        href={item.href}
+                        className={`flex items-center justify-between gap-3 rounded-xl px-4 py-3 transition-all duration-200 hover:scale-105 active:scale-95 ${
+                          active
+                            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                            : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                        }`}
+                      >
+                        <span className="flex items-center gap-3">
+                          <Icon size={20} />
+                          <span>{item.title}</span>
                         </span>
-                      )}
-                    </Link>
-                  );
-                })}
+
+                        {typeof count === "number" && (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              active ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"
+                            }`}
+                          >
+                            {count}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           );

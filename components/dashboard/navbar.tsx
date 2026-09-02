@@ -73,23 +73,30 @@ export default function Navbar({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Search button with keyboard shortcut hint */}
+        {/* Search button with keyboard shortcut hint - responsive */}
         <button
           onClick={openCommandPalette}
           className={cn(
-            "flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 min-w-[140px]",
-            "transition-all duration-200",
+            "flex items-center rounded-xl border transition-all duration-200",
             "hover:bg-slate-100 hover:scale-105 active:scale-95",
             "dark:border-slate-700 dark:hover:bg-slate-800",
             "text-slate-600 dark:text-slate-300",
-            "group"
+            "group",
+            // Mobile: icon only with 40x40px+ touch target
+            "p-2.5 sm:hidden",
+            // Desktop: full button with text
+            "sm:flex sm:items-center sm:gap-2 sm:px-4 sm:py-2 sm:min-w-[140px]"
           )}
           title="Cari cepat (Ctrl+K)"
+          aria-label="Buka command palette"
         >
-          <Search size={18} className="transition-transform group-hover:scale-110 flex-shrink-0" />
-          <span className="text-sm font-medium flex-1 text-left">Cari semua data langsung</span>
+          <div className="animate-search-pulse-once flex-shrink-0">
+            <Search size={18} className="transition-transform group-hover:scale-110" />
+          </div>
+          {/* Desktop only: text label and keyboard hint */}
+          <span className="hidden text-sm font-medium text-left sm:flex-1 sm:block">Cari semua data langsung</span>
           <kbd className={cn(
-            "flex items-center gap-0.5 rounded border bg-muted px-1.5 py-0.5",
+            "hidden sm:flex items-center gap-0.5 rounded border bg-muted px-1.5 py-0.5",
             "font-mono text-[10px] font-medium text-muted-foreground",
             "group-hover:border-slate-300 dark:group-hover:border-slate-600 flex-shrink-0"
           )}>

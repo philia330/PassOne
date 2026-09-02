@@ -960,7 +960,7 @@ export async function deleteMultipleBaa(ids: number[]) {
     throw new Error("Sesi tidak valid, silakan login ulang.");
   }
 
-  if (session.user.role !== "ADMIN" && session.user.role !== "LEADER") {
+  if (session.user.role !== Role.ADMIN && session.user.role !== Role.LEADER) {
     throw new Error("Hanya Admin atau Leader yang bisa menghapus BAA.");
   }
 
