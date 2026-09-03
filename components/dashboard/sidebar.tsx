@@ -241,14 +241,22 @@ export default function Sidebar({
                           <button
                             type="button"
                             onClick={() => setImportMenuOpen((prev) => !prev)}
-                            className={`flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 transition-all duration-200 hover:scale-105 active:scale-95 ${
+                            className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 hover:scale-[1.02] active:scale-95 ${
                               active
                                 ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                                 : "text-slate-300 hover:bg-slate-800 hover:text-white"
                             }`}
                           >
                             <span className="flex items-center gap-3">
-                              <Icon size={20} />
+                              <span
+                                className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-colors ${
+                                  active
+                                    ? "bg-white/20 shadow-inner"
+                                    : "bg-slate-800 group-hover:bg-slate-700"
+                                }`}
+                              >
+                                <Icon size={22} />
+                              </span>
                               <span>{item.title}</span>
                             </span>
                           </button>
@@ -276,14 +284,22 @@ export default function Sidebar({
                       <Link
                         key={item.title}
                         href={item.href}
-                        className={`flex items-center justify-between gap-3 rounded-xl px-4 py-3 transition-all duration-200 hover:scale-105 active:scale-95 ${
+                        className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 hover:scale-[1.02] active:scale-95 ${
                           active
                             ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                             : "text-slate-300 hover:bg-slate-800 hover:text-white"
                         }`}
                       >
                         <span className="flex items-center gap-3">
-                          <Icon size={20} />
+                          <span
+                            className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-colors ${
+                              active
+                                ? "bg-white/20 shadow-inner"
+                                : "bg-slate-800 group-hover:bg-slate-700"
+                            }`}
+                          >
+                            <Icon size={22} />
+                          </span>
                           <span>{item.title}</span>
                         </span>
 

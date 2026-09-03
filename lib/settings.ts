@@ -14,8 +14,9 @@ export async function getSettings() {
     login_title: map.login_title ?? "Selamat Datang Kembali",
     login_subtitle: map.login_subtitle ?? "Masuk untuk mengelola sistem jaringan PASSNET",
     login_logo: map.login_logo ?? null,
+    favicon: map.favicon || null,
     app_font: map.app_font ?? "inter",
     app_font_size: Number(map.app_font_size ?? 16),
-    footer_text: map.footer_text ?? "© 2024 PASSNET. All rights reserved.",
+    footer_text: map.footer_text ?? "© 2026 PASSNET. All rights reserved.",
   };
 }

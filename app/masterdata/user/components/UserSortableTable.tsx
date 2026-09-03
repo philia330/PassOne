@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { ArrowUp, ArrowDown, MessageCircle, Check, Trash2, Download, X, Loader2, Filter, ShieldCheck, Users, BriefcaseBusiness, Wrench, Truck, ChevronDown } from "lucide-react";
@@ -66,12 +66,14 @@ export function UserSortableTable({
   currentUser,
   total,
   page: initialPage,
+  actions,
 }: {
   initialData: User[];
   defaultValue: string;
   currentUser?: CurrentUser;
   total: number;
   page: number;
+  actions?: ReactNode;
 }) {
 
   const router = useRouter();
@@ -409,8 +411,11 @@ export function UserSortableTable({
               </Select>
             </div>
           </div>
-          <div className="add-button">
-            <UserFormDialog mode="create" currentUserRole={currentUser?.role} />
+          <div className="flex items-center gap-2">
+            {actions}
+            <div className="add-button">
+              <UserFormDialog mode="create" currentUserRole={currentUser?.role} />
+            </div>
           </div>
         </div>
 

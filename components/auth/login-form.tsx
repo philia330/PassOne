@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 type Settings = {
   login_title: string;
   login_subtitle: string;
+  footer_text: string;
 };
 
 export default function LoginForm({ settings }: { settings: Settings }) {
@@ -71,7 +72,7 @@ export default function LoginForm({ settings }: { settings: Settings }) {
 
   return (
     <div className="w-full max-w-md">
-      <div className="rounded-[32px] border border-white/40 bg-white/80 p-10 shadow-2xl backdrop-blur-xl">
+      <div className="rounded-[32px] border border-white/40 bg-white/80 p-6 shadow-2xl backdrop-blur-xl sm:p-10">
 
         {/* Header */}
         <div>
@@ -79,7 +80,7 @@ export default function LoginForm({ settings }: { settings: Settings }) {
             Secure Login
           </span>
 
-          <h2 className="mt-5 font-[family:var(--font-jakarta)] text-4xl font-extrabold text-slate-800">
+          <h2 className="mt-5 font-[family:var(--font-jakarta)] text-3xl font-extrabold text-slate-800 sm:text-4xl">
             {settings.login_title}
           </h2>
 
@@ -88,7 +89,7 @@ export default function LoginForm({ settings }: { settings: Settings }) {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-10 space-y-6">
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5 sm:mt-10 sm:space-y-6">
 
           {/* Username */}
           <div>
@@ -109,7 +110,7 @@ export default function LoginForm({ settings }: { settings: Settings }) {
   placeholder="Masukkan Username atau Email"
   autoComplete="off"
   className="
-    h-14
+    h-12
     rounded-2xl
     border-slate-200
     bg-white
@@ -120,6 +121,7 @@ export default function LoginForm({ settings }: { settings: Settings }) {
     focus:border-purple-500
     focus:ring-2
     focus:ring-purple-200
+    sm:h-14
   "
 />
             </div>
@@ -144,7 +146,7 @@ export default function LoginForm({ settings }: { settings: Settings }) {
   placeholder="Masukkan Password"
   autoComplete="current-password"
   className="
-    h-14
+    h-12
     rounded-2xl
     border-slate-200
     bg-white
@@ -156,6 +158,7 @@ export default function LoginForm({ settings }: { settings: Settings }) {
     focus:border-purple-500
     focus:ring-2
     focus:ring-purple-200
+    sm:h-14
   "
 />
 
@@ -178,17 +181,19 @@ export default function LoginForm({ settings }: { settings: Settings }) {
             type="submit"
             disabled={loading}
             className="
-              h-14
+              h-12
               w-full
               rounded-2xl
               bg-gradient-to-r
               from-purple-600
               via-fuchsia-500
               to-sky-500
-              text-lg
+              text-base
               font-semibold
               text-white
               disabled:opacity-70
+              sm:h-14
+              sm:text-lg
             "
           >
             {loading ? "Loading..." : "Login"}
@@ -196,10 +201,8 @@ export default function LoginForm({ settings }: { settings: Settings }) {
 
         </form>
 
-        <div className="mt-10 border-t pt-6 text-center text-sm text-slate-500">
-          © 2026 PASSNET
-          <br />
-          Broadband Management System
+        <div className="mt-8 border-t pt-6 text-center text-sm text-slate-500 sm:mt-10">
+          {settings.footer_text}
         </div>
 
       </div>

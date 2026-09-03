@@ -14,6 +14,7 @@ import {
   TextCursorInput,
   LayoutDashboard,
   LayoutTemplate,
+  Globe,
 } from "lucide-react";
 
 import { updateSettings } from "@/app/settings/actions";
@@ -24,6 +25,7 @@ type Settings = {
   login_title: string;
   login_subtitle: string;
   login_logo: string | null;
+  favicon: string | null;
   app_font: string;
   app_font_size: number;
   footer_text: string;
@@ -52,11 +54,13 @@ const MAX_FILE_SIZE = 2 * 1024 * 1024;
 export default function SettingsForm({ initialSettings }: { initialSettings: Settings }) {
   const [activeTab, setActiveTab] = useState<TabId>("identitas");
   const [preview, setPreview] = useState<string | null>(initialSettings.login_logo);
+  const [faviconPreview, setFaviconPreview] = useState<string | null>(initialSettings.favicon);
   const [fileSelected, setFileSelected] = useState<File | null>(null);
   const [selectedFont, setSelectedFont] = useState(initialSettings.app_font);
   const [fontSize, setFontSize] = useState(initialSettings.app_font_size);
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -82,9 +86,36 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  function handleFaviconChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml", "image/x-icon"].includes(file.type)) {
+      toast.error("Icon harus berupa PNG, JPG, WEBP, GIF, SVG, atau ICO.");
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("Ukuran icon maksimal 2MB.");
+      return;
+    }
+
+    setFaviconPreview(URL.createObjectURL(file));
+  }
+
+  function handleRemoveFavicon() {
+    setFaviconPreview(null);
+    if (faviconInputRef.current) faviconInputRef.current.value = "";
+  }
+
   function handleSubmit(formData: FormData) {
     if (!fileSelected && !preview) {
       formData.delete("logo");
+    }
+
+    if (!faviconPreview) {
+      formData.delete("favicon");
+      formData.set("remove_favicon", "true");
     }
 
     startTransition(async () => {
@@ -202,6 +233,27 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
                 <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
                   PNG/JPG, rasio 1:1, maksimal 2MB
                 </p>
+
+                <div className="mt-6 flex flex-col items-center border-t border-slate-100 pt-6 dark:border-slate-800">
+                  <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
+                    {faviconPreview ? (
+                      <>
+                        <Image src={faviconPreview} alt="Preview icon tab" fill className="object-contain p-2" unoptimized />
+                        <button type="button" onClick={handleRemoveFavicon} className="absolute right-0 top-0 rounded-bl-md bg-red-500 p-1 text-white" title="Hapus icon tab">
+                          <Trash2 size={10} />
+                        </button>
+                      </>
+                    ) : (
+                      <Globe size={22} className="text-slate-400" />
+                    )}
+                  </div>
+                  <label htmlFor="favicon-upload" className="mt-3 flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-indigo-500 hover:text-indigo-600 dark:border-slate-600 dark:text-slate-300">
+                    <Upload size={13} />
+                    Ganti Icon Tab
+                  </label>
+                  <input ref={faviconInputRef} id="favicon-upload" type="file" name="favicon" accept=".png,.jpg,.jpeg,.webp,.ico,image/*" onChange={handleFaviconChange} className="hidden" />
+                  <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">PNG/ICO/WEBP/SVG, maksimal 2MB</p>
+                </div>
               </div>
 
               {/* Text Fields */}
@@ -340,7 +392,7 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Set
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
                 <p className="mb-2 text-xs font-medium text-slate-400 dark:text-slate-500">Preview:</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {initialSettings.footer_text || "© 2024 PASSNET. All rights reserved."}
+                  {initialSettings.footer_text || "© 2026 PASSNET. All rights reserved."}
                 </p>
               </div>
             </div>

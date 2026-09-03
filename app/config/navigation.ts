@@ -7,6 +7,7 @@ import {
   Map,
   Router,
   Boxes,
+  PackageCheck,
   Package,
   PackageOpen,
   FileText,
@@ -115,10 +116,10 @@ export const navigation: NavigationGroup[] = [
         icon: Boxes,
         roles: [Role.ADMIN, Role.LEADER],
       },
-      {
+       {
         title: "ONT",
         href: "/workspace?view=ont",
-        icon: Boxes,
+        icon: PackageCheck,
         roles: [Role.ADMIN, Role.LOGISTIK, Role.TEKNISI],
       },
       {
