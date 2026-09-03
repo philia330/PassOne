@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { LogOut, UserCircle2, X, ChevronDown } from "lucide-react";
 import ImagePreview from "@/components/shared/image-preview";
@@ -92,6 +92,7 @@ export default function Sidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -324,7 +325,18 @@ export default function Sidebar({
 
       {/* Footer: Profil + Logout */}
       <div className="flex-shrink-0 border-t border-slate-800 p-4">
-        <div className="flex items-center gap-3 rounded-xl bg-slate-800 px-3 py-3">
+        <div
+          role="link"
+          tabIndex={0}
+          onClick={() => router.push("/workspace?view=profile")}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              router.push("/workspace?view=profile");
+            }
+          }}
+          className="flex cursor-pointer items-center gap-3 rounded-xl bg-slate-800 px-3 py-3 transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
       {session?.user?.foto ? (
         <ImagePreview
           src={session.user.foto}

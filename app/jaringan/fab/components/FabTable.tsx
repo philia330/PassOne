@@ -172,7 +172,13 @@ export const FabTable = ({
   const [selectionHintVisible, setSelectionHintVisible] = useState(false);
   const [hasShownInitialSelectionHint, setHasShownInitialSelectionHint] = useState(false);
 
+  const canBulkAssign =
+    currentUser.role === "ADMIN" ||
+    currentUser.role === "LEADER" ||
+    currentUser.role === "SALES";
+
   useEffect(() => {
+    if (!canBulkAssign) return;
     if (hasShownInitialSelectionHint) return;
 
     setSelectionHintVisible(true);
@@ -498,12 +504,6 @@ export const FabTable = ({
   };
 
   const showFilterDropdown = isSalesOrTeknisi ? true : penginputOptions.length > 0;
-
-  // Role yang boleh bulk assign
-  const canBulkAssign =
-    currentUser.role === "ADMIN" ||
-    currentUser.role === "LEADER" ||
-    currentUser.role === "SALES";
 
   const handleBulkAssignClick = () => {
     const ids = Array.from(selectedIds);
@@ -842,7 +842,7 @@ export const FabTable = ({
         {/* ====================================================== */}
         {/* Versi Tabel - hanya muncul di layar medium ke atas (md:) */}
         {/* ====================================================== */}
-        <div
+        {canBulkAssign && <div
           className={cn(
             "mb-2 flex items-center gap-2 overflow-hidden rounded-xl border px-3 py-2 text-xs font-medium transition-all duration-700 ease-out",
             selectionHintVisible
@@ -853,7 +853,7 @@ export const FabTable = ({
         >
           <span className="h-2 w-2 shrink-0 rounded-full bg-violet-500" />
           <span>Pilih data untuk menugaskan ke teknisi</span>
-        </div>
+        </div>}
 
         <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 md:block">
           <Table>
@@ -989,6 +989,11 @@ export const FabTable = ({
                       <span className={`text-sm font-semibold ${STATUS_TEXT_STYLE[item.status]}`}>
                         {STATUS_LABEL[item.status]}
                       </span>
+                      {item.status === "OPEN" && item.teknisiDitugaskan && (
+                        <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                          Ditugaskan: {item.teknisiDitugaskan.nama}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-slate-500 dark:text-slate-400">
                       {formatTanggal(item.createdAt)}
@@ -1052,6 +1057,11 @@ export const FabTable = ({
                       >
                         {STATUS_LABEL[item.status]}
                       </span>
+                      {item.status === "OPEN" && item.teknisiDitugaskan && (
+                        <span className="max-w-28 truncate text-[10px] text-slate-500 dark:text-slate-400">
+                          {item.teknisiDitugaskan.nama}
+                        </span>
+                      )}
                       <FabActionsDropdown
                         fab={item}
                         areaOptions={areaOptions}

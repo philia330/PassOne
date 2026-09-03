@@ -37,7 +37,7 @@ export default async function BaaPage({
       prisma.user.findMany({
         where: { role: "TEKNISI" },
         orderBy: { nama: "asc" },
-        select: { id_user: true, nama: true, username: true },
+        select: { id_user: true, nama: true, username: true, foto: true },
       }),
       prisma.olt.findMany({
         orderBy: { nama_olt: "asc" },

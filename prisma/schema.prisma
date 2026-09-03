@@ -26,6 +26,7 @@ model User {
   fabSales          fab[]        @relation("FabSales")
   fabPenginput      fab[]        @relation("FabPenginput")
   fabTeknisi        fab[]        @relation("FabTeknisi")
+  fabPenugasan      fab[]        @relation("FabPenugas")
   baaTeknisi        baateknisi[]
   notifications     notification[]
 
@@ -73,6 +74,7 @@ model baa {
   users             User         @relation(fields: [id_user], references: [id_user], map: "Baa_id_user_fkey")
   baadetail         baadetail[]
   teknisiTambahan   baateknisi[]
+  notifications     notification[]
 
   @@index([id_fab], map: "Baa_id_fab_fkey")
   @@index([id_odp], map: "Baa_id_odp_fkey")
@@ -130,6 +132,7 @@ model fab {
   id_user                 Int
   id_penginput            Int
   id_teknisi_ditugaskan   Int?       // Nullable - teknisi yang ditugaskan mengerjakan FAB ini
+  id_penugas              Int?       // User yang terakhir menugaskan FAB ini
   createdAt               DateTime   @default(now())
   updatedAt               DateTime   @updatedAt
   baa                     baa[]
@@ -138,12 +141,14 @@ model fab {
   users                   User       @relation("FabSales", fields: [id_user], references: [id_user], map: "Fab_id_user_fkey")
   penginput               User       @relation("FabPenginput", fields: [id_penginput], references: [id_user], map: "Fab_id_penginput_fkey")
   teknisiDitugaskan       User?      @relation("FabTeknisi", fields: [id_teknisi_ditugaskan], references: [id_user], map: "Fab_id_teknisi_ditugaskan_fkey")
+  penugas                 User?      @relation("FabPenugas", fields: [id_penugas], references: [id_user], map: "Fab_id_penugas_fkey")
 
   @@index([id_area], map: "Fab_id_area_fkey")
   @@index([id_paket], map: "Fab_id_paket_fkey")
   @@index([id_user], map: "Fab_id_user_fkey")
   @@index([id_penginput], map: "Fab_id_penginput_fkey")
   @@index([id_teknisi_ditugaskan], map: "Fab_id_teknisi_ditugaskan_idx")
+  @@index([id_penugas], map: "Fab_id_penugas_idx")
   @@index([nama_pelanggan], map: "Fab_nama_pelanggan_idx")
   @@index([status], map: "Fab_status_idx")
 
@@ -331,12 +336,14 @@ enum notification_type {
   FAB_ASSIGNED        // FAB ditugaskan ke teknisi (untuk teknisi)
   FAB_STATUS_CHANGE   // Status FAB berubah
   BAA_CREATED        // BAA baru dibuat
+  FAB_COMPLETED      // FAB selesai dikerjakan teknisi dan menjadi Aktif
   SYSTEM             // Notifikasi sistem (material kritis dll)
 }
 
 model notification {
   id_notification Int               @id @default(autoincrement())
   id_user        Int               // User yang menerima notifikasi
+  id_baa         Int?              // BAA penyebab notifikasi, untuk deduplikasi efek samping
   title          String            // Judul notifikasi
   message        String            // Isi pesan notifikasi
   link           String?           // URL tujuan (nullable, untuk notifikasi tanpa link spesifik)
@@ -345,10 +352,12 @@ model notification {
   createdAt      DateTime          @default(now())
 
   users          User              @relation(fields: [id_user], references: [id_user], map: "Notification_id_user_fkey")
+  baa            baa?              @relation(fields: [id_baa], references: [id_baa], map: "Notification_id_baa_fkey")
 
   @@index([id_user], map: "Notification_id_user_idx")
   @@index([id_user, is_read], map: "Notification_id_user_is_read_idx")
   @@index([createdAt], map: "Notification_createdAt_idx")
+  @@unique([id_baa, type], map: "Notification_id_baa_type_key")
 
   @@map("notification")
 }

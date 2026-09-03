@@ -561,6 +561,7 @@ export async function assignFabToTeknisi(idFab: number, idTeknisi: number) {
     where: { id_fab: idFab },
     data: {
       id_teknisi_ditugaskan: idTeknisi,
+      id_penugas: Number(session.user.id_user),
     },
   });
 
@@ -679,6 +680,7 @@ export async function bulkAssignFabToTeknisi(idFabs: number[], idTeknisi: number
     where: { id_fab: { in: fabsToAssign.map((f) => f.id_fab) } },
     data: {
       id_teknisi_ditugaskan: idTeknisi,
+      id_penugas: Number(session.user.id_user),
     },
   });
 

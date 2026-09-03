@@ -38,7 +38,7 @@ export async function createNotification({
   title: string;
   message: string;
   link?: string;
-  type?: "FAB_ASSIGNED" | "FAB_STATUS_CHANGE" | "BAA_CREATED" | "SYSTEM";
+  type?: "FAB_ASSIGNED" | "FAB_STATUS_CHANGE" | "BAA_CREATED" | "FAB_COMPLETED" | "SYSTEM";
 }) {
   const session = await auth();
   if (!session?.user) {
@@ -75,7 +75,7 @@ export async function createBulkNotifications({
     title: string;
     message: string;
     link?: string;
-    type?: "FAB_ASSIGNED" | "FAB_STATUS_CHANGE" | "BAA_CREATED" | "SYSTEM";
+    type?: "FAB_ASSIGNED" | "FAB_STATUS_CHANGE" | "BAA_CREATED" | "FAB_COMPLETED" | "SYSTEM";
   }>;
 }) {
   const session = await auth();
