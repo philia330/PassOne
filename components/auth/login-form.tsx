@@ -17,7 +17,13 @@ type Settings = {
   footer_text: string;
 };
 
-export default function LoginForm({ settings }: { settings: Settings }) {
+export default function LoginForm({
+  settings,
+  sessionExpired = false,
+}: {
+  settings: Settings;
+  sessionExpired?: boolean;
+}) {
   const router = useRouter();
 
   const [username, setUsername] = useState("");
@@ -87,6 +93,12 @@ export default function LoginForm({ settings }: { settings: Settings }) {
           <p className="mt-2 text-slate-500">
             {settings.login_subtitle}
           </p>
+
+          {sessionExpired && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800" role="status">
+              Sesi Anda telah berakhir, silakan login kembali.
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5 sm:mt-10 sm:space-y-6">
