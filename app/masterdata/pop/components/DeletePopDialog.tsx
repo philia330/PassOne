@@ -79,11 +79,11 @@ export const DeletePopDialog = ({ id, namaPop, bulkIds, open: controlledOpen, on
             <Button
               variant="ghost"
               size="icon"
-              className="cursor-pointer rounded-xl active:scale-90 transition-transform hover:bg-rose-50 dark:hover:bg-rose-950/30"
+              className="group cursor-pointer rounded-xl active:scale-90 transition-transform hover:bg-rose-50 dark:hover:bg-rose-950/30"
             />
           }
         >
-          <Trash2 className="h-4 w-4 text-red-500 hover:text-red-600 active:scale-90 transition-all dark:text-red-400 dark:hover:text-red-300" />
+          <Trash2 className="h-4 w-4 text-red-500 transition-transform duration-200 group-hover:scale-125 group-hover:text-red-600 dark:text-red-400 dark:group-hover:text-red-300" />
         </AlertDialogTrigger>
       )}
 

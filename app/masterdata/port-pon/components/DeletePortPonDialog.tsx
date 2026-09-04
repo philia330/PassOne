@@ -79,7 +79,7 @@ export const DeletePortPonDialog = ({ id, name, bulkIds, open: controlledOpen, o
             <Button
               variant="ghost"
               size="icon"
-              className="cursor-pointer rounded-xl active:scale-90 transition-transform hover:bg-rose-50 dark:hover:bg-rose-950/30"
+              className="cursor-pointer rounded-xl hover:scale-125 active:scale-90 transition-transform duration-200 hover:bg-rose-50 dark:hover:bg-rose-950/30"
             />
           }
         >

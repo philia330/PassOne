@@ -377,7 +377,7 @@ export function AreaSortableTable({
                       "border-b border-slate-200 dark:border-slate-800 transition-colors",
                       selectedIds.has(area.id_area)
                         ? "bg-purple-50 dark:bg-purple-500/10"
-                        : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
+                        : "hover:bg-slate-100 dark:hover:bg-slate-800",
                       highlightedId === area.id_area && "bg-yellow-100 dark:bg-yellow-500/20 ring-2 ring-yellow-400 dark:ring-yellow-500"
                     )}
                   >

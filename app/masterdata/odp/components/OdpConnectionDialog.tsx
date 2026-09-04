@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Link2, X, Wifi, FileText } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Link2, Wifi, FileText, MousePointerClick } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -43,6 +44,7 @@ export function OdpConnectionDialog({
   odpName,
   trigger,
 }: OdpConnectionDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ConnectionData | null>(null);
@@ -76,6 +78,21 @@ export function OdpConnectionDialog({
     }
   };
 
+  // Double-click pada baris ONT: arahkan ke halaman Data ONT, otomatis
+  // ter-highlight dan ter-scroll ke baris yang dituju (reuse mekanisme
+  // highlight yang sudah dipakai OntSortableTable / Command Palette).
+  const handleOntDoubleClick = (ont: OntItem) => {
+    setOpen(false);
+    router.push(`/masterdata/ont?highlight=${ont.id_ont}`);
+  };
+
+  // Double-click pada baris BAA: arahkan ke halaman detail BAA di workspace,
+  // konsisten dengan link "Detail & Material" dan double-click di BaaTable.
+  const handleBaaDoubleClick = (baa: BaaItem) => {
+    setOpen(false);
+    router.push(`/workspace?view=baa&id_baa=${baa.id_baa}`);
+  };
+
   const defaultTrigger = (
     <Button
       variant="ghost"
@@ -100,8 +117,9 @@ export function OdpConnectionDialog({
               <Link2 className="h-5 w-5 text-purple-600" />
               Koneksi {odpName}
             </DialogTitle>
-            <DialogDescription>
-              Daftar ONT dan BAA yang terhubung ke ODP ini
+            <DialogDescription className="flex items-center gap-1.5">
+              <MousePointerClick className="h-3.5 w-3.5" />
+              Klik 2x pada item untuk membuka halamannya
             </DialogDescription>
           </DialogHeader>
 
@@ -138,7 +156,9 @@ export function OdpConnectionDialog({
                       {data.ont.map((ont) => (
                         <div
                           key={ont.id_ont}
-                          className="flex items-center justify-between rounded-md bg-slate-50 p-2 text-sm"
+                          onDoubleClick={() => handleOntDoubleClick(ont)}
+                          title="Klik 2x untuk membuka data ONT ini"
+                          className="flex items-center justify-between rounded-md bg-slate-50 p-2 text-sm cursor-pointer select-none hover:bg-purple-50 hover:ring-1 hover:ring-purple-200 transition-colors"
                         >
                           <div>
                             <p className="font-mono font-medium text-slate-700">
@@ -184,7 +204,9 @@ export function OdpConnectionDialog({
                       {data.baa.map((baa) => (
                         <div
                           key={baa.id_baa}
-                          className="flex items-center justify-between rounded-md bg-slate-50 p-2 text-sm"
+                          onDoubleClick={() => handleBaaDoubleClick(baa)}
+                          title="Klik 2x untuk membuka detail BAA ini"
+                          className="flex items-center justify-between rounded-md bg-slate-50 p-2 text-sm cursor-pointer select-none hover:bg-purple-50 hover:ring-1 hover:ring-purple-200 transition-colors"
                         >
                           <div>
                             <p className="font-mono font-medium text-slate-700">

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, ReactNode, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2 } from "lucide-react";
+import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2, Filter, Router, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -13,6 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PortPonFormDialog } from "./PortPonFormDialog";
 import { DeletePortPonDialog } from "./DeletePortPonDialog";
 import { PortPonSearch } from "./PortPonSearch";
@@ -33,6 +40,13 @@ const statusBadge: Record<string, string> = {
   TERPASANG: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400",
   RUSAK: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400",
 };
+
+const STATUS_OPTIONS: { key: "all" | "TERSEDIA" | "TERPASANG" | "RUSAK"; label: string }[] = [
+  { key: "all", label: "Semua Status" },
+  { key: "TERSEDIA", label: "Tersedia" },
+  { key: "TERPASANG", label: "Terpasang" },
+  { key: "RUSAK", label: "Rusak" },
+];
 
 type PortPon = {
   id_port: number;
@@ -68,6 +82,11 @@ export function PortPonSortableTable({
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
+  // Filter navigasi: OLT, ODP, Status
+  const [filterOlt, setFilterOlt] = useState<string>("all");
+  const [filterOdp, setFilterOdp] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+
   // Selection state for bulk actions
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
@@ -85,11 +104,12 @@ export function PortPonSortableTable({
   const isAdmin = currentUser?.role === "ADMIN";
   const canBulkDelete = isAdmin;
 
-  // Clear selection when filters/search change
+  // Clear selection & reset page saat search/filter berubah
   useEffect(() => {
     setSelectedIds(new Set());
     setSelectAllPage(false);
-  }, [search]);
+    setPage(1);
+  }, [search, filterOlt, filterOdp, filterStatus]);
 
   // Handle highlight dari Command Palette (query param: highlight=<id_port>)
   useEffect(() => {
@@ -111,9 +131,12 @@ export function PortPonSortableTable({
     const item = initialData.find((p) => p.id_port === targetId);
     if (!item) return;
 
-    // Set search ke nama OLT - ini akan sync ke PortPonSearch via onChange
+    // Set search ke nama OLT & reset filter - ini akan sync ke PortPonSearch via onChange
     const searchValue = item.olt?.nama_olt || String(item.nomor_port);
     setSearch(searchValue);
+    setFilterOlt("all");
+    setFilterOdp("all");
+    setFilterStatus("all");
     setPage(1);
 
     // Update URL search param agar sinkron dengan state
@@ -151,14 +174,22 @@ export function PortPonSortableTable({
 
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
-    return initialData.filter(
-      (port) =>
+    return initialData.filter((port) => {
+      const matchesSearch =
         (port.olt?.nama_olt?.toLowerCase().includes(query) ?? false) ||
         (port.odp?.nama_odp?.toLowerCase().includes(query) ?? false) ||
         port.tipe_kartu.toLowerCase().includes(query) ||
-        port.status.toLowerCase().includes(query)
-    );
-  }, [initialData, search]);
+        port.status.toLowerCase().includes(query);
+
+      if (!matchesSearch) return false;
+
+      const matchesOlt = filterOlt === "all" || String(port.id_olt) === filterOlt;
+      const matchesOdp = filterOdp === "all" || String(port.id_odp) === filterOdp;
+      const matchesStatus = filterStatus === "all" || port.status === filterStatus;
+
+      return matchesOlt && matchesOdp && matchesStatus;
+    });
+  }, [initialData, search, filterOlt, filterOdp, filterStatus]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -169,6 +200,8 @@ export function PortPonSortableTable({
 
   const totalPagesCalc = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const hasActiveFilter = filterOlt !== "all" || filterOdp !== "all" || filterStatus !== "all";
 
   // Kalau hasil filter/sort bikin halaman aktif sekarang jadi out-of-range
   // (misal lagi di halaman 3 terus search dipersempit sampai cuma sisa 1
@@ -281,7 +314,7 @@ export function PortPonSortableTable({
 
   return (
     <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
-      <CardContent className="space-y-6 p-4 sm:p-6">
+      <CardContent className="space-y-4 p-4 sm:p-6">
         {/* Bulk Action Bar */}
         {selectedIds.size > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl bg-purple-50 p-3 sm:p-4 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30">
@@ -337,11 +370,138 @@ export function PortPonSortableTable({
           </div>
         )}
 
+        {/* Baris 1: Search + Aksi & Tambah */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <PortPonSearch value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
             {actions}
             <PortPonFormDialog mode="create" olts={olts} odps={odps} />
+          </div>
+        </div>
+
+        {/* Baris 2: Filter OLT + ODP + Status */}
+        <div className="flex flex-wrap items-center gap-2 overflow-visible">
+          {/* Filter OLT */}
+          <div className="flex items-center gap-2">
+            <Select value={filterOlt} onValueChange={(v) => { if (v) { setFilterOlt(v); setPage(1); } }}>
+              <SelectTrigger className="h-11 w-[170px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+                <Router className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+                <SelectValue>
+                  {filterOlt === "all" ? "Semua OLT" : olts.find((o) => String(o.id_olt) === filterOlt)?.nama_olt ?? "OLT"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent
+                side="bottom"
+                alignItemWithTrigger={false}
+                className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]"
+              >
+                <SelectItem value="all" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                  <span className="flex items-center gap-2">
+                    <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>Semua OLT</span>
+                  </span>
+                </SelectItem>
+                {olts.map((olt) => (
+                  <SelectItem key={olt.id_olt} value={String(olt.id_olt)} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                    <span className="flex items-center gap-2">
+                      <Router className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>{olt.nama_olt}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {filterOlt !== "all" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setFilterOlt("all"); setPage(1); }}
+                className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+              >
+                <X className="h-4 w-4 text-slate-500" />
+              </Button>
+            )}
+          </div>
+
+          {/* Filter ODP */}
+          <div className="flex items-center gap-2">
+            <Select value={filterOdp} onValueChange={(v) => { if (v) { setFilterOdp(v); setPage(1); } }}>
+              <SelectTrigger className="h-11 w-[170px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+                <MapPin className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+                <SelectValue>
+                  {filterOdp === "all" ? "Semua ODP" : odps.find((o) => String(o.id_odp) === filterOdp)?.nama_odp ?? "ODP"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent
+                side="bottom"
+                alignItemWithTrigger={false}
+                className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]"
+              >
+                <SelectItem value="all" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                  <span className="flex items-center gap-2">
+                    <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>Semua ODP</span>
+                  </span>
+                </SelectItem>
+                {odps.map((odp) => (
+                  <SelectItem key={odp.id_odp} value={String(odp.id_odp)} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                    <span className="flex items-center gap-2">
+                      <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>{odp.nama_odp}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {filterOdp !== "all" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setFilterOdp("all"); setPage(1); }}
+                className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+              >
+                <X className="h-4 w-4 text-slate-500" />
+              </Button>
+            )}
+          </div>
+
+          {/* Filter Status */}
+          <div className="flex items-center gap-2">
+            <Select value={filterStatus} onValueChange={(v) => { if (v) { setFilterStatus(v); setPage(1); } }}>
+              <SelectTrigger className="h-11 w-[170px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+                <Filter className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+                <SelectValue>
+                  {STATUS_OPTIONS.find((s) => s.key === filterStatus)?.label ?? "Semua Status"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent
+                side="bottom"
+                alignItemWithTrigger={false}
+                className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]"
+              >
+                {STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.key} value={opt.key} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                    <span className="flex items-center gap-2">
+                      <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>{opt.label}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {filterStatus !== "all" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setFilterStatus("all"); setPage(1); }}
+                className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+              >
+                <X className="h-4 w-4 text-slate-500" />
+              </Button>
+            )}
           </div>
         </div>
 
@@ -396,7 +556,7 @@ export function PortPonSortableTable({
               {paginated.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="py-10 text-center text-slate-400 dark:text-slate-500">
-                    {search ? "Tidak ada data Port PON yang cocok" : "Belum ada data Port PON"}
+                    {search || hasActiveFilter ? "Tidak ada data Port PON yang cocok" : "Belum ada data Port PON"}
                   </TableCell>
                 </TableRow>
               ) : (

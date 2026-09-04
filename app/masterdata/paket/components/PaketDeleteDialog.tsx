@@ -73,14 +73,14 @@ export const PaketDeleteDialog = ({ id, namaPaket, bulkIds, open: controlledOpen
       if (!isOpen) setErrorMsg(null);
     }}>
       <AlertDialogTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 cursor-pointer rounded-xl active:scale-90 transition-transform hover:bg-rose-50 dark:hover:bg-rose-950/30"
-          />
-        }
-      >
+  render={
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8 cursor-pointer rounded-xl active:scale-90 hover:scale-125 transition-transform hover:bg-rose-50 dark:hover:bg-rose-950/30"
+    />
+  }
+>
         <Trash2 className="h-4 w-4 text-red-500 hover:text-red-600 active:scale-90 transition-all dark:text-red-400 dark:hover:text-red-300" />
       </AlertDialogTrigger>
 

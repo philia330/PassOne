@@ -3,7 +3,7 @@
 import { useState, useMemo, ReactNode, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2, Printer } from "lucide-react";
+import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2, Printer, Calendar, Filter } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -13,6 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { OntFormDialog } from "./OntFormDialog";
 import { DeleteOntDialog } from "./DeleteOntDialog";
 import { OntSearch } from "./OntSearch";
@@ -51,6 +58,29 @@ type Ont = {
 
 const PAGE_SIZE = 10;
 
+const MONTH_OPTIONS = [
+  { key: "all", label: "Semua" },
+  { key: "01", label: "Jan" },
+  { key: "02", label: "Feb" },
+  { key: "03", label: "Mar" },
+  { key: "04", label: "Apr" },
+  { key: "05", label: "Mei" },
+  { key: "06", label: "Jun" },
+  { key: "07", label: "Jul" },
+  { key: "08", label: "Agt" },
+  { key: "09", label: "Sep" },
+  { key: "10", label: "Okt" },
+  { key: "11", label: "Nov" },
+  { key: "12", label: "Des" },
+];
+
+const STATUS_OPTIONS: { key: "all" | "TERSEDIA" | "TERPASANG" | "RUSAK"; label: string }[] = [
+  { key: "all", label: "Semua Status" },
+  { key: "TERSEDIA", label: "Tersedia" },
+  { key: "TERPASANG", label: "Aktif (Terpasang)" },
+  { key: "RUSAK", label: "Rusak" },
+];
+
 export function OntSortableTable({
   initialData,
   pops,
@@ -72,6 +102,11 @@ export function OntSortableTable({
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  // Filter navigasi: tahun, bulan, status
+  const [filterTahun, setFilterTahun] = useState<string>("all");
+  const [filterBulan, setFilterBulan] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
 
   // Selection state for bulk actions
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -96,11 +131,12 @@ export function OntSortableTable({
   const canDeleteOnt = isAdmin || isLogistik;
   const canBulkDelete = isAdmin || isLogistik;
 
-  // Clear selection when filters/search change
+  // Clear selection & reset page saat search/filter berubah
   useEffect(() => {
     setSelectedIds(new Set());
     setSelectAllPage(false);
-  }, [search]);
+    setPage(1);
+  }, [search, filterTahun, filterBulan, filterStatus]);
 
   // Handle highlight dari Command Palette (query param: highlight=<id_ont>)
   useEffect(() => {
@@ -123,8 +159,11 @@ export function OntSortableTable({
     const item = initialData.find((o) => o.id_ont === targetId);
     if (!item) return;
 
-    // Set search ke nama/pelanggan ONT - ini akan sync ke OntSearch via onChange
+    // Set search ke nama/pelanggan ONT & reset filter - ini akan sync ke OntSearch via onChange
     setSearch(item.pelanggan);
+    setFilterTahun("all");
+    setFilterBulan("all");
+    setFilterStatus("all");
     setPage(1);
 
     // Update URL search param agar sinkron dengan state
@@ -160,17 +199,39 @@ export function OntSortableTable({
     setPage(1);
   };
 
+  const getMonthLabel = (monthKey: string) =>
+    MONTH_OPTIONS.find((m) => m.key === monthKey)?.label ?? "Semua";
+
+  // Opsi tahun otomatis dari data yang ada (bukan hardcode, lihat catatan di atas)
+  const yearOptions = useMemo(() => {
+    const years = new Set<number>();
+    initialData.forEach((ont) => years.add(new Date(ont.createdAt).getFullYear()));
+    return ["all", ...Array.from(years).sort((a, b) => b - a).map(String)];
+  }, [initialData]);
+
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
-    return initialData.filter(
-      (ont) =>
+    return initialData.filter((ont) => {
+      const matchesSearch =
         ont.serial_number.toLowerCase().includes(query) ||
         ont.pelanggan.toLowerCase().includes(query) ||
         ont.model.toLowerCase().includes(query) ||
         (ont.pop?.nama_pop?.toLowerCase().includes(query) ?? false) ||
-        (ont.odp?.nama_odp?.toLowerCase().includes(query) ?? false)
-    );
-  }, [initialData, search]);
+        (ont.odp?.nama_odp?.toLowerCase().includes(query) ?? false);
+
+      if (!matchesSearch) return false;
+
+      const createdDate = new Date(ont.createdAt);
+      const itemYear = String(createdDate.getFullYear());
+      const itemMonth = String(createdDate.getMonth() + 1).padStart(2, "0");
+
+      const matchesTahun = filterTahun === "all" || itemYear === filterTahun;
+      const matchesBulan = filterBulan === "all" || itemMonth === filterBulan;
+      const matchesStatus = filterStatus === "all" || ont.status === filterStatus;
+
+      return matchesTahun && matchesBulan && matchesStatus;
+    });
+  }, [initialData, search, filterTahun, filterBulan, filterStatus]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -181,6 +242,8 @@ export function OntSortableTable({
 
   const totalPagesCalc = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const hasActiveFilter = filterTahun !== "all" || filterBulan !== "all" || filterStatus !== "all";
 
   // Selection functions
   const toggleSelect = (id: number) => {
@@ -293,7 +356,7 @@ export function OntSortableTable({
 
   return (
     <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
-      <CardContent className="space-y-6 p-4 sm:p-6">
+      <CardContent className="space-y-4 p-4 sm:p-6">
         {/* Bulk Action Bar */}
         {selectedIds.size > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl bg-purple-50 p-3 sm:p-4 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30">
@@ -358,11 +421,126 @@ export function OntSortableTable({
           </div>
         )}
 
+        {/* Baris 1: Search + Aksi & Tambah */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <OntSearch value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
             {actions}
             <OntFormDialog mode="create" pops={pops} odps={odps} />
+          </div>
+        </div>
+
+        {/* Baris 2: Filter Tahun + Bulan + Status */}
+        <div className="flex flex-wrap items-center gap-2 overflow-visible">
+          {/* Filter Tahun */}
+          <div className="flex items-center gap-2">
+            <Select value={filterTahun} onValueChange={(value) => { if (value) { setFilterTahun(value); setPage(1); } }}>
+              <SelectTrigger className="h-11 w-[130px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+                <Calendar className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+                <SelectValue>
+                  {filterTahun === "all" ? <span>Semua Thn</span> : <span>{filterTahun}</span>}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent
+                side="bottom"
+                alignItemWithTrigger={false}
+                className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]"
+              >
+                {yearOptions.map((year) => (
+                  <SelectItem key={year} value={year} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                    <span className="flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>{year === "all" ? "Semua" : year}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {filterTahun !== "all" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setFilterTahun("all"); setPage(1); }}
+                className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+              >
+                <X className="h-4 w-4 text-slate-500" />
+              </Button>
+            )}
+          </div>
+
+          {/* Filter Bulan */}
+          <div className="flex items-center gap-2">
+            <Select value={filterBulan} onValueChange={(value) => { if (value) { setFilterBulan(value); setPage(1); } }}>
+              <SelectTrigger className="h-11 w-[110px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+                <Calendar className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+                <SelectValue>
+                  {filterBulan === "all" ? <span>Semua</span> : <span>{getMonthLabel(filterBulan)}</span>}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent
+                side="bottom"
+                alignItemWithTrigger={false}
+                className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]"
+              >
+                {MONTH_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.key} value={opt.key} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                    <span className="flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>{opt.key === "all" ? "Semua" : opt.label}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {filterBulan !== "all" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setFilterBulan("all"); setPage(1); }}
+                className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+              >
+                <X className="h-4 w-4 text-slate-500" />
+              </Button>
+            )}
+          </div>
+
+          {/* Filter Status */}
+          <div className="flex items-center gap-2">
+            <Select value={filterStatus} onValueChange={(value) => { if (value) { setFilterStatus(value); setPage(1); } }}>
+              <SelectTrigger className="h-11 w-[190px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+                <Filter className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+                <SelectValue>
+                  {STATUS_OPTIONS.find((s) => s.key === filterStatus)?.label ?? "Semua Status"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent
+                side="bottom"
+                alignItemWithTrigger={false}
+                className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]"
+              >
+                {STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.key} value={opt.key} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                    <span className="flex items-center gap-2">
+                      <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>{opt.label}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {filterStatus !== "all" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setFilterStatus("all"); setPage(1); }}
+                className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+              >
+                <X className="h-4 w-4 text-slate-500" />
+              </Button>
+            )}
           </div>
         </div>
 
@@ -419,7 +597,7 @@ export function OntSortableTable({
               {paginated.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="py-10 text-center text-slate-400 dark:text-slate-500">
-                    {search ? "Tidak ada data ONT yang cocok" : "Belum ada data ONT"}
+                    {search || hasActiveFilter ? "Tidak ada data ONT yang cocok" : "Belum ada data ONT"}
                   </TableCell>
                 </TableRow>
               ) : (

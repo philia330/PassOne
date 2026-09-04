@@ -95,7 +95,7 @@ export default async function OdpPage({
 
         <Card className="rounded-3xl border-0 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-lg">
           <CardContent className="flex items-center justify-between p-6">
-            <div>
+            <div> 
               <p className="text-sm text-white/80">Total ONT</p>
               <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">
                 {totalOnt}

@@ -9,17 +9,9 @@ import { Role, JenisKelamin } from "@prisma/client";
 import path from "path";
 import fs from "fs/promises";
 import { requireRole } from "@/lib/auth/guards";
-import { auth } from "@/lib/auth";
 import { optimizeImageToWebP } from "@/lib/image-utils";
-import { z } from "zod";
 import { normalizeRole } from "@/lib/auth/roles";
-import {
-  userNameSchema,
-  usernameSchema,
-  emailSchema,
-  noHpSchema,
-  passwordSchema,
-} from "@/lib/validations";
+import { createUserSchema, updateUserSchema } from "@/lib/validations";
 
 const PAGE_SIZE = 10;
 
@@ -47,40 +39,6 @@ function assertRoleAssignmentAllowed(currentUserRole: string | undefined, target
 
   throw new Error("Anda tidak memiliki izin untuk mengatur role user.");
 }
-
-// ======================================================
-// VALIDATION SCHEMAS - User specific
-// ======================================================
-
-const createUserValidation = z.object({
-  nama: userNameSchema,
-  username: usernameSchema,
-  password: z.string().min(1, "Password wajib diisi.").min(6, "Password minimal 6 karakter.").max(100, "Password maksimal 100 karakter."),
-  email: emailSchema,
-  no_hp: noHpSchema,
-  role: z.enum(["ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"], {
-    message: "Role wajib dipilih.",
-  }),
-  jkl: z.enum(["LAKI_LAKI", "PEREMPUAN"], {
-    message: "Jenis kelamin wajib dipilih.",
-  }),
-  status: z.boolean(),
-});
-
-const updateUserValidation = z.object({
-  nama: userNameSchema,
-  username: usernameSchema,
-  password: passwordSchema.optional().or(z.literal("")),
-  email: emailSchema,
-  no_hp: noHpSchema,
-  role: z.enum(["ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"], {
-    message: "Role wajib dipilih.",
-  }),
-  jkl: z.enum(["LAKI_LAKI", "PEREMPUAN"], {
-    message: "Jenis kelamin wajib dipilih.",
-  }),
-  status: z.boolean(),
-});
 
 // ======================================================
 // Generate Kode User
@@ -213,6 +171,9 @@ export const createUser = async (formData: FormData) => {
   // ======================================================
   // VALIDASI INPUT
   // ======================================================
+  // email/no_hp kosong biarkan tetap "" — emailSchema/noHpSchema di
+  // lib/validations.ts sudah menormalkan string kosong jadi null lewat
+  // z.preprocess, jadi tidak perlu di-armor lagi di sini.
   const rawData = {
     nama: (formData.get("nama") as string)?.trim() || "",
     username: (formData.get("username") as string)?.trim().toLowerCase() || "",
@@ -224,8 +185,7 @@ export const createUser = async (formData: FormData) => {
     status: formData.get("status") === "true",
   };
 
-  // Parse validation
-  const parseResult = createUserValidation.safeParse(rawData);
+  const parseResult = createUserSchema.safeParse(rawData);
 
   if (!parseResult.success) {
     const firstError = parseResult.error.issues[0];
@@ -273,8 +233,8 @@ export const createUser = async (formData: FormData) => {
       nama: validated.nama,
       username: validated.username,
       password: hashPassword,
-      email: validated.email,
-      no_hp: validated.no_hp,
+      email: validated.email ?? null,
+      no_hp: validated.no_hp ?? null,
       role: validated.role,
       jkl: validated.jkl,
       status: validated.status,
@@ -282,7 +242,6 @@ export const createUser = async (formData: FormData) => {
     },
   });
 
-  // Catat aktivitas
   await logActivity(
     "USER_CREATED",
     `User ${validated.nama} (${kode_user}) ditambahkan.`,
@@ -313,8 +272,7 @@ export const updateUser = async (id: number, formData: FormData) => {
     status: formData.get("status") === "true",
   };
 
-  // Parse validation
-  const parseResult = updateUserValidation.safeParse(rawData);
+  const parseResult = updateUserSchema.safeParse(rawData);
 
   if (!parseResult.success) {
     const firstError = parseResult.error.issues[0];
@@ -373,8 +331,8 @@ export const updateUser = async (id: number, formData: FormData) => {
   }> = {
     nama: validated.nama,
     username: validated.username,
-    email: validated.email,
-    no_hp: validated.no_hp,
+    email: validated.email ?? null,
+    no_hp: validated.no_hp ?? null,
     role: validated.role,
     jkl: validated.jkl,
     status: validated.status,
@@ -405,7 +363,6 @@ export const updateUser = async (id: number, formData: FormData) => {
     data,
   });
 
-  // Catat aktivitas
   await logActivity(
     "USER_UPDATED",
     `User ${validated.nama} diperbarui.`,
@@ -422,10 +379,6 @@ export const updateUser = async (id: number, formData: FormData) => {
 export const deleteUser = async (id: number) => {
   const session = await requireRole(["ADMIN"]);
 
-  // ======================================================
-  // Ambil Data User
-  // ======================================================
-
   const user = await prisma.user.findUnique({
     where: {
       id_user: id,
@@ -435,10 +388,6 @@ export const deleteUser = async (id: number) => {
       nama: true,
     },
   });
-
-  // ======================================================
-  // Hapus File Foto
-  // ======================================================
 
   if (user?.foto) {
     try {
@@ -450,17 +399,12 @@ export const deleteUser = async (id: number) => {
     }
   }
 
-  // ======================================================
-  // Hapus Data User
-  // ======================================================
-
   await prisma.user.delete({
     where: {
       id_user: id,
     },
   });
 
-  // Catat aktivitas
   await logActivity(
     "USER_DELETED",
     `User ${user?.nama ?? `ID ${id}`} dihapus.`,

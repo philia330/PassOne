@@ -77,10 +77,10 @@ export const DeleteOntDialog = ({ id, name, bulkIds, open: controlledOpen, onOpe
         <AlertDialogTrigger
           render={
             <Button
-              variant="ghost"
-              size="icon"
-              className="cursor-pointer rounded-xl active:scale-90 transition-transform hover:bg-rose-50 dark:hover:bg-rose-950/30"
-            />
+  variant="ghost"
+  size="icon"
+  className="cursor-pointer rounded-xl hover:scale-125 active:scale-90 transition-transform duration-200 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+/>
           }
         >
           <Trash2 className="h-4 w-4 text-red-500 hover:text-red-600 active:scale-90 transition-all dark:text-red-400 dark:hover:text-red-300" />

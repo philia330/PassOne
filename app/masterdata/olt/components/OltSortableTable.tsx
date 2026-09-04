@@ -417,7 +417,7 @@ export function OltSortableTable({
                       "border-b border-slate-100 transition-colors",
                       selectedIds.has(olt.id_olt)
                         ? "bg-purple-50 dark:bg-purple-500/10"
-                        : "hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40",
+                        : "hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800",
                       highlightedId === olt.id_olt && "bg-yellow-100 dark:bg-yellow-500/20 ring-2 ring-yellow-400 dark:ring-yellow-500"
                     )}
                   >
@@ -481,7 +481,7 @@ export function OltSortableTable({
                       })}
                     </TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-center gap-1 group/action">
+                      <div className="flex justify-center gap-1">
                         <OltMapDialog nama={olt.nama_olt} lat={Number(olt.latitude)} lng={Number(olt.longitude)} />
                         <OpenGoogleMaps lat={Number(olt.latitude)} lng={Number(olt.longitude)} name={olt.nama_olt} />
                         <OltFormDialog mode="edit" pops={pops} data={{ id_olt: olt.id_olt, nama_olt: olt.nama_olt, lokasi: olt.lokasi, latitude: String(olt.latitude), longitude: String(olt.longitude), id_pop: olt.id_pop, ip_olt: olt.ip_olt, username_olt: olt.username_olt, password_olt: olt.password_olt, foto_olt: olt.foto_olt }} />

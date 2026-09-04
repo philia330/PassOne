@@ -77,7 +77,7 @@ export const MaterialDeleteDialog = ({ id, namaMaterial, bulkIds, open: controll
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 cursor-pointer rounded-xl active:scale-90 transition-transform hover:bg-rose-50 dark:hover:bg-rose-950/30"
+            className="h-8 w-8 cursor-pointer rounded-xl hover:scale-125 active:scale-90 transition-transform duration-200 hover:bg-rose-50 dark:hover:bg-rose-950/30"
           />
         }
       >
