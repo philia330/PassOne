@@ -686,6 +686,36 @@ export async function createBaa(formData: FormData) {
     return created;
   });
 
+  // Beri tahu pemberi tugas hanya setelah BAA dan perubahan status FAB berhasil.
+  const assignedFab = await prisma.fab.findUnique({
+    where: { id_fab: validated.id_fab },
+    select: {
+      id_fab: true,
+      id_teknisi_ditugaskan: true,
+      id_penugas: true,
+      kode_fab: true,
+      nama_pelanggan: true,
+    },
+  });
+
+  if (
+    assignedFab?.id_teknisi_ditugaskan === Number(session.user.id_user) &&
+    assignedFab.id_penugas
+  ) {
+    await prisma.notification.createMany({
+      data: [{
+        id_user: assignedFab.id_penugas,
+        id_baa: newBaa.id_baa,
+        title: "Tugas Selesai Dikerjakan",
+        message: `Teknisi ${session.user.nama} telah menyelesaikan FAB ${assignedFab.kode_fab} - ${assignedFab.nama_pelanggan}`,
+        link: `/jaringan/fab?highlight=${assignedFab.id_fab}`,
+        type: "FAB_COMPLETED",
+        is_read: false,
+      }],
+      skipDuplicates: true,
+    });
+  }
+
   // Tambah teknisi tambahan
   if (validated.teknisi_tambahan && validated.teknisi_tambahan.length > 0) {
     await prisma.baateknisi.createMany({

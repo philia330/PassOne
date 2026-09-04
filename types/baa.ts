@@ -119,6 +119,7 @@ export interface TeknisiOption {
   id_user: number;
   nama: string;
   username?: string;
+  foto?: string | null;
 }
 
 export interface OltOption {

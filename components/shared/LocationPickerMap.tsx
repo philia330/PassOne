@@ -8,14 +8,38 @@ import { useEffect, useState } from "react";
 import L from "leaflet";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 
+// Custom marker icon yang lebih jelas dan terlihat
 // FIX bawaan Leaflet: icon marker default suka pecah/hilang kalau dibundle
 // lewat Webpack/Next.js karena path gambar internalnya nggak ketemu.
 // @ts-expect-error - properti internal Leaflet, memang perlu dihapus manual
 delete L.Icon.Default.prototype._getIconUrl;
+
+// Custom icon dengan style yang lebih jelas
+const customIcon = new L.Icon({
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+// Blue marker untuk lokasi GPS
+const blueIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+  className: "leaflet-bluelayer-marker",
+});
+
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
 
 interface LocationPickerMapProps {
@@ -113,8 +137,17 @@ export default function LocationPickerMap({
   return (
     <div
       style={{ height }}
-      className="w-full rounded-2xl overflow-hidden border border-slate-200"
+      className="w-full rounded-2xl overflow-hidden border border-slate-200 relative z-0"
     >
+      <style>{`
+        .leaflet-marker-icon {
+          background: transparent !important;
+          border: none !important;
+        }
+        .leaflet-marker-icon img {
+          display: block !important;
+        }
+      `}</style>
       <MapContainer
         center={[defaultLat, defaultLng]}
         zoom={16}
@@ -129,6 +162,7 @@ export default function LocationPickerMap({
         <MapReady>
           <Marker
             position={[defaultLat, defaultLng]}
+            icon={customIcon}
             draggable={!readOnly}
             eventHandlers={
               !readOnly && onChange

@@ -40,9 +40,9 @@ export const OltMapDialog = ({ nama, lat, lng }: OltMapDialogProps) => {
         size="icon"
         onClick={() => setOpen(true)}
         title="Lihat Peta"
-        className="cursor-pointer rounded-xl"
+        className="group cursor-pointer rounded-xl transition-transform active:scale-90 hover:bg-sky-50 dark:hover:bg-sky-500/20"
       >
-        <MapPin className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+        <MapPin className="h-4 w-4 text-sky-600 transition-transform duration-200 group-hover:scale-125 dark:text-sky-400" />
       </Button>
 
       <DialogContent className="rounded-3xl sm:max-w-4xl">

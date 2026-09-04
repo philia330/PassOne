@@ -142,7 +142,7 @@ export function OntQrDialog({ ont, children }: OntQrDialogProps) {
             onClick={(e) => {
               e.stopPropagation();
             }}
-            className="cursor-pointer rounded-xl active:scale-90 transition-transform dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            className="cursor-pointer rounded-xl hover:scale-125 active:scale-90 transition-transform duration-200 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             title="Lihat QR Code"
           >
             <QrCode className="h-4 w-4 text-purple-500 hover:text-purple-600 dark:text-purple-400 dark:hover:text-purple-300" />

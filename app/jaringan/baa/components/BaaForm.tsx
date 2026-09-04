@@ -31,13 +31,6 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -579,25 +572,19 @@ export const BaaForm = ({
                 className="flex items-center gap-2 rounded-2xl border border-slate-200 p-3 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50"
               >
                 <div className="flex-1">
-                  <Select
+                  <SearchableSelect
                     value={row.id_user}
                     onValueChange={(v) => handleTeknisiRowChange(row.rowId, v)}
-                    items={getAvailableTeknisiOptions(row.rowId).map((t) => ({
+                    options={getAvailableTeknisiOptions(row.rowId).map((t) => ({
                       value: String(t.id_user),
                       label: `${t.nama}${t.username ? ` (@${t.username})` : ""}`,
+                      avatarUrl: t.foto,
                     }))}
-                  >
-                    <SelectTrigger className="rounded-xl h-10 border-slate-200 bg-white text-sm w-full dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                      <SelectValue placeholder="Pilih teknisi" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailableTeknisiOptions(row.rowId).map((t) => (
-                        <SelectItem key={t.id_user} value={String(t.id_user)}>
-                          {t.nama} {t.username ? `(@${t.username})` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Pilih teknisi"
+                    searchPlaceholder="Cari teknisi..."
+                    showAvatar
+                    className="rounded-xl"
+                  />
                 </div>
 
                 <button

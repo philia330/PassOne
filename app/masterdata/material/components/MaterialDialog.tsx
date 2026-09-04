@@ -51,7 +51,7 @@ export const MaterialDialog = ({ mode, material, kodeOtomatis }: MaterialDialogP
             <Plus className="mr-2 h-4 w-4" /> Tambah Material
           </Button>
         ) : (
-          <Button variant="ghost" size="icon" className="cursor-pointer rounded-xl active:scale-90 transition-transform">
+          <Button variant="ghost" size="icon" className="cursor-pointer rounded-xl hover:scale-125 active:scale-90 transition-transform duration-200">
   <Pencil className="h-4 w-4 text-orange-500 hover:text-orange-600 active:scale-90 transition-all dark:text-orange-400 dark:hover:text-orange-300" />
 </Button>
         )}

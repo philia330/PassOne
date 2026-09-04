@@ -385,7 +385,7 @@ export function PopSortableTable({
                     ref={(el) => { if (el) rowRefs.current.set(pop.id_pop, el); else rowRefs.current.delete(pop.id_pop); }}
                     className={cn("border-b border-slate-200 dark:border-slate-800 transition-colors", {
                       "bg-purple-50 dark:bg-purple-500/10": selectedIds.has(pop.id_pop),
-                      "hover:bg-slate-50 dark:hover:bg-slate-800/50": !selectedIds.has(pop.id_pop),
+                      "hover:bg-slate-100 dark:hover:bg-slate-800": !selectedIds.has(pop.id_pop),
                       "bg-yellow-100 dark:bg-yellow-500/20 ring-2 ring-yellow-400 dark:ring-yellow-500": highlightedId === pop.id_pop,
                     })}
                   >
@@ -425,7 +425,7 @@ export function PopSortableTable({
                       })}
                     </TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-center gap-1 group/action">
+                      <div className="flex justify-center gap-1">
                         <PopMapDialog
                           nama={pop.nama_pop}
                           lat={Number(pop.latitude)}

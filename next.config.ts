@@ -19,7 +19,7 @@ const securityHeaders = [
   },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), payment=()",
+    value: "camera=(), microphone=(), geolocation=(self), payment=()",
   },
   {
     key: "Strict-Transport-Security",
@@ -32,7 +32,7 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
       "style-src 'self' 'unsafe-inline'; " +
       // Tambah domain tile OpenStreetMap (a/b/c subdomain) supaya peta Leaflet bisa load gambar tile-nya.
-      "img-src 'self' data: blob: https://*.tile.openstreetmap.org; " +
+      "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://cdnjs.cloudflare.com https://unpkg.com; " +
       "font-src 'self' data:; " +
       // Tambah OSRM (router.project-osrm.org) karena network-map.tsx fetch rute jalan dari sana,
       // dan tile.openstreetmap.org juga dipanggil lewat fetch/XHR oleh Leaflet di beberapa kondisi.

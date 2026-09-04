@@ -79,7 +79,7 @@ export const DeleteUserDialog = ({ id, name, bulkIds, open: controlledOpen, onOp
             <Button
               variant="ghost"
               size="icon"
-              className="cursor-pointer rounded-xl active:scale-90 transition-transform hover:bg-rose-50 dark:hover:bg-rose-950/30"
+              className="cursor-pointer rounded-xl active:scale-90 hover:scale-125 transition-transform hover:bg-rose-50 dark:hover:bg-rose-950/30"
             />
           }
         >

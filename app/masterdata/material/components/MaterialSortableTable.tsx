@@ -2,7 +2,7 @@
 
 import { useState, useMemo, ReactNode, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, ArrowDown, AlertTriangle, Check, Trash2, Download, X, Loader2 } from "lucide-react";
+import { ArrowUp, ArrowDown, AlertTriangle, Check, Trash2, Download, X, Loader2, ArrowUpDown, Boxes, Wallet, ShieldCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -12,6 +12,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { MaterialDialog } from "./MaterialDialog";
 import { MaterialDeleteDialog } from "./MaterialDeleteDialog";
 import { MaterialSearch } from "./MaterialSearch";
@@ -49,6 +56,25 @@ const formatRupiah = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+type SortBy =
+  | "kode"
+  | "stok_asc"
+  | "stok_desc"
+  | "harga_desc"
+  | "harga_asc"
+  | "kondisi_rusak"
+  | "kondisi_baik";
+
+const SORT_OPTIONS: { key: SortBy; label: string; icon: typeof Boxes }[] = [
+  { key: "kode", label: "Kode (default)", icon: ArrowUpDown },
+  { key: "stok_asc", label: "Stok: Sedikit → Banyak", icon: Boxes },
+  { key: "stok_desc", label: "Stok: Banyak → Sedikit", icon: Boxes },
+  { key: "harga_desc", label: "Harga: Termahal → Termurah", icon: Wallet },
+  { key: "harga_asc", label: "Harga: Termurah → Termahal", icon: Wallet },
+  { key: "kondisi_rusak", label: "Kondisi: Rusak dulu", icon: ShieldCheck },
+  { key: "kondisi_baik", label: "Kondisi: Baik dulu", icon: ShieldCheck },
+];
+
 export function MaterialSortableTable({
   initialData,
   kodeOtomatis,
@@ -66,6 +92,7 @@ export function MaterialSortableTable({
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortBy, setSortBy] = useState<SortBy>("kode");
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -88,7 +115,8 @@ export function MaterialSortableTable({
   useEffect(() => {
     setSelectedIds(new Set());
     setSelectAllPage(false);
-  }, [search]);
+    setPage(1);
+  }, [search, sortBy]);
 
   // Handle highlight dari Command Palette (query param: highlight=<id_material>)
   useEffect(() => {
@@ -111,8 +139,9 @@ export function MaterialSortableTable({
 
     highlightHandled.current = true;
 
-    // Set search ke nama material - ini akan sync ke MaterialSearch via onChange
+    // Set search ke nama material & reset sort - ini akan sync ke MaterialSearch via onChange
     setSearch(item.nama_material);
+    setSortBy("kode");
     setPage(1);
 
     // Update URL search param agar sinkron dengan state
@@ -158,6 +187,7 @@ export function MaterialSortableTable({
   }, [initialData]);
 
   const toggleSort = () => {
+    setSortBy("kode");
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
     setPage(1);
   };
@@ -174,10 +204,29 @@ export function MaterialSortableTable({
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      const result = a.kode_material.localeCompare(b.kode_material, undefined, { numeric: true });
-      return sortOrder === "asc" ? result : -result;
+      switch (sortBy) {
+        case "stok_asc":
+          return a.stok - b.stok;
+        case "stok_desc":
+          return b.stok - a.stok;
+        case "harga_desc":
+          return b.harga - a.harga;
+        case "harga_asc":
+          return a.harga - b.harga;
+        case "kondisi_rusak":
+          // RUSAK duluan
+          return (a.kondisi === "RUSAK" ? 0 : 1) - (b.kondisi === "RUSAK" ? 0 : 1);
+        case "kondisi_baik":
+          // BAIK duluan
+          return (a.kondisi === "BAIK" ? 0 : 1) - (b.kondisi === "BAIK" ? 0 : 1);
+        case "kode":
+        default: {
+          const result = a.kode_material.localeCompare(b.kode_material, undefined, { numeric: true });
+          return sortOrder === "asc" ? result : -result;
+        }
+      }
     });
-  }, [filtered, sortOrder]);
+  }, [filtered, sortBy, sortOrder]);
 
   const totalPagesCalc = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -281,9 +330,11 @@ export function MaterialSortableTable({
     router.refresh();
   };
 
+  const activeSortLabel = SORT_OPTIONS.find((o) => o.key === sortBy)?.label ?? "Urutkan";
+
   return (
     <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
-      <CardContent className="space-y-6 p-4 sm:p-6">
+      <CardContent className="space-y-4 p-4 sm:p-6">
         {/* Bulk Action Bar */}
         {selectedIds.size > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl bg-purple-50 p-3 sm:p-4 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30">
@@ -339,12 +390,52 @@ export function MaterialSortableTable({
           </div>
         )}
 
+        {/* Baris 1: Search + Aksi & Tambah */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <MaterialSearch value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
             {actions}
             {canWrite && <MaterialDialog mode="create" kodeOtomatis={kodeOtomatis} />}
           </div>
+        </div>
+
+        {/* Baris 2: Navigasi Urutkan */}
+        <div className="flex w-full flex-wrap items-center gap-2 overflow-visible">
+          <Select value={sortBy} onValueChange={(v) => { if (v) { setSortBy(v as SortBy); setPage(1); } }}>
+            <SelectTrigger className="h-11 w-full sm:w-[320px] md:w-[380px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+              <ArrowUpDown className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+              <SelectValue className="truncate">{activeSortLabel}</SelectValue>
+            </SelectTrigger>
+            <SelectContent
+              side="bottom"
+              alignItemWithTrigger={false}
+              className="max-h-72 w-[--radix-select-trigger-width] overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]"
+            >
+              {SORT_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                return (
+                  <SelectItem key={opt.key} value={opt.key} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                    <span className="flex items-center gap-2">
+                      <Icon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>{opt.label}</span>
+                    </span>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+
+          {sortBy !== "kode" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setSortBy("kode"); setSortOrder("asc"); setPage(1); }}
+              className="h-11 w-11 shrink-0 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+              title="Reset urutan ke default (Kode)"
+            >
+              <X className="h-4 w-4 text-slate-500" />
+            </Button>
+          )}
         </div>
 
         {/* Desktop Table */}
@@ -379,11 +470,11 @@ export function MaterialSortableTable({
                     className="inline-flex items-center gap-1.5 hover:text-purple-600 transition-colors"
                   >
                     Kode
-                    {sortOrder === "asc" ? (
+                    {sortBy === "kode" && (sortOrder === "asc" ? (
                       <ArrowUp size={16} className="text-purple-500" />
                     ) : (
                       <ArrowDown size={16} className="text-purple-500" />
-                    )}
+                    ))}
                   </button>
                 </TableHead>
                 <TableHead className="dark:text-slate-300">Nama Material</TableHead>

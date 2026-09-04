@@ -54,7 +54,7 @@ export function ExportButton({ apiUrl, filenamePrefix = "Export", className = ""
       variant="outline"
       onClick={handleExport}
       disabled={loading}
-      className={`rounded-xl border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700 ${className}`}
+      className={`add-button rounded-xl border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700 ${className}`}
     >
       {loading ? (
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

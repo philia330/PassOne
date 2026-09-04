@@ -235,15 +235,15 @@ export const OntFormDialog = ({
     </Button>
   );
 
-  const editTriggerButton = (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="cursor-pointer rounded-xl active:scale-90 transition-transform dark:hover:bg-slate-800 dark:hover:text-slate-100"
-    >
-      <Pencil className="h-4 w-4 text-orange-500 hover:text-orange-600 active:scale-90 transition-all dark:text-orange-400 dark:hover:text-orange-300" />
-    </Button>
-  );
+const editTriggerButton = (
+  <Button
+    variant="ghost"
+    size="icon"
+    className="cursor-pointer rounded-xl hover:scale-125 active:scale-90 transition-transform duration-200 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+  >
+    <Pencil className="h-4 w-4 text-orange-500 hover:text-orange-600 active:scale-90 transition-all dark:text-orange-400 dark:hover:text-orange-300" />
+  </Button>
+);
 
   const popOptions = pops.map((pop) => ({
     value: String(pop.id_pop),
@@ -258,7 +258,8 @@ export const OntFormDialog = ({
   return (
     <>
       <Dialog open={open} onOpenChange={setOpen}>
-        {!isOdpLocked && mode === "create" && (
+        {/* Hanya render trigger button kalau ini uncontrolled mode (bukan dipanggil dari BaaForm) */}
+        {!isOdpLocked && mode === "create" && !isControlled && (
           <DialogTrigger asChild>{createTriggerButton}</DialogTrigger>
         )}
 

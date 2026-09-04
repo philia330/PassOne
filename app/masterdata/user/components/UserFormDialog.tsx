@@ -15,6 +15,10 @@ import {
   Wrench,
   Truck,
   ChevronDown,
+  Venus,
+  Mars,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { JenisKelamin, Role } from "@prisma/client";
@@ -89,6 +93,22 @@ const ROLE_META: Record<
   SALES: { icon: BriefcaseBusiness, color: "text-blue-600", label: "SALES" },
   TEKNISI: { icon: Wrench, color: "text-orange-600", label: "TEKNISI" },
   LOGISTIK: { icon: Truck, color: "text-emerald-600", label: "LOGISTIK" },
+};
+
+const JKL_META: Record<
+  JenisKelamin,
+  { icon: typeof Venus; color: string; label: string }
+> = {
+  LAKI_LAKI: { icon: Mars, color: "text-blue-600", label: "Laki-laki" },
+  PEREMPUAN: { icon: Venus, color: "text-pink-600", label: "Perempuan" },
+};
+
+const STATUS_META: Record<
+  "true" | "false",
+  { icon: typeof CheckCircle2; color: string; label: string }
+> = {
+  true: { icon: CheckCircle2, color: "text-green-600", label: "Aktif" },
+  false: { icon: XCircle, color: "text-red-600", label: "Nonaktif" },
 };
 
 export function UserFormDialog({
@@ -314,7 +334,7 @@ export function UserFormDialog({
             <Button
               variant="ghost"
               size="icon"
-              className="cursor-pointer rounded-xl active:scale-90 transition-transform"
+              className="cursor-pointer rounded-xl active:scale-90 hover:scale-125 transition-transform"
             />
           )
         }
@@ -588,18 +608,31 @@ export function UserFormDialog({
                 }
               >
                 <SelectTrigger className="h-12 w-full rounded-2xl border-slate-200 hover:scale-105 active:scale-95 transition-all">
-                  <SelectValue placeholder="Pilih Jenis Kelamin">
-                    {(value: string) => JKL_LABEL[value as JenisKelamin] ?? "Pilih Jenis Kelamin"}
-                  </SelectValue>
+                  <div className="flex items-center gap-2">
+                    {jkl && (() => {
+                      const meta = JKL_META[jkl as JenisKelamin];
+                      const Icon = meta.icon;
+                      return <Icon className={`h-4 w-4 ${meta.color}`} />;
+                    })()}
+                    <SelectValue placeholder="Pilih Jenis Kelamin">
+                      {(value: string) => JKL_LABEL[value as JenisKelamin] ?? "Pilih Jenis Kelamin"}
+                    </SelectValue>
+                  </div>
                 </SelectTrigger>
 
-                <SelectContent>
-                  <SelectItem value="LAKI_LAKI">
-                    Laki-laki
+                <SelectContent side="bottom" align="start" className="rounded-2xl border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+                  <SelectItem value="LAKI_LAKI" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                    <span className="flex items-center gap-2">
+                      <Mars className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                      <span>Laki-laki</span>
+                    </span>
                   </SelectItem>
 
-                  <SelectItem value="PEREMPUAN">
-                    Perempuan
+                  <SelectItem value="PEREMPUAN" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                    <span className="flex items-center gap-2">
+                      <Venus className="h-3.5 w-3.5 text-pink-600 shrink-0" />
+                      <span>Perempuan</span>
+                    </span>
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -671,18 +704,31 @@ export function UserFormDialog({
                 }
               >
                 <SelectTrigger className="h-12 w-full rounded-2xl border-slate-200 hover:scale-105 active:scale-95 transition-all">
-                  <SelectValue>
-                    {(value: string) => (value === "true" ? "Aktif" : "Nonaktif")}
-                  </SelectValue>
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const meta = STATUS_META[status];
+                      const Icon = meta.icon;
+                      return <Icon className={`h-4 w-4 ${meta.color}`} />;
+                    })()}
+                    <SelectValue>
+                      {(value: string) => (value === "true" ? "Aktif" : "Nonaktif")}
+                    </SelectValue>
+                  </div>
                 </SelectTrigger>
 
                 <SelectContent>
                   <SelectItem value="true">
-                    Aktif
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                      <span>Aktif</span>
+                    </span>
                   </SelectItem>
 
                   <SelectItem value="false">
-                    Nonaktif
+                    <span className="flex items-center gap-2">
+                      <XCircle className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                      <span>Nonaktif</span>
+                    </span>
                   </SelectItem>
                 </SelectContent>
               </Select>

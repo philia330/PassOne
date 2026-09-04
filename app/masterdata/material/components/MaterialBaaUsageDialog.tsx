@@ -100,7 +100,7 @@ export function MaterialBaaUsageDialog({
         <Button
           variant="ghost"
           size="icon"
-          className="cursor-pointer rounded-xl active:scale-90 transition-transform"
+          className="cursor-pointer rounded-xl hover:scale-125 active:scale-90 transition-transform duration-200"
           title={`Lihat penggunaan di BAA`}
         >
           <Eye className="h-4 w-4 text-purple-600 hover:text-purple-700 active:scale-90 transition-all dark:text-purple-400 dark:hover:text-purple-300" />

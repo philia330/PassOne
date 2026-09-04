@@ -40,43 +40,22 @@ export async function GET(request: NextRequest) {
       createdAt: string;
     };
 
-    let notifications: NotifRow[] = [];
-
-    if (page === 1) {
-      // Halaman pertama: semua notifikasi live ditampilkan dulu, baru
-      // sisa slotnya diisi histori dari database.
-      const remainingSlots = Math.max(0, pageSize - live.length);
-      const persisted = await prisma.notification.findMany({
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const liveCount = live.length;
+    const liveSlice = live.slice(startIndex, Math.min(endIndex, liveCount));
+    const persistedSkip = Math.max(0, startIndex - liveCount);
+    const persistedTake = Math.max(0, endIndex - Math.max(startIndex, liveCount));
+    const persisted = persistedTake > 0
+      ? await prisma.notification.findMany({
         where: { id_user: userId },
-        orderBy: { createdAt: "desc" },
-        take: remainingSlots,
-      });
+        orderBy: [{ createdAt: "desc" }, { id_notification: "desc" }],
+        skip: persistedSkip,
+        take: persistedTake,
+      })
+      : [];
 
-      notifications = [
-        ...live,
-        ...persisted.map((n) => ({
-          id_notification: n.id_notification,
-          id_user: n.id_user,
-          title: n.title,
-          message: n.message,
-          link: n.link,
-          type: n.type,
-          is_read: n.is_read,
-          createdAt: n.createdAt.toISOString(),
-        })),
-      ];
-    } else {
-      // Halaman selanjutnya: murni histori database. Offset dikurangi
-      // jumlah item live supaya tidak ada histori yang kelompat.
-      const skip = Math.max(0, (page - 1) * pageSize - live.length);
-      const persisted = await prisma.notification.findMany({
-        where: { id_user: userId },
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: pageSize,
-      });
-
-      notifications = persisted.map((n) => ({
+    const persistedRows = persisted.map((n) => ({
         id_notification: n.id_notification,
         id_user: n.id_user,
         title: n.title,
@@ -86,7 +65,18 @@ export async function GET(request: NextRequest) {
         is_read: n.is_read,
         createdAt: n.createdAt.toISOString(),
       }));
-    }
+    const notifications = [...liveSlice, ...persistedRows].slice(0, pageSize);
+
+    console.info("[notifications/all] page slice", {
+      page,
+      pageSize,
+      liveCount,
+      startIndex,
+      endIndex,
+      persistedSkip,
+      persistedTake,
+      returnedIds: notifications.map((item) => item.id_notification),
+    });
 
     return NextResponse.json({
       notifications,
