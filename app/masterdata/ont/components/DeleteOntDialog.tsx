@@ -77,10 +77,10 @@ export const DeleteOntDialog = ({ id, name, bulkIds, open: controlledOpen, onOpe
         <AlertDialogTrigger
           render={
             <Button
-              variant="ghost"
-              size="icon"
-              className="cursor-pointer rounded-xl active:scale-90 transition-transform hover:bg-rose-50 dark:hover:bg-rose-950/30"
-            />
+  variant="ghost"
+  size="icon"
+  className="cursor-pointer rounded-xl hover:scale-125 active:scale-90 transition-transform duration-200 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+/>
           }
         >
           <Trash2 className="h-4 w-4 text-red-500 hover:text-red-600 active:scale-90 transition-all dark:text-red-400 dark:hover:text-red-300" />
@@ -105,20 +105,20 @@ export const DeleteOntDialog = ({ id, name, bulkIds, open: controlledOpen, onOpe
             </div>
           </div>
 
-          <AlertDialogTitle className="w-full text-lg font-bold text-slate-900 text-center">
+          <AlertDialogTitle className="w-full text-center text-lg font-bold text-slate-900 dark:text-slate-50">
             {isBulk ? `Hapus ${bulkIds?.length} ONT ini?` : "Hapus ONT ini?"}
           </AlertDialogTitle>
-          <AlertDialogDescription className="w-full text-sm text-slate-500 leading-relaxed text-center">
+          <AlertDialogDescription className="w-full text-center text-sm leading-relaxed text-slate-500 dark:text-slate-300">
             {isBulk ? (
-              <>Kamu akan menghapus <strong className="text-slate-700">{bulkIds?.length} ONT</strong> yang dipilih. Data yang sudah dihapus tidak bisa dikembalikan.</>
+              <>Kamu akan menghapus <strong className="text-slate-700 dark:text-slate-100">{bulkIds?.length} ONT</strong> yang dipilih. Data yang sudah dihapus tidak bisa dikembalikan.</>
             ) : (
-              <>Kamu akan menghapus ONT dengan serial <strong className="text-slate-700">&quot;{name}&quot;</strong>. Data yang sudah dihapus tidak bisa dikembalikan.</>
+              <>Kamu akan menghapus ONT dengan serial <strong className="text-slate-700 dark:text-slate-100">&quot;{name}&quot;</strong>. Data yang sudah dihapus tidak bisa dikembalikan.</>
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         {errorMsg && (
-          <p className="mx-4 sm:mx-6 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+          <p className="mx-4 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-600 dark:bg-red-950/30 dark:text-red-300 sm:mx-6">
             {errorMsg}
           </p>
         )}
@@ -126,7 +126,7 @@ export const DeleteOntDialog = ({ id, name, bulkIds, open: controlledOpen, onOpe
         <div className="flex-1" />
 
         <AlertDialogFooter className="sm:justify-center gap-2 mt-2 flex-shrink-0 px-4 pb-4 sm:px-6 sm:pb-6">
-          <AlertDialogCancel disabled={isPending} className="rounded-2xl h-11 flex-1 active:scale-95 transition-transform">
+          <AlertDialogCancel disabled={isPending} className="h-11 flex-1 rounded-2xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50 active:scale-95 transition-transform dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
             Batal
           </AlertDialogCancel>
           <AlertDialogAction

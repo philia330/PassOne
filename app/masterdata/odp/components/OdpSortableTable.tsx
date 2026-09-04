@@ -20,6 +20,7 @@ import { OdpPagination } from "./OdpPagination";
 import { OdpMapDialog } from "./OdpMapDialog";
 import { OdpConnectionDialog } from "./OdpConnectionDialog";
 import { Button } from "@/components/ui/button";
+import { ExportButton } from "@/components/ui/ExportButton";
 import { toast } from "sonner";
 
 type Olt = { id_olt: number; nama_olt: string };
@@ -77,6 +78,8 @@ export function OdpSortableTable({
 
   const isAdmin = currentUser?.role === "ADMIN";
   const canBulkDelete = isAdmin;
+  // Hanya Admin dan Leader yang bisa export (samakan dengan hak akses halaman ODP)
+  const canExport = currentUser?.role === "ADMIN" || currentUser?.role === "LEADER";
 
   // Clear selection when filters/search change
   useEffect(() => {
@@ -319,8 +322,13 @@ export function OdpSortableTable({
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <OdpSearch value={search} onChange={setSearch} />
-          <div className="add-button">
-            <OdpFormDialog mode="create" olts={olts} />
+          <div className="flex items-center gap-2">
+            {canExport && (
+              <ExportButton apiUrl="/api/odp/export" filenamePrefix="Export_ODP" />
+            )}
+            <div className="add-button">
+              <OdpFormDialog mode="create" olts={olts} />
+            </div>
           </div>
         </div>
 

@@ -2,13 +2,18 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { LogOut, UserCircle2, X, ChevronDown } from "lucide-react";
 import ImagePreview from "@/components/shared/image-preview";
 import { cn } from "@/lib/utils";
 
-import { importExcelOptions, navigation } from "@/app/config/navigation";
+import {
+  importExcelOptions,
+  navigation,
+  hasAccessToRole,
+  normalizeRole,
+} from "@/app/config/navigation";
 import { RoleLabel, Role } from "@/lib/auth/roles";
 
 type Settings = {
@@ -24,71 +29,55 @@ function isActiveNavItem(href: string, pathname: string, searchParams: URLSearch
   return view ? searchParams.get("view") === view : true;
 }
 
-// Generate localStorage key for a group's expanded state
 function getGroupStorageKey(groupTitle: string): string {
   const normalized = groupTitle.toLowerCase().replace(/\s+/g, "-");
   return `sidebar-group-${normalized}-expanded`;
 }
 
-// Hook to manage collapsible group state with localStorage persistence
 function useCollapsibleGroups(initialGroups: typeof navigation) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Initialize expanded state from localStorage
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
+
     const stored: Record<string, boolean> = {};
     initialGroups.forEach((group) => {
       const key = getGroupStorageKey(group.title);
       const storedValue = localStorage.getItem(key);
       if (storedValue !== null) {
         stored[group.title] = storedValue === "true";
+      } else {
+        stored[group.title] = true;
       }
     });
+
     return stored;
   });
 
-  // Check if a group contains the active page
   const groupContainsActive = useCallback(
     (group: typeof navigation[0]) => {
-      return group.items.some((item) =>
-        isActiveNavItem(item.href, pathname, searchParams)
-      );
+      return group.items.some((item) => isActiveNavItem(item.href, pathname, searchParams));
     },
     [pathname, searchParams]
   );
 
-  // Toggle a group's expanded state
   const toggleGroup = useCallback((groupTitle: string) => {
     setExpandedGroups((prev) => {
-      const newState = { ...prev, [groupTitle]: !prev[groupTitle] };
-      // Persist to localStorage
-      localStorage.setItem(
-        getGroupStorageKey(groupTitle),
-        String(newState[groupTitle])
-      );
-      return newState;
+      const nextState = { ...prev, [groupTitle]: !(prev[groupTitle] ?? true) };
+      localStorage.setItem(getGroupStorageKey(groupTitle), String(nextState[groupTitle]));
+      return nextState;
     });
   }, []);
 
-  // Ensure active group's parent is expanded
   useEffect(() => {
     initialGroups.forEach((group) => {
       const key = getGroupStorageKey(group.title);
-      // If no stored preference, auto-expand groups containing active page
-      if (localStorage.getItem(key) === null && groupContainsActive(group)) {
-        setExpandedGroups((prev) => {
-          if (prev[group.title] !== true) {
-            const newState = { ...prev, [group.title]: true };
-            localStorage.setItem(key, "true");
-            return newState;
-          }
-          return prev;
-        });
+      if (localStorage.getItem(key) === null) {
+        localStorage.setItem(key, String(groupContainsActive(group) || true));
       }
     });
-  }, [pathname, searchParams, initialGroups, groupContainsActive]);
+  }, [initialGroups, groupContainsActive]);
 
   return { expandedGroups, toggleGroup, groupContainsActive };
 }
@@ -103,6 +92,7 @@ export default function Sidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -113,7 +103,12 @@ export default function Sidebar({
 
   const { expandedGroups, toggleGroup, groupContainsActive } = useCollapsibleGroups(navigation);
 
-  const role = session?.user?.role;
+  const role =
+    normalizeRole(session?.user?.role) ??
+    (session?.user?.role ? (String(session.user.role).toUpperCase() as Role) : undefined);
+
+  const visibleItemsForGroup = (group: (typeof navigation)[number]) =>
+    group.items.filter((item) => hasAccessToRole(item.roles, role));
 
   const handleImportSelect = (route: string) => {
     setImportMenuOpen(false);
@@ -203,9 +198,7 @@ export default function Sidebar({
         />
 
         {navigation.map((group) => {
-          const visibleItems = role
-            ? group.items.filter((item) => item.roles.includes(role as Role))
-            : [];
+          const visibleItems = visibleItemsForGroup(group);
 
           if (visibleItems.length === 0) return null;
 
@@ -214,11 +207,10 @@ export default function Sidebar({
 
           return (
             <div key={group.title} className="mb-2">
-              {/* Collapsible group header */}
               <button
                 type="button"
                 onClick={() => toggleGroup(group.title)}
-                className={`mb-1 flex w-full items-center justify-between px-3 py-2 rounded-lg transition-all duration-200 hover:bg-slate-800/50 group ${
+                className={`mb-1 flex w-full items-center justify-between rounded-lg px-3 py-2 transition-all duration-200 hover:bg-slate-800/50 ${
                   hasActiveItem ? "text-indigo-400" : "text-slate-400"
                 }`}
               >
@@ -233,10 +225,9 @@ export default function Sidebar({
                 />
               </button>
 
-              {/* Collapsible items container with animation */}
               <div
                 className={`overflow-hidden transition-all duration-300 ease-out ${
-                  isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                  isExpanded ? "max-h-[1200px] opacity-100" : "max-h-0 opacity-0"
                 }`}
               >
                 <div className="space-y-1 pt-1">
@@ -251,14 +242,22 @@ export default function Sidebar({
                           <button
                             type="button"
                             onClick={() => setImportMenuOpen((prev) => !prev)}
-                            className={`flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 transition-all duration-200 hover:scale-105 active:scale-95 ${
+                            className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 hover:scale-[1.02] active:scale-95 ${
                               active
                                 ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                                 : "text-slate-300 hover:bg-slate-800 hover:text-white"
                             }`}
                           >
                             <span className="flex items-center gap-3">
-                              <Icon size={20} />
+                              <span
+                                className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-colors ${
+                                  active
+                                    ? "bg-white/20 shadow-inner"
+                                    : "bg-slate-800 group-hover:bg-slate-700"
+                                }`}
+                              >
+                                <Icon size={22} />
+                              </span>
                               <span>{item.title}</span>
                             </span>
                           </button>
@@ -286,14 +285,22 @@ export default function Sidebar({
                       <Link
                         key={item.title}
                         href={item.href}
-                        className={`flex items-center justify-between gap-3 rounded-xl px-4 py-3 transition-all duration-200 hover:scale-105 active:scale-95 ${
+                        className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 hover:scale-[1.02] active:scale-95 ${
                           active
                             ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                             : "text-slate-300 hover:bg-slate-800 hover:text-white"
                         }`}
                       >
                         <span className="flex items-center gap-3">
-                          <Icon size={20} />
+                          <span
+                            className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-colors ${
+                              active
+                                ? "bg-white/20 shadow-inner"
+                                : "bg-slate-800 group-hover:bg-slate-700"
+                            }`}
+                          >
+                            <Icon size={22} />
+                          </span>
                           <span>{item.title}</span>
                         </span>
 
@@ -318,7 +325,18 @@ export default function Sidebar({
 
       {/* Footer: Profil + Logout */}
       <div className="flex-shrink-0 border-t border-slate-800 p-4">
-        <div className="flex items-center gap-3 rounded-xl bg-slate-800 px-3 py-3">
+        <div
+          role="link"
+          tabIndex={0}
+          onClick={() => router.push("/workspace?view=profile")}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              router.push("/workspace?view=profile");
+            }
+          }}
+          className="flex cursor-pointer items-center gap-3 rounded-xl bg-slate-800 px-3 py-3 transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
       {session?.user?.foto ? (
         <ImagePreview
           src={session.user.foto}

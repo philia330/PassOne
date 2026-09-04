@@ -91,7 +91,8 @@ export const BaaDeleteDialog = ({
       <AlertDialogContent
         className="
           flex h-full max-h-[100dvh] w-full max-w-full flex-col
-          overflow-hidden rounded-none
+          overflow-hidden rounded-none bg-white text-slate-900
+          dark:bg-slate-900 dark:text-slate-50
           sm:h-auto sm:max-h-[90vh] sm:max-w-[400px] sm:rounded-3xl
         "
       >
@@ -106,19 +107,19 @@ export const BaaDeleteDialog = ({
             </div>
           </div>
 
-          <AlertDialogTitle className="w-full text-lg font-bold text-slate-900 text-center">
+          <AlertDialogTitle className="w-full text-center text-lg font-bold text-slate-900 dark:text-slate-50">
             {isBulk ? `Hapus ${itemCount} data BAA?` : "Hapus data BAA ini?"}
           </AlertDialogTitle>
-          <AlertDialogDescription className="w-full text-sm text-slate-500 leading-relaxed text-center">
+          <AlertDialogDescription className="w-full text-center text-sm leading-relaxed text-slate-500 dark:text-slate-300">
             {isBulk ? (
               <>
-                Kamu akan menghapus <strong className="text-slate-700">{itemCount} data BAA</strong>{" "}
+                Kamu akan menghapus <strong className="text-slate-700 dark:text-slate-100">{itemCount} data BAA</strong>{" "}
                 beserta seluruh daftar material di dalamnya. Data yang sudah dihapus tidak bisa dikembalikan.
               </>
             ) : (
               <>
                 Kamu akan menghapus BAA{" "}
-                <strong className="text-slate-700">&quot;{kodeBaa}&quot;</strong> beserta seluruh
+                <strong className="text-slate-700 dark:text-slate-100">&quot;{kodeBaa}&quot;</strong> beserta seluruh
                 daftar material di dalamnya. Data yang sudah dihapus tidak bisa dikembalikan.
               </>
             )}
@@ -128,7 +129,7 @@ export const BaaDeleteDialog = ({
         <div className="flex-1" />
 
         <AlertDialogFooter className="sm:justify-center gap-2 mt-2 flex-shrink-0 px-4 pb-4 sm:px-6 sm:pb-6">
-          <AlertDialogCancel disabled={isPending} className="rounded-2xl h-11 flex-1 active:scale-95 transition-transform">
+          <AlertDialogCancel disabled={isPending} className="h-11 flex-1 rounded-2xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50 active:scale-95 transition-transform dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
             Batal
           </AlertDialogCancel>
           <AlertDialogAction

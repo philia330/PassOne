@@ -3,10 +3,12 @@ import { Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
+import { Role, normalizeRole } from "@/lib/auth/roles";
 import { getUsers } from "./actions";
 import { prisma } from "@/lib/prisma";
 import { UserSortableTable } from "./components/UserSortableTable";
 import EmptyState from "@/components/shared/empty-state";
+import { ExportButton } from "@/components/ui/ExportButton";
 
 export default async function UserPage({
   searchParams,
@@ -18,8 +20,9 @@ export default async function UserPage({
   }>;
 }) {
   const session = await auth();
+  const currentRole = normalizeRole(session?.user?.role);
 
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user || (currentRole !== Role.ADMIN && currentRole !== Role.LEADER)) {
     redirect("/dashboard");
   }
 
@@ -39,8 +42,11 @@ export default async function UserPage({
   const currentUser = {
     id_user: Number(session.user.id_user),
     nama: session.user.nama ?? "",
-    role: session.user.role,
+    role: currentRole,
   };
+
+  // Hanya Admin yang bisa export (samakan dengan pengecekan role di /api/user/export)
+  const canExport = currentRole === Role.ADMIN;
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -83,6 +89,7 @@ export default async function UserPage({
   currentUser={currentUser}
   total={total}
   page={page}
+  actions={canExport ? <ExportButton apiUrl="/api/user/export" filenamePrefix="Export_User" /> : null}
 />
       )}
     </div>

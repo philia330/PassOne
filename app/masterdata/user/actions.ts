@@ -10,50 +10,35 @@ import path from "path";
 import fs from "fs/promises";
 import { requireRole } from "@/lib/auth/guards";
 import { optimizeImageToWebP } from "@/lib/image-utils";
-import { z } from "zod";
-import {
-  userNameSchema,
-  usernameSchema,
-  emailSchema,
-  noHpSchema,
-  passwordSchema,
-} from "@/lib/validations";
+import { normalizeRole } from "@/lib/auth/roles";
+import { createUserSchema, updateUserSchema } from "@/lib/validations";
 
 const PAGE_SIZE = 10;
 
-// ======================================================
-// VALIDATION SCHEMAS - User specific
-// ======================================================
+const LEADER_ALLOWED_ROLES: Role[] = [Role.SALES, Role.TEKNISI];
 
-const createUserValidation = z.object({
-  nama: userNameSchema,
-  username: usernameSchema,
-  password: z.string().min(1, "Password wajib diisi.").min(6, "Password minimal 6 karakter.").max(100, "Password maksimal 100 karakter."),
-  email: emailSchema,
-  no_hp: noHpSchema,
-  role: z.enum(["ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"], {
-    message: "Role wajib dipilih.",
-  }),
-  jkl: z.enum(["LAKI_LAKI", "PEREMPUAN"], {
-    message: "Jenis kelamin wajib dipilih.",
-  }),
-  status: z.boolean(),
-});
+function assertRoleAssignmentAllowed(currentUserRole: string | undefined, targetRole: string) {
+  const normalizedCurrentRole = normalizeRole(currentUserRole);
+  const normalizedTargetRole = normalizeRole(targetRole);
 
-const updateUserValidation = z.object({
-  nama: userNameSchema,
-  username: usernameSchema,
-  password: passwordSchema.optional().or(z.literal("")),
-  email: emailSchema,
-  no_hp: noHpSchema,
-  role: z.enum(["ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"], {
-    message: "Role wajib dipilih.",
-  }),
-  jkl: z.enum(["LAKI_LAKI", "PEREMPUAN"], {
-    message: "Jenis kelamin wajib dipilih.",
-  }),
-  status: z.boolean(),
-});
+  if (!normalizedTargetRole) {
+    throw new Error("Role tidak valid.");
+  }
+
+  if (normalizedCurrentRole === Role.ADMIN) {
+    return;
+  }
+
+  if (normalizedCurrentRole === Role.LEADER) {
+    if (LEADER_ALLOWED_ROLES.includes(normalizedTargetRole)) {
+      return;
+    }
+
+    throw new Error("Leader hanya dapat menambahkan user dengan role SALES atau TEKNISI.");
+  }
+
+  throw new Error("Anda tidak memiliki izin untuk mengatur role user.");
+}
 
 // ======================================================
 // Generate Kode User
@@ -91,10 +76,11 @@ const generateKodeUser = async (): Promise<string> => {
 // ======================================================
 
 export const getUsers = async (search = "", page = 1) => {
-  await requireRole(["ADMIN"]); // sebelumnya requireAuth()
-  // ...sisanya tetap sama
+  const session = await requireRole(["ADMIN", "LEADER"]);
+  const currentRole = normalizeRole(session.user.role);
 
-  const where = search
+  const leaderAllowedRoles = [Role.SALES, Role.TEKNISI];
+  const searchWhere = search
     ? {
         OR: [
           { nama: { contains: search } },
@@ -103,7 +89,19 @@ export const getUsers = async (search = "", page = 1) => {
           { kode_user: { contains: search } },
         ],
       }
-    : {};
+    : undefined;
+
+  const where =
+    currentRole === Role.LEADER
+      ? searchWhere
+        ? {
+            AND: [
+              searchWhere,
+              { role: { in: leaderAllowedRoles } },
+            ],
+          }
+        : { role: { in: leaderAllowedRoles } }
+      : searchWhere ?? {};
 
   const [data, total] = await Promise.all([
     prisma.user.findMany({
@@ -168,11 +166,14 @@ const uploadFoto = async (file: File | null): Promise<string | null> => {
 // ======================================================
 
 export const createUser = async (formData: FormData) => {
-  const session = await requireRole(["ADMIN"]);
+  const session = await requireRole(["ADMIN", "LEADER"]);
 
   // ======================================================
   // VALIDASI INPUT
   // ======================================================
+  // email/no_hp kosong biarkan tetap "" — emailSchema/noHpSchema di
+  // lib/validations.ts sudah menormalkan string kosong jadi null lewat
+  // z.preprocess, jadi tidak perlu di-armor lagi di sini.
   const rawData = {
     nama: (formData.get("nama") as string)?.trim() || "",
     username: (formData.get("username") as string)?.trim().toLowerCase() || "",
@@ -184,8 +185,7 @@ export const createUser = async (formData: FormData) => {
     status: formData.get("status") === "true",
   };
 
-  // Parse validation
-  const parseResult = createUserValidation.safeParse(rawData);
+  const parseResult = createUserSchema.safeParse(rawData);
 
   if (!parseResult.success) {
     const firstError = parseResult.error.issues[0];
@@ -193,6 +193,7 @@ export const createUser = async (formData: FormData) => {
   }
 
   const validated = parseResult.data;
+  assertRoleAssignmentAllowed(session.user.role, validated.role);
 
   // ======================================================
   // Generate kode user
@@ -232,8 +233,8 @@ export const createUser = async (formData: FormData) => {
       nama: validated.nama,
       username: validated.username,
       password: hashPassword,
-      email: validated.email,
-      no_hp: validated.no_hp,
+      email: validated.email ?? null,
+      no_hp: validated.no_hp ?? null,
       role: validated.role,
       jkl: validated.jkl,
       status: validated.status,
@@ -241,7 +242,6 @@ export const createUser = async (formData: FormData) => {
     },
   });
 
-  // Catat aktivitas
   await logActivity(
     "USER_CREATED",
     `User ${validated.nama} (${kode_user}) ditambahkan.`,
@@ -256,7 +256,7 @@ export const createUser = async (formData: FormData) => {
 // ======================================================
 
 export const updateUser = async (id: number, formData: FormData) => {
-  const session = await requireRole(["ADMIN"]);
+  const session = await requireRole(["ADMIN", "LEADER"]);
 
   // ======================================================
   // VALIDASI INPUT
@@ -272,8 +272,7 @@ export const updateUser = async (id: number, formData: FormData) => {
     status: formData.get("status") === "true",
   };
 
-  // Parse validation
-  const parseResult = updateUserValidation.safeParse(rawData);
+  const parseResult = updateUserSchema.safeParse(rawData);
 
   if (!parseResult.success) {
     const firstError = parseResult.error.issues[0];
@@ -281,6 +280,7 @@ export const updateUser = async (id: number, formData: FormData) => {
   }
 
   const validated = parseResult.data;
+  assertRoleAssignmentAllowed(session.user.role, validated.role);
 
   // ======================================================
   // Cek Username Sudah Digunakan User Lain
@@ -331,8 +331,8 @@ export const updateUser = async (id: number, formData: FormData) => {
   }> = {
     nama: validated.nama,
     username: validated.username,
-    email: validated.email,
-    no_hp: validated.no_hp,
+    email: validated.email ?? null,
+    no_hp: validated.no_hp ?? null,
     role: validated.role,
     jkl: validated.jkl,
     status: validated.status,
@@ -363,7 +363,6 @@ export const updateUser = async (id: number, formData: FormData) => {
     data,
   });
 
-  // Catat aktivitas
   await logActivity(
     "USER_UPDATED",
     `User ${validated.nama} diperbarui.`,
@@ -380,10 +379,6 @@ export const updateUser = async (id: number, formData: FormData) => {
 export const deleteUser = async (id: number) => {
   const session = await requireRole(["ADMIN"]);
 
-  // ======================================================
-  // Ambil Data User
-  // ======================================================
-
   const user = await prisma.user.findUnique({
     where: {
       id_user: id,
@@ -393,10 +388,6 @@ export const deleteUser = async (id: number) => {
       nama: true,
     },
   });
-
-  // ======================================================
-  // Hapus File Foto
-  // ======================================================
 
   if (user?.foto) {
     try {
@@ -408,17 +399,12 @@ export const deleteUser = async (id: number) => {
     }
   }
 
-  // ======================================================
-  // Hapus Data User
-  // ======================================================
-
   await prisma.user.delete({
     where: {
       id_user: id,
     },
   });
 
-  // Catat aktivitas
   await logActivity(
     "USER_DELETED",
     `User ${user?.nama ?? `ID ${id}`} dihapus.`,

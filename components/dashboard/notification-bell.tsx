@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, AlertTriangle, Info, PackageX, Loader2 } from "lucide-react";
+import { Bell, AlertTriangle, CheckCircle2, Info, PackageX, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NotificationItem = {
@@ -20,23 +20,26 @@ const SEVERITY_ICON = {
   danger: PackageX,
   warning: AlertTriangle,
   info: Info,
+  success: CheckCircle2,
 };
 
 const SEVERITY_COLOR = {
   danger: "text-red-500 bg-red-50 dark:bg-red-500/20",
   warning: "text-amber-500 bg-amber-50 dark:bg-amber-500/20",
   info: "text-sky-500 bg-sky-50 dark:bg-sky-500/20",
+  success: "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/20",
 };
 
-const TYPE_TO_SEVERITY: Record<string, "warning" | "danger" | "info"> = {
+const TYPE_TO_SEVERITY: Record<string, "warning" | "danger" | "info" | "success"> = {
   FAB_OPEN: "info",
   FAB_ASSIGNED: "info",
   FAB_STATUS_CHANGE: "info",
   BAA_CREATED: "info",
   SYSTEM: "warning",
+  FAB_COMPLETED: "success",
 };
 
-function getSeverity(type: string): "warning" | "danger" | "info" {
+function getSeverity(type: string): "warning" | "danger" | "info" | "success" {
   return TYPE_TO_SEVERITY[type] || "info";
 }
 

@@ -14,6 +14,7 @@ export interface FabData {
   id_area: number;
   id_paket: number;
   id_user: number;
+  id_penginput?: number | null;
   id_teknisi_ditugaskan?: number | null;
   createdAt: Date;
   updatedAt: Date;

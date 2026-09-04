@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ export const AreaFormDialog = ({
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [namaArea, setNamaArea] = useState(data?.nama_area ?? "");
+  const [keterangan, setKeterangan] = useState(data?.keterangan ?? "");
 
   // Handle nama area change with validation
   const handleNamaAreaChange = useCallback(
@@ -44,6 +45,34 @@ export const AreaFormDialog = ({
       setNamaArea(sanitized);
     },
     []
+  );
+
+  const handleKeteranganChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const sanitized = validateTextInput(e.target.value, 255);
+      setKeterangan(sanitized);
+    },
+    []
+  );
+
+  // Reset form fields back to their initial values based on mode/data.
+  const resetForm = useCallback(() => {
+    setNamaArea(data?.nama_area ?? "");
+    setKeterangan(data?.keterangan ?? "");
+  }, [data?.nama_area, data?.keterangan]);
+
+  // Single source of truth for opening/closing the dialog.
+  // Every close (Cancel button, overlay click, Esc key, or after a
+  // successful submit) goes through here, so the form always starts
+  // fresh the next time it's opened.
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setOpen(nextOpen);
+      if (!nextOpen) {
+        resetForm();
+      }
+    },
+    [resetForm]
   );
 
   const handleSubmit = async (formData: FormData) => {
@@ -69,8 +98,8 @@ export const AreaFormDialog = ({
         toast.success("Area berhasil diperbarui");
       }
 
-      setOpen(false);
-      setNamaArea("");
+      // Goes through handleOpenChange so state resets consistently.
+      handleOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Terjadi kesalahan");
     } finally {
@@ -79,7 +108,7 @@ export const AreaFormDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger
         render={
           mode === "create" ? (
@@ -88,7 +117,7 @@ export const AreaFormDialog = ({
             <Button
               variant="ghost"
               size="icon"
-              className="cursor-pointer rounded-xl active:scale-90 transition-transform"
+              className="cursor-pointer rounded-xl hover:scale-125 active:scale-90 transition-transform"
             />
           )
         }
@@ -99,7 +128,7 @@ export const AreaFormDialog = ({
             Tambah Area
           </>
         ) : (
-          <Pencil className="h-4 w-4 text-orange-500 hover:text-orange-600 active:scale-90 transition-all dark:text-orange-400 dark:hover:text-orange-300" />
+          <Pencil className="h-4 w-4 text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" />
         )}
       </DialogTrigger>
 
@@ -142,7 +171,8 @@ export const AreaFormDialog = ({
             <Input
               id="keterangan"
               name="keterangan"
-              defaultValue={data?.keterangan ?? ""}
+              value={keterangan}
+              onChange={handleKeteranganChange}
               placeholder="Contoh: Mencakup wilayah Ciputat dan sekitarnya"
               maxLength={255}
               autoComplete="off"
@@ -156,7 +186,7 @@ export const AreaFormDialog = ({
               type="button"
               variant="outline"
               className="cursor-pointer rounded-2xl h-11 active:scale-95 hover:scale-105 transition-transform dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-              onClick={() => setOpen(false)}
+              onClick={() => handleOpenChange(false)}
             >
               Batal
             </Button>
@@ -166,6 +196,7 @@ export const AreaFormDialog = ({
               disabled={isSubmitting || namaArea.trim().length < 2}
               className="cursor-pointer rounded-2xl h-11 font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white active:scale-95 hover:scale-105 transition-transform"
             >
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSubmitting ? "Menyimpan..." : "Simpan"}
             </Button>
           </DialogFooter>

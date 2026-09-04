@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -160,7 +160,7 @@ export const PortPonFormDialog = ({
             <Button
               variant="ghost"
               size="icon"
-              className="cursor-pointer rounded-xl active:scale-90 transition-transform dark:hover:bg-slate-800 dark:hover:text-slate-100"
+              className="cursor-pointer rounded-xl hover:scale-125 active:scale-90 transition-transform duration-200 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             />
           )
         }
@@ -187,7 +187,7 @@ export const PortPonFormDialog = ({
         </DialogHeader>
 
         <form action={handleSubmit} className="space-y-4">
-          {/* 1 & 2. OLT & ODP berdampingan */}
+          {/* 1. OLT & ODP berdampingan */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -230,7 +230,45 @@ export const PortPonFormDialog = ({
             </div>
           </div>
 
-          {/* 3. Status */}
+          {/* 2. Nomor Port & Tipe Kartu */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Nomor Port<span className="text-red-500 ml-1">*</span>
+              </label>
+              <Input
+                type="number"
+                name="nomor_port"
+                defaultValue={data?.nomor_port}
+                placeholder="1-256"
+                min={1}
+                max={256}
+                onChange={handleNomorPortChange}
+                required
+                className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
+              />
+              <p className="text-xs text-slate-400">1-256</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Tipe Kartu<span className="text-red-500 ml-1">*</span>
+              </label>
+              <Input
+                name="tipe_kartu"
+                value={tipeKartu}
+                onChange={handleTipeKartuChange}
+                placeholder="GTGO, GTGH"
+                maxLength={50}
+                required
+                autoComplete="off"
+                className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
+              />
+              <p className="text-xs text-slate-400">{tipeKartu.length}/50 karakter</p>
+            </div>
+          </div>
+
+          {/* 3. Status (paling bawah) */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
               Status<span className="text-red-500 ml-1">*</span>
@@ -271,44 +309,6 @@ export const PortPonFormDialog = ({
             <input type="hidden" name="status" value={statusValue} />
           </div>
 
-          {/* 4. Nomor Port & Tipe Kartu */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Nomor Port<span className="text-red-500 ml-1">*</span>
-              </label>
-              <Input
-                type="number"
-                name="nomor_port"
-                defaultValue={data?.nomor_port}
-                placeholder="1-256"
-                min={1}
-                max={256}
-                onChange={handleNomorPortChange}
-                required
-                className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
-              <p className="text-xs text-slate-400">1-256</p>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Tipe Kartu<span className="text-red-500 ml-1">*</span>
-              </label>
-              <Input
-                name="tipe_kartu"
-                value={tipeKartu}
-                onChange={handleTipeKartuChange}
-                placeholder="GTGO, GTGH"
-                maxLength={50}
-                required
-                autoComplete="off"
-                className="h-12 rounded-2xl border-slate-200 bg-white font-normal placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-purple-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
-              <p className="text-xs text-slate-400">{tipeKartu.length}/50 karakter</p>
-            </div>
-          </div>
-
           {/* Footer Actions */}
           <DialogFooter className="pt-2 gap-2">
             <Button
@@ -325,6 +325,7 @@ export const PortPonFormDialog = ({
               disabled={isSubmitting || !oltValue || !odpValue || !tipeKartu.trim()}
               className="cursor-pointer rounded-2xl h-11 font-semibold bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white shadow-md hover:opacity-90 active:scale-95 hover:scale-105 transition-transform"
             >
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSubmitting ? "Menyimpan..." : "Simpan"}
             </Button>
           </DialogFooter>

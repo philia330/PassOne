@@ -1,9 +1,30 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { useSearchParams } from "next/navigation";
-import { ArrowUp, ArrowDown, MessageCircle, Check, Trash2, Download, X, Loader2 } from "lucide-react";
+import {
+  ArrowUp,
+  ArrowDown,
+  MessageCircle,
+  Check,
+  Trash2,
+  Download,
+  X,
+  Loader2,
+  Filter,
+  ShieldCheck,
+  Users,
+  BriefcaseBusiness,
+  Wrench,
+  Truck,
+  Venus,
+  Mars,
+  CheckCircle2,
+  XCircle,
+  Users2,
+  ToggleLeft,
+  VenusAndMars,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -14,6 +35,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { UserFormDialog } from "./UserFormDialog";
 import { DeleteUserDialog } from "./DeleteUserDialog";
 import { UserSearch } from "./UserSearch";
@@ -38,6 +66,16 @@ const ROLE_BADGE_STYLES: Record<string, string> = {
 
 const DEFAULT_ROLE_STYLE = "bg-slate-100 text-slate-700 dark:bg-slate-500/10 dark:text-slate-300";
 
+const JKL_BADGE_STYLES: Record<"LAKI_LAKI" | "PEREMPUAN", string> = {
+  LAKI_LAKI: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400",
+  PEREMPUAN: "bg-pink-100 text-pink-700 dark:bg-pink-500/10 dark:text-pink-400",
+};
+
+const JKL_LABEL: Record<"LAKI_LAKI" | "PEREMPUAN", string> = {
+  LAKI_LAKI: "Laki-laki",
+  PEREMPUAN: "Perempuan",
+};
+
 type User = {
   id_user: number;
   kode_user: string;
@@ -59,28 +97,25 @@ export function UserSortableTable({
   currentUser,
   total,
   page: initialPage,
+  actions,
 }: {
   initialData: User[];
   defaultValue: string;
   currentUser?: CurrentUser;
   total: number;
   page: number;
+  actions?: ReactNode;
 }) {
-
   const router = useRouter();
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(initialPage);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [activeRoleFilter, setActiveRoleFilter] = useState<"ALL" | User["role"]>("ALL");
+  const [activeStatusFilter, setActiveStatusFilter] = useState<"ALL" | "true" | "false">("ALL");
+  const [activeJklFilter, setActiveJklFilter] = useState<"ALL" | "LAKI_LAKI" | "PEREMPUAN">("ALL");
 
   // BUG FIX: useState(initialPage) cuma dibaca sekali waktu mount pertama.
-  // Waktu user pindah halaman, UserPagination push URL baru -> server
-  // component re-fetch & kirim prop `page` baru -> tapi karena komponen ini
-  // client component yang sudah mount, React TIDAK otomatis update state
-  // `page` dari prop baru itu. Efeknya: data tabel (initialData) berubah
-  // (karena itu prop baru yang di-render ulang), tapi indikator halaman
-  // yang dikirim ke <UserPagination> tetap nyangkut di halaman lama ->
-  // tombol Previous kelihatan disabled terus dan navigasi mundur gagal.
-  // Fix: sinkronkan ulang setiap kali prop `initialPage` berubah.
+  // Sinkronkan ulang setiap kali prop `initialPage` berubah.
   useEffect(() => {
     setPage(initialPage);
   }, [initialPage]);
@@ -101,19 +136,46 @@ export function UserSortableTable({
 
   const isAdmin = currentUser?.role === "ADMIN";
   const canBulkDelete = isAdmin;
+  const roleFilterOptions = currentUser?.role === "LEADER"
+    ? (["ALL", "SALES", "TEKNISI"] as const)
+    : (["ALL", "ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"] as const);
+
+  const roleFilterMeta: Record<"ALL" | User["role"], { icon: typeof Filter; color: string; label: string }> = {
+    ALL: { icon: Users2, color: "text-slate-500 dark:text-slate-400", label: "Semua Role" },
+    ADMIN: { icon: ShieldCheck, color: "text-pink-600 dark:text-pink-400", label: "ADMIN" },
+    LEADER: { icon: Users, color: "text-purple-600 dark:text-purple-400", label: "LEADER" },
+    SALES: { icon: BriefcaseBusiness, color: "text-blue-600 dark:text-blue-400", label: "SALES" },
+    TEKNISI: { icon: Wrench, color: "text-orange-600 dark:text-orange-400", label: "TEKNISI" },
+    LOGISTIK: { icon: Truck, color: "text-emerald-600 dark:text-emerald-400", label: "LOGISTIK" },
+  };
+
+  const statusFilterMeta: Record<"ALL" | "true" | "false", { icon: typeof Filter; color: string; label: string }> = {
+    ALL: { icon: ToggleLeft, color: "text-purple-500", label: "Semua Status" },
+    true: { icon: CheckCircle2, color: "text-green-600 dark:text-green-400", label: "Aktif" },
+    false: { icon: XCircle, color: "text-red-600 dark:text-red-400", label: "Nonaktif" },
+  };
+
+  const jklFilterMeta: Record<"ALL" | "LAKI_LAKI" | "PEREMPUAN", { icon: typeof Filter; color: string; label: string }> = {
+    ALL: { icon: VenusAndMars, color: "text-purple-500", label: "Semua Gender" },
+    LAKI_LAKI: { icon: Mars, color: "text-blue-600 dark:text-blue-400", label: "Laki-laki" },
+    PEREMPUAN: { icon: Venus, color: "text-pink-600 dark:text-pink-400", label: "Perempuan" },
+  };
+
+  const selectedRoleFilter = roleFilterMeta[activeRoleFilter];
+  const selectedStatusFilter = statusFilterMeta[activeStatusFilter];
+  const selectedJklFilter = jklFilterMeta[activeJklFilter];
 
   // Clear selection when filters/search change
   useEffect(() => {
     setSelectedIds(new Set());
     setSelectAllPage(false);
-  }, [search]);
+  }, [search, activeRoleFilter, activeStatusFilter, activeJklFilter]);
 
   // Handle highlight dari Command Palette (query param: highlight=<id_user>)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const highlightId = params.get("highlight");
 
-    // Reset highlightHandled jika nilai highlight berubah (软导航后新值)
     if (highlightId !== lastHighlightId.current) {
       highlightHandled.current = false;
       lastHighlightId.current = highlightId;
@@ -125,15 +187,12 @@ export function UserSortableTable({
     const targetId = Number(highlightId);
     if (isNaN(targetId)) return;
 
-    // Cari item di data
     const item = initialData.find((u) => u.id_user === targetId);
     if (!item) return;
 
-    // Set search ke nama user - ini akan sync ke UserSearch via onChange
     setSearch(item.nama);
     setPage(1);
 
-    // Update URL search param agar sinkron dengan state
     const timer = setTimeout(() => {
       const url = new URL(window.location.href);
       url.searchParams.set("search", item.nama);
@@ -142,17 +201,14 @@ export function UserSortableTable({
       window.history.replaceState({}, "", url.toString());
     }, 100);
 
-    // Highlight baris setelah render
     setTimeout(() => {
       setHighlightedId(targetId);
 
-      // Scroll ke baris
       setTimeout(() => {
         const row = rowRefs.current.get(targetId);
         if (row) {
           row.scrollIntoView({ behavior: "smooth", block: "center" });
         }
-        // Hapus highlight setelah 3 detik
         setTimeout(() => setHighlightedId(null), 3000);
       }, 100);
     }, 200);
@@ -168,14 +224,20 @@ export function UserSortableTable({
 
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
-    return initialData.filter(
-      (user) =>
+    return initialData.filter((user) => {
+      const matchesRole = activeRoleFilter === "ALL" || user.role === activeRoleFilter;
+      const matchesStatus =
+        activeStatusFilter === "ALL" || String(user.status) === activeStatusFilter;
+      const matchesJkl = activeJklFilter === "ALL" || user.jkl === activeJklFilter;
+      const matchesSearch =
         user.kode_user.toLowerCase().includes(query) ||
         user.nama.toLowerCase().includes(query) ||
         user.username.toLowerCase().includes(query) ||
-        (user.email?.toLowerCase().includes(query) ?? false)
-    );
-  }, [initialData, search]);
+        (user.email?.toLowerCase().includes(query) ?? false);
+
+      return matchesRole && matchesStatus && matchesJkl && matchesSearch;
+    });
+  }, [activeRoleFilter, activeStatusFilter, activeJklFilter, initialData, search]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -186,19 +248,10 @@ export function UserSortableTable({
 
   const totalPagesCalc = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  // BUG FIX: `initialData` yang dikirim dari server SUDAH dipaginasi di
-  // server (getUsers(search, page) cuma balikin 10 item buat halaman itu
-  // saja). Sebelumnya di sini di-slice LAGI pakai (page-1)*PAGE_SIZE, yang
-  // mengasumsikan `sorted` berisi semua data. Begitu `page` state sudah
-  // benar (lihat fix di atas), slice ini akan mengakses index di luar
-  // panjang array (mis. slice(10, 20) padahal `sorted` cuma punya 10 item)
-  // dan hasilnya array kosong -> tabel kelihatan kosong di halaman > 1.
-  // Fix: data yang sudah datang dari server dipakai langsung (cuma
-  // di-filter/sort di client untuk feedback instan sebelum request server
-  // berikutnya selesai), tanpa di-slice ulang berdasarkan `page`.
+  // Data sudah dipaginasi di server; di sini cuma difilter/sort untuk
+  // feedback instan, tanpa slice ulang berdasarkan `page`.
   const paginated = sorted;
 
-  // Selection functions
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -230,7 +283,6 @@ export function UserSortableTable({
     }
   };
 
-  // Bulk export handler
   const handleBulkExport = async () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) {
@@ -276,7 +328,6 @@ export function UserSortableTable({
     }
   };
 
-  // Bulk delete handler
   const handleBulkDelete = () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) {
@@ -287,7 +338,6 @@ export function UserSortableTable({
     setBulkDeleteOpen(true);
   };
 
-  // Handle delete success
   const handleDeleteSuccess = () => {
     setSelectedIds(new Set());
     setSelectAllPage(false);
@@ -355,10 +405,161 @@ export function UserSortableTable({
           </div>
         )}
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <UserSearch value={search} onChange={setSearch} />
-          <div className="add-button">
-            <UserFormDialog mode="create" />
+        {/* ====================================================== */}
+        {/* NAVIGASI - diselaraskan dengan gaya FabTable            */}
+        {/* Baris 1: Search (kiri) + Aksi & Tambah (kanan)           */}
+        {/* ====================================================== */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="w-full max-w-xs">
+            <UserSearch value={search} onChange={setSearch} />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            {actions}
+            <div className="add-button">
+              <UserFormDialog mode="create" currentUserRole={currentUser?.role} />
+            </div>
+          </div>
+        </div>
+
+        {/* Baris 2: Filter Role + Filter Status + Filter Jenis Kelamin */}
+        <div className="flex flex-wrap items-center gap-2 overflow-visible">
+          {/* Filter Role */}
+          <div className="flex items-center gap-2">
+            <Select value={activeRoleFilter} onValueChange={(value) => setActiveRoleFilter(value as typeof activeRoleFilter)}>
+              <SelectTrigger className="h-11 w-[250px] shrink-0 gap-2 rounded-2xl border-slate-200 bg-white pr-8 shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+                <selectedRoleFilter.icon className={`h-4 w-4 ${selectedRoleFilter.color} shrink-0`} />
+                <SelectValue placeholder="Semua Role" className="min-w-0 flex-1 truncate text-left">
+                  {(value: string) => (
+                    <span className="block truncate">
+                      {roleFilterMeta[value as typeof activeRoleFilter]?.label ?? "Semua Role"}
+                    </span>
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent
+                side="bottom"
+                alignItemWithTrigger={false}
+                className="z-[100] max-h-64 w-[250px] overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700"
+              >
+                {roleFilterOptions.map((role) => {
+                  const meta = roleFilterMeta[role];
+                  const Icon = meta.icon;
+
+                  return (
+                    <SelectItem key={role} value={role} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                      <span className="flex items-center gap-2">
+                        <Icon className={`h-3.5 w-3.5 ${meta.color} shrink-0`} />
+                        <span>{meta.label}</span>
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+
+            {activeRoleFilter !== "ALL" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveRoleFilter("ALL")}
+                className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+              >
+                <X className="h-4 w-4 text-slate-500" />
+              </Button>
+            )}
+          </div>
+
+          {/* Filter Status */}
+          <div className="flex items-center gap-2">
+            <Select value={activeStatusFilter} onValueChange={(value) => setActiveStatusFilter(value as typeof activeStatusFilter)}>
+              <SelectTrigger className="h-11 w-[230px] shrink-0 gap-2 rounded-2xl border-slate-200 bg-white pr-8 shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+                <selectedStatusFilter.icon className={`h-4 w-4 ${selectedStatusFilter.color} shrink-0`} />
+                <SelectValue placeholder="Semua Status" className="min-w-0 flex-1 truncate text-left">
+                  {(value: string) => (
+                    <span className="block truncate">
+                      {statusFilterMeta[value as typeof activeStatusFilter]?.label ?? "Semua Status"}
+                    </span>
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent
+                side="bottom"
+                alignItemWithTrigger={false}
+                className="z-[100] w-[230px] rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700"
+              >
+                {(["ALL", "true", "false"] as const).map((val) => {
+                  const meta = statusFilterMeta[val];
+                  const Icon = meta.icon;
+
+                  return (
+                    <SelectItem key={val} value={val} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                      <span className="flex items-center gap-2">
+                        <Icon className={`h-3.5 w-3.5 ${meta.color} shrink-0`} />
+                        <span>{meta.label}</span>
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+
+            {activeStatusFilter !== "ALL" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveStatusFilter("ALL")}
+                className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+              >
+                <X className="h-4 w-4 text-slate-500" />
+              </Button>
+            )}
+          </div>
+
+          {/* Filter Jenis Kelamin */}
+          <div className="flex items-center gap-2">
+            <Select value={activeJklFilter} onValueChange={(value) => setActiveJklFilter(value as typeof activeJklFilter)}>
+              <SelectTrigger className="h-11 w-[240px] shrink-0 gap-2 rounded-2xl border-slate-200 bg-white pr-8 shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+                <selectedJklFilter.icon className={`h-4 w-4 ${selectedJklFilter.color} shrink-0`} />
+                <SelectValue placeholder="Semua Gender" className="min-w-0 flex-1 truncate text-left">
+                  {(value: string) => (
+                    <span className="block truncate">
+                      {jklFilterMeta[value as typeof activeJklFilter]?.label ?? "Semua Gender"}
+                    </span>
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent
+                side="bottom"
+                alignItemWithTrigger={false}
+                className="z-[100] w-[240px] rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700"
+              >
+                {(["ALL", "LAKI_LAKI", "PEREMPUAN"] as const).map((val) => {
+                  const meta = jklFilterMeta[val];
+                  const Icon = meta.icon;
+
+                  return (
+                    <SelectItem key={val} value={val} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                      <span className="flex items-center gap-2">
+                        <Icon className={`h-3.5 w-3.5 ${meta.color} shrink-0`} />
+                        <span>{meta.label}</span>
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+
+            {activeJklFilter !== "ALL" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveJklFilter("ALL")}
+                className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+              >
+                <X className="h-4 w-4 text-slate-500" />
+              </Button>
+            )}
           </div>
         </div>
 
@@ -406,6 +607,7 @@ export function UserSortableTable({
                 <TableHead className="dark:text-slate-400">Username</TableHead>
                 <TableHead className="dark:text-slate-400">Email</TableHead>
                 <TableHead className="dark:text-slate-400">No. HP</TableHead>
+                <TableHead className="dark:text-slate-400">Jenis Kelamin</TableHead>
                 <TableHead className="dark:text-slate-400">Role</TableHead>
                 <TableHead className="dark:text-slate-400">Status</TableHead>
                 <TableHead className="text-center dark:text-slate-400">Aksi</TableHead>
@@ -415,7 +617,7 @@ export function UserSortableTable({
             <TableBody>
               {paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="py-10 text-center text-slate-400 dark:text-slate-500">
+                  <TableCell colSpan={11} className="py-10 text-center text-slate-400 dark:text-slate-500">
                     {search ? "Tidak ada user yang cocok" : "Belum ada user"}
                   </TableCell>
                 </TableRow>
@@ -492,6 +694,12 @@ export function UserSortableTable({
                       </div>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${JKL_BADGE_STYLES[user.jkl]}`}>
+                        {user.jkl === "LAKI_LAKI" ? <Mars className="h-3 w-3" /> : <Venus className="h-3 w-3" />}
+                        {JKL_LABEL[user.jkl]}
+                      </span>
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <span className={`rounded-full px-3 py-1 text-xs font-semibold ${ROLE_BADGE_STYLES[user.role] ?? DEFAULT_ROLE_STYLE}`}>{user.role}</span>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -501,7 +709,7 @@ export function UserSortableTable({
                     </TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center gap-2">
-                        <UserFormDialog mode="edit" data={user} />
+                        <UserFormDialog mode="edit" data={user} currentUserRole={currentUser?.role} />
                         <DeleteUserDialog id={user.id_user} name={user.nama ?? ""} />
                       </div>
                     </TableCell>
@@ -555,7 +763,7 @@ export function UserSortableTable({
                       <p className="text-xs text-slate-400 dark:text-slate-500">{user.kode_user}</p>
                     </div>
                     <div className="flex shrink-0 gap-1">
-                      <UserFormDialog mode="edit" data={user} />
+                      <UserFormDialog mode="edit" data={user} currentUserRole={currentUser?.role} />
                       <DeleteUserDialog id={user.id_user} name={user.nama ?? ""} />
                     </div>
                   </div>
@@ -577,6 +785,10 @@ export function UserSortableTable({
                         <MessageCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                       </Button>
                     )}
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${JKL_BADGE_STYLES[user.jkl]}`}>
+                      {user.jkl === "LAKI_LAKI" ? <Mars className="h-3 w-3" /> : <Venus className="h-3 w-3" />}
+                      {JKL_LABEL[user.jkl]}
+                    </span>
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${ROLE_BADGE_STYLES[user.role] ?? DEFAULT_ROLE_STYLE}`}>{user.role}</span>
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${user.status ? "bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400"}`}>
                       {user.status ? "Aktif" : "Nonaktif"}

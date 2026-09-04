@@ -14,6 +14,7 @@ import BaaPage from "@/app/jaringan/baa/page";
 import BaaDetailPage from "@/app/jaringan/baadetail/[id_baa]/page";
 import SettingsPage from "@/app/settings/page";
 import NotificationsPage from "@/app/notifications/page";
+import ProfilePage from "@/app/profile/page";
 
 import { WORKSPACE_MODULES, DEFAULT_MODULE, type WorkspaceModuleKey } from "./modules";
 import { auth } from "@/lib/auth";
@@ -34,6 +35,7 @@ const MODULE_COMPONENTS: Record<WorkspaceModuleKey, React.ComponentType<any>> = 
   baa: BaaPage,
   settings: SettingsPage,
   notifications: NotificationsPage,
+  profile: ProfilePage,
 };
 
 interface WorkspacePageProps {

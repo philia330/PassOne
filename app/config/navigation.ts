@@ -7,6 +7,7 @@ import {
   Map,
   Router,
   Boxes,
+  PackageCheck,
   Package,
   PackageOpen,
   FileText,
@@ -26,6 +27,21 @@ export interface NavigationItem {
 export interface NavigationGroup {
   title: string;
   items: NavigationItem[];
+}
+
+export function normalizeRole(role?: string | null): Role | undefined {
+  if (!role) return undefined;
+  const normalized = role.trim().toUpperCase();
+  return Object.values(Role).includes(normalized as Role)
+    ? (normalized as Role)
+    : undefined;
+}
+
+export function hasAccessToRole(itemRoles: Role[], currentRole?: string | null) {
+  const normalizedCurrentRole = normalizeRole(currentRole);
+  if (!normalizedCurrentRole) return false;
+
+  return itemRoles.some((role) => normalizeRole(role) === normalizedCurrentRole);
 }
 
 export const importExcelOptions = [
@@ -100,10 +116,10 @@ export const navigation: NavigationGroup[] = [
         icon: Boxes,
         roles: [Role.ADMIN, Role.LEADER],
       },
-      {
+       {
         title: "ONT",
         href: "/workspace?view=ont",
-        icon: Boxes,
+        icon: PackageCheck,
         roles: [Role.ADMIN, Role.LOGISTIK, Role.TEKNISI],
       },
       {
@@ -128,7 +144,7 @@ export const navigation: NavigationGroup[] = [
         title: "User",
         href: "/workspace?view=user",
         icon: Users,
-        roles: [Role.ADMIN],
+        roles: [Role.ADMIN, Role.LEADER],
       },
     ],
   },

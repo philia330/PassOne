@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Pencil, Plus, Loader2, Navigation } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 
 import { createPop, updatePop } from "../actions";
+import { validateTextInput } from "@/lib/validations/hooks";
 
 const PopMapPicker = dynamic(
   () => import("./PopMapPicker").then((mod) => mod.PopMapPicker),
@@ -51,6 +52,10 @@ type PopData = {
   longitude?: number | string;
 };
 
+// Batas jumlah karakter untuk masing-masing input teks
+const NAMA_POP_MAX_LENGTH = 100;
+const ALAMAT_MAX_LENGTH = 255;
+
 export const PopFormDialog = ({
   mode,
   areas,
@@ -66,6 +71,9 @@ export const PopFormDialog = ({
   const [areaValue, setAreaValue] = useState(
     data?.id_area ? String(data.id_area) : ""
   );
+
+  const [namaPop, setNamaPop] = useState(data?.nama_pop ?? "");
+  const [alamat, setAlamat] = useState(data?.alamat ?? "");
 
   const [lat, setLat] = useState<number>(
     data?.latitude ? Number(data.latitude) : 0
@@ -121,10 +129,45 @@ export const PopFormDialog = ({
     setAreaValue(value || "");
   };
 
+  const handleNamaPopChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setNamaPop(validateTextInput(e.target.value, NAMA_POP_MAX_LENGTH));
+    },
+    []
+  );
+
+  const handleAlamatChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setAlamat(validateTextInput(e.target.value, ALAMAT_MAX_LENGTH));
+    },
+    []
+  );
+
   const handlePick = (pickedLat: number, pickedLng: number) => {
     setLat(pickedLat);
     setLng(pickedLng);
   };
+
+  // Kembalikan semua field ke nilai awal (kosong untuk create, sesuai
+  // data untuk edit). Dipanggil setiap kali dialog ditutup.
+  const resetForm = useCallback(() => {
+    setAreaValue(data?.id_area ? String(data.id_area) : "");
+    setNamaPop(data?.nama_pop ?? "");
+    setAlamat(data?.alamat ?? "");
+    setLat(data?.latitude ? Number(data.latitude) : 0);
+    setLng(data?.longitude ? Number(data.longitude) : 0);
+    setGpsError(null);
+  }, [data?.id_area, data?.nama_pop, data?.alamat, data?.latitude, data?.longitude]);
+
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setOpen(nextOpen);
+      if (!nextOpen) {
+        resetForm();
+      }
+    },
+    [resetForm]
+  );
 
   const handleSubmit = async (formData: FormData) => {
     setIsSubmitting(true);
@@ -138,7 +181,7 @@ export const PopFormDialog = ({
         toast.success("POP berhasil diperbarui");
       }
 
-      setOpen(false);
+      handleOpenChange(false);
     } catch {
       toast.error("Terjadi kesalahan");
     } finally {
@@ -147,13 +190,17 @@ export const PopFormDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger
         render={
           mode === "create" ? (
             <Button className="cursor-pointer h-11 rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white active:scale-95 transition-transform" />
           ) : (
-            <Button variant="ghost" size="icon" className="cursor-pointer rounded-xl active:scale-90 transition-transform" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="cursor-pointer rounded-xl hover:scale-125 active:scale-90 transition-transform"
+            />
           )
         }
       >
@@ -163,12 +210,19 @@ export const PopFormDialog = ({
             Tambah POP
           </>
         ) : (
-          <Pencil className="h-4 w-4 text-orange-500 hover:text-orange-600 active:scale-90 transition-all dark:text-orange-400 dark:hover:text-orange-300" />
+          <Pencil className="h-4 w-4 text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" />
         )}
       </DialogTrigger>
 
-      <DialogContent className="rounded-3xl sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      {/*
+        Struktur dialog dipecah jadi 2 bagian:
+        - Header: tetap (tidak ikut scroll)
+        - Body (form): scroll sendiri, dengan padding di kanan supaya
+          scrollbar tidak nempel di tepi/rounded corner dan custom
+          styling supaya scrollbar tipis & rapi.
+      */}
+      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden rounded-3xl p-0 sm:max-w-lg">
+        <DialogHeader className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-6 dark:border-slate-800">
           <DialogTitle>
             {mode === "create" ? "Tambah POP" : "Edit POP"}
           </DialogTitle>
@@ -178,136 +232,157 @@ export const PopFormDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <form action={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Area</label>
+        <div
+          className="flex-1 overflow-y-auto px-6 py-4
+            [&::-webkit-scrollbar]:w-1.5
+            [&::-webkit-scrollbar-track]:bg-transparent
+            [&::-webkit-scrollbar-thumb]:rounded-full
+            [&::-webkit-scrollbar-thumb]:bg-slate-300
+            dark:[&::-webkit-scrollbar-thumb]:bg-slate-700"
+        >
+          <form id="pop-form" action={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Area</label>
 
-            <Select value={areaValue} onValueChange={handleAreaChange}>
-              <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 hover:scale-105 active:scale-95 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                <SelectValue placeholder="Pilih Area">
-                  {(value: string) =>
-                    areas.find((area) => String(area.id_area) === value)
-                      ?.nama_area ?? "Pilih Area"
-                  }
-                </SelectValue>
-              </SelectTrigger>
+              <Select value={areaValue} onValueChange={handleAreaChange}>
+                <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white focus:ring-purple-500 hover:scale-105 active:scale-95 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                  <SelectValue placeholder="Pilih Area">
+                    {(value: string) =>
+                      areas.find((area) => String(area.id_area) === value)
+                        ?.nama_area ?? "Pilih Area"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
 
-              <SelectContent>
-                {areas.map((area) => (
-                  <SelectItem key={area.id_area} value={String(area.id_area)}>
-                    {area.nama_area}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <SelectContent>
+                  {areas.map((area) => (
+                    <SelectItem key={area.id_area} value={String(area.id_area)}>
+                      {area.nama_area}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <input type="hidden" name="id_area" value={areaValue} required />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Nama POP</label>
-            <Input
-              name="nama_pop"
-              defaultValue={data?.nama_pop}
-              placeholder="Contoh: POP Tanggerang Pusat"
-              required
-              autoComplete="off"
-              className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Alamat</label>
-            <Input
-              name="alamat"
-              defaultValue={data?.alamat}
-              placeholder="Contoh: Jl. Merdeka No.10, Tanggerang"
-              required
-              autoComplete="off"
-              className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
-            />
-          </div>
-
-          {/* Peta pilih lokasi GPS */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Lokasi di Peta</label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={getCurrentLocation}
-                disabled={gpsLoading}
-                className="rounded-xl h-8 text-xs border-cyan-200 text-cyan-700 hover:bg-cyan-50 gap-1.5 dark:border-cyan-800 dark:text-cyan-400 dark:hover:bg-cyan-500/10"
-              >
-                {gpsLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Navigation className="h-3.5 w-3.5" />
-                )}
-                {gpsLoading ? "Mencari..." : "GPS Saya"}
-              </Button>
+              <input type="hidden" name="id_area" value={areaValue} required />
             </div>
-            {gpsError && (
-              <p className="text-xs text-red-500 dark:text-red-400">{gpsError}</p>
-            )}
-            {lat !== 0 && lng !== 0 && !gpsError && (
-              <p className="text-xs text-emerald-500 dark:text-emerald-400">
-                Lokasi tersimpan: {lat}, {lng}
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Nama POP</label>
+              <Input
+                name="nama_pop"
+                value={namaPop}
+                onChange={handleNamaPopChange}
+                placeholder="Contoh: POP Tanggerang Pusat"
+                maxLength={NAMA_POP_MAX_LENGTH}
+                required
+                autoComplete="off"
+                className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
+              />
+              <p className="text-xs text-slate-400">
+                {namaPop.length}/{NAMA_POP_MAX_LENGTH} karakter
               </p>
-            )}
-            <PopMapPicker lat={lat} lng={lng} onPick={handlePick} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Latitude</label>
-              <Input
-                name="latitude"
-                type="number"
-                step="any"
-                value={lat === 0 ? "" : lat}
-                onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
-                placeholder="-6.178306"
-                required
-                className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Longitude</label>
+              <label className="text-sm font-medium">Alamat</label>
               <Input
-                name="longitude"
-                type="number"
-                step="any"
-                value={lng === 0 ? "" : lng}
-                onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
-                placeholder="106.631889"
+                name="alamat"
+                value={alamat}
+                onChange={handleAlamatChange}
+                placeholder="Contoh: Jl. Merdeka No.10, Tanggerang"
+                maxLength={ALAMAT_MAX_LENGTH}
                 required
-                className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                autoComplete="off"
+                className="h-12 rounded-2xl border-slate-200 bg-white placeholder:text-slate-600 placeholder:font-medium focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
               />
+              <p className="text-xs text-slate-400">
+                {alamat.length}/{ALAMAT_MAX_LENGTH} karakter
+              </p>
             </div>
-          </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              className="cursor-pointer rounded-2xl active:scale-95 transition-transform"
-              onClick={() => setOpen(false)}
-            >
-              Batal
-            </Button>
+            {/* Peta pilih lokasi GPS */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Lokasi di Peta</label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={getCurrentLocation}
+                  disabled={gpsLoading}
+                  className="rounded-xl h-8 text-xs border-cyan-200 text-cyan-700 hover:bg-cyan-50 gap-1.5 dark:border-cyan-800 dark:text-cyan-400 dark:hover:bg-cyan-500/10"
+                >
+                  {gpsLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Navigation className="h-3.5 w-3.5" />
+                  )}
+                  {gpsLoading ? "Mencari..." : "GPS Saya"}
+                </Button>
+              </div>
+              {gpsError && (
+                <p className="text-xs text-red-500 dark:text-red-400">{gpsError}</p>
+              )}
+              {lat !== 0 && lng !== 0 && !gpsError && (
+                <p className="text-xs text-emerald-500 dark:text-emerald-400">
+                  Lokasi tersimpan: {lat}, {lng}
+                </p>
+              )}
+              <PopMapPicker lat={lat} lng={lng} onPick={handlePick} />
+            </div>
 
-            <Button
-              type="submit"
-              disabled={isSubmitting || !areaValue}
-              className="cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white active:scale-95 transition-transform"
-            >
-              {isSubmitting ? "Menyimpan..." : "Simpan"}
-            </Button>
-          </DialogFooter>
-        </form>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Latitude</label>
+                <Input
+                  name="latitude"
+                  type="number"
+                  step="any"
+                  value={lat === 0 ? "" : lat}
+                  onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
+                  placeholder="-6.178306"
+                  required
+                  className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Longitude</label>
+                <Input
+                  name="longitude"
+                  type="number"
+                  step="any"
+                  value={lng === 0 ? "" : lng}
+                  onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
+                  placeholder="106.631889"
+                  required
+                  className="h-12 rounded-2xl border-slate-200 bg-white focus-visible:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                />
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <DialogFooter className="shrink-0 border-t border-slate-100 px-6 py-4 dark:border-slate-800">
+          <Button
+            type="button"
+            variant="outline"
+            className="cursor-pointer rounded-2xl active:scale-95 transition-transform"
+            onClick={() => handleOpenChange(false)}
+          >
+            Batal
+          </Button>
+
+          <Button
+            type="submit"
+            form="pop-form"
+            disabled={isSubmitting || !areaValue}
+            className="cursor-pointer rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-sky-500 text-white active:scale-95 transition-transform"
+          >
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSubmitting ? "Menyimpan..." : "Simpan"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

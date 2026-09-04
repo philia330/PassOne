@@ -226,14 +226,14 @@
    Global Hover Scale Effects for Icons
    ============================================ */
 
-/* Only the specific icon being hovered gets enlarged - NOT all icons in group */
-button:hover > svg,
+/* Only opt-in icons get enlarged; form controls must keep stable dimensions. */
+.btn-icon-hover:hover > svg,
 .action-icon:hover {
   transform: scale(1.25);
 }
 
 /* Icons have smooth transition */
-button svg,
+.btn-icon-hover svg,
 .action-icon {
   transition: transform 200ms ease-out;
 }
@@ -486,7 +486,331 @@ button svg,
   background-color: #7c3aed; /* purple-600 */
 }
 
-.leaflet-container ~ * input,
-input[placeholder] {
-  transform: translateZ(0);
+/* ============================================
+   Search Icon Pulse Animation
+   Runs once on first mount, then stops
+   ============================================ */
+
+@keyframes search-pulse-once {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.35);
+  }
+}
+
+.animate-search-pulse-once {
+  animation: search-pulse-once 0.6s ease-in-out 0.3s 1;
+  /* delay: 0.3s, iteration: 1 (runs once) */
+  /* Using transform: scale() ensures no layout shift */
+}
+
+/* Ensure the icon is always visible (base state) */
+.animate-search-pulse-once svg {
+  transform: scale(1);
+  display: block;
+}
+
+/* ============================================
+   FabAssignDialog Animations
+   ============================================ */
+
+@keyframes fab-fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fab-scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fab-slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fab-slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fab-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(5deg); }
+}
+
+@keyframes fab-bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fab-sparkle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8) rotate(180deg);
+  }
+}
+
+@keyframes fab-pulse-amber {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px 5px rgba(251, 191, 36, 0.2);
+  }
+}
+
+.animate-fab-fadeIn {
+  animation: fab-fadeIn 0.2s ease-out;
+}
+
+.animate-fab-scaleIn {
+  animation: fab-scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-fab-slideUp {
+  animation: fab-slideUp 0.3s ease-out both;
+}
+
+.animate-fab-slideIn {
+  animation: fab-slideIn 0.2s ease-out both;
+}
+
+.animate-fab-float {
+  animation: fab-float 6s ease-in-out infinite;
+}
+
+/* ============================================
+   Dropdown Scrollbar Styling
+   ============================================ */
+
+.teknisi-dropdown-scroll {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgb(167 139 250) rgb(248 250 252) !important; /* purple-400 / slate-50 */
+}
+
+.teknisi-dropdown-scroll::-webkit-scrollbar {
+  width: 6px !important;
+  display: block !important;
+}
+
+.teknisi-dropdown-scroll::-webkit-scrollbar-track {
+  background: rgb(248 250 252) !important; /* slate-50 */
+  border-radius: 9999px !important;
+}
+
+.teknisi-dropdown-scroll::-webkit-scrollbar-thumb {
+  background-color: rgb(167 139 250) !important; /* purple-400 */
+  border-radius: 9999px !important;
+  border: 2px solid rgb(248 250 252) !important;
+}
+
+.teknisi-dropdown-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(124 58 237) !important; /* purple-600 */
+}
+
+/* Dark mode dropdown scrollbar */
+.dark .teknisi-dropdown-scroll {
+  scrollbar-color: rgb(139 92 246) rgb(30 41 59) !important; /* purple-500 / slate-800 */
+}
+
+.dark .teknisi-dropdown-scroll::-webkit-scrollbar-track {
+  background: rgb(30 41 59) !important; /* slate-800 */
+}
+
+.dark .teknisi-dropdown-scroll::-webkit-scrollbar-thumb {
+  background-color: rgb(139 92 246) !important; /* purple-500 */
+  border: 2px solid rgb(30 41 59) !important;
+}
+
+.dark .teknisi-dropdown-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(167 139 250) !important; /* purple-400 */
+}
+
+/* ============================================
+   Dropdown Open/Close Animations
+   ============================================ */
+
+@keyframes fab-dropdown-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.95);
+  }
+  70% {
+    transform: translateY(2px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fab-dropdown-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+}
+
+@keyframes fab-dropdown-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes fab-dropdown-fade-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-fab-dropdown-in {
+  animation: fab-dropdown-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-fab-dropdown-out {
+  animation: fab-dropdown-out 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-fab-dropdown-fade-in {
+  animation: fab-dropdown-fade-in 0.2s ease-out forwards;
+}
+
+.animate-fab-dropdown-fade-out {
+  animation: fab-dropdown-fade-out 0.2s ease-in forwards;
+}
+
+.animate-fab-bounceIn {
+  animation: fab-bounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+
+.animate-fab-sparkle {
+  animation: fab-sparkle 2s ease-in-out infinite;
+}
+
+.animate-fab-pulse-amber {
+  animation: fab-pulse-amber 2s ease-in-out infinite;
+}
+
+/* Dialog entrance/exit animations */
+.animate-dialog-in {
+  animation: fab-scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-dialog-out {
+  animation: fab-fadeIn 0.2s ease-out reverse;
+}
+
+/* Staggered animation delays */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+
+/* ============================================
+   Dialog Overlay Animations
+   ============================================ */
+
+@keyframes fab-overlay-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes fab-overlay-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-fab-overlay-in {
+  animation: fab-overlay-in 0.2s ease-out forwards;
+}
+
+.animate-fab-overlay-out {
+  animation: fab-overlay-out 0.25s ease-in forwards;
+}
+
+/* Dialog close animations - smooth slide back */
+@keyframes fab-dialog-slide-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+}
+
+@keyframes fab-dialog-fade-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-dialog-close {
+  animation: fab-dialog-slide-out 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-dialog-overlay-close {
+  animation: fab-dialog-fade-out 0.25s ease-in forwards;
 }

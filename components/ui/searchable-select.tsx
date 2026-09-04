@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Search, X } from "lucide-react";
+import Image from "next/image";
+import { Check, ChevronDown, Search, UserRound, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ComboboxOption {
   value: string;
   label: string;
+  avatarUrl?: string | null;
 }
 
 interface SearchableSelectProps {
@@ -17,6 +19,26 @@ interface SearchableSelectProps {
   searchPlaceholder?: string;
   emptyText?: string;
   className?: string;
+  showAvatar?: boolean;
+}
+
+function OptionAvatar({ option, showAvatar }: { option?: ComboboxOption; showAvatar: boolean }) {
+  if (!showAvatar) return null;
+
+  return option?.avatarUrl ? (
+    <Image
+      src={option.avatarUrl}
+      alt=""
+      width={28}
+      height={28}
+      className="h-7 w-7 shrink-0 rounded-full object-cover"
+      unoptimized
+    />
+  ) : (
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+      <UserRound size={14} />
+    </span>
+  );
 }
 
 export function SearchableSelect({
@@ -27,6 +49,7 @@ export function SearchableSelect({
   searchPlaceholder = "Cari...",
   emptyText = "Tidak ditemukan",
   className,
+  showAvatar = false,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -68,8 +91,9 @@ export function SearchableSelect({
           className
         )}
       >
-        <span className={cn("truncate", !selected && "text-slate-400")}>
-          {selected ? selected.label : placeholder}
+        <span className={cn("flex min-w-0 items-center gap-2 truncate", !selected && "text-slate-400")}>
+          {selected && <OptionAvatar option={selected} showAvatar={showAvatar} />}
+          <span className="truncate">{selected ? selected.label : placeholder}</span>
         </span>
         <ChevronDown size={16} className="flex-shrink-0 text-slate-400" />
       </button>
@@ -111,7 +135,10 @@ export function SearchableSelect({
                     opt.value === value && "bg-purple-50 font-semibold text-purple-700 dark:bg-slate-800"
                   )}
                 >
-                  <span className="truncate">{opt.label}</span>
+                  <span className="flex min-w-0 items-center gap-2 truncate">
+                    <OptionAvatar option={opt} showAvatar={showAvatar} />
+                    <span className="truncate">{opt.label}</span>
+                  </span>
                   {opt.value === value && <Check size={14} className="flex-shrink-0 text-purple-600" />}
                 </button>
               ))

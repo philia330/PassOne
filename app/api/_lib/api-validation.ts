@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { Role } from "@/lib/auth/roles";
+import { Role, normalizeRole } from "@/lib/auth/roles";
 
 /**
  * ======================================
@@ -42,8 +42,10 @@ export async function requireRole(roles: Role[] | string[]) {
     };
   }
 
-  const userRole = session.user.role as string;
-  if (!roles.includes(userRole as Role)) {
+  const userRole = normalizeRole(session.user.role);
+  const allowedRoles = roles.map((role) => normalizeRole(role)).filter(Boolean) as Role[];
+
+  if (!userRole || !allowedRoles.includes(userRole)) {
     const roleNames = roles.join(", ");
     return {
       ok: false as const,

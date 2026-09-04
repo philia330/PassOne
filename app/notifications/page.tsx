@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Check, Loader2, Trash2, ArrowLeft, PackageX, AlertTriangle, Info, UserCog, ExternalLink } from "lucide-react";
+import { Bell, Check, CheckCircle2, Loader2, Trash2, ArrowLeft, PackageX, AlertTriangle, Info, UserCog, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,7 @@ const TYPE_TO_SEVERITY: Record<string, "warning" | "danger" | "info"> = {
   FAB_STATUS_CHANGE: "info",
   BAA_CREATED: "info",
   SYSTEM: "warning",
+  FAB_COMPLETED: "success",
 };
 
 const TYPE_ICON: Record<string, React.ElementType> = {
@@ -43,12 +44,14 @@ const TYPE_ICON: Record<string, React.ElementType> = {
   FAB_STATUS_CHANGE: Info,
   BAA_CREATED: Info,
   SYSTEM: AlertTriangle,
+  FAB_COMPLETED: CheckCircle2,
 };
 
 const TYPE_COLOR = {
   info: "text-sky-500 bg-sky-50 dark:bg-sky-500/20",
   warning: "text-amber-500 bg-amber-50 dark:bg-amber-500/20",
   danger: "text-red-500 bg-red-50 dark:bg-red-500/20",
+  success: "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/20",
 };
 
 function formatTimeAgo(dateString: string): string {
@@ -87,17 +90,19 @@ export default function NotificationsPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  async function fetchNotifications() {
+  async function fetchNotifications(requestPage: number, signal?: AbortSignal) {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/notifications/all?page=${page}&pageSize=${pageSize}`);
+      const res = await fetch(`/api/notifications/all?page=${requestPage}&pageSize=${pageSize}`, { signal });
       if (res.ok) {
         const data = await res.json();
+        if (signal?.aborted) return;
         setNotifications(data.notifications ?? []);
         setTotal(data.total ?? 0);
         setUnreadCount(data.unreadCount ?? 0);
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       toast.error("Gagal memuat notifikasi");
     } finally {
       setIsLoading(false);
@@ -105,7 +110,9 @@ export default function NotificationsPage() {
   }
 
   useEffect(() => {
-    fetchNotifications();
+    const controller = new AbortController();
+    void fetchNotifications(page, controller.signal);
+    return () => controller.abort();
   }, [page]);
 
     const handleNotificationClick = async (item: NotificationItem) => {
@@ -263,7 +270,7 @@ export default function NotificationsPage() {
               const severity = TYPE_TO_SEVERITY[item.type] || "info";
               const Icon = TYPE_ICON[item.type] || Info;
               const colorClass = TYPE_COLOR[severity];
-              const isFabNotification = item.type === "FAB_ASSIGNED" || item.type === "FAB_OPEN";
+              const isFabNotification = item.type === "FAB_ASSIGNED" || item.type === "FAB_OPEN" || item.type === "FAB_COMPLETED";
 
               return (
                 <div

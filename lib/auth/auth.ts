@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 import { authConfig } from "./auth.config";
 import { credentialsProvider } from "./credentials";
-import { Role } from "./roles";
+import { normalizeRole, Role } from "./roles";
 
 
 const SESSION_MAX_AGE = 12 * 60 * 60; // 12 jam
@@ -46,7 +46,7 @@ export const {
 
         token.username = user.username;
 
-        token.role = user.role;
+        token.role = normalizeRole(user.role) ?? user.role;
 
         token.foto = user.foto;
 
@@ -68,7 +68,8 @@ export const {
 
         session.user.username = token.username as string;
 
-        session.user.role = token.role as Role;
+        const jwtRole = typeof token.role === "string" ? token.role : String(token.role ?? "");
+        session.user.role = normalizeRole(jwtRole) ?? (jwtRole as Role);
 
         session.user.foto = token.foto as string | null;
 

@@ -45,19 +45,35 @@ export const usernameSchema = z
   .regex(usernamePattern, "Username hanya boleh berisi huruf, angka, dan underscore.")
   .toLowerCase();
 
-export const emailSchema = z
-  .string()
-  .email("Format email tidak valid.")
-  .max(254, "Email maksimal 254 karakter.")
-  .optional()
-  .or(z.literal("").transform(() => null));
+// BUG FIX: pola lama `.optional().or(z.literal("").transform(() => null))`
+// rapuh — kalau value yang masuk bukan persis `undefined` atau `""` (mis.
+// whitespace, atau memang salah format), Zod gagal di kedua cabang union
+// dan melempar error dari cabang pertama ("Format email tidak valid"),
+// bahkan untuk kasus yang seharusnya valid/kosong.
+// Fix: normalisasi string kosong/whitespace-only jadi `null` LEBIH DULU
+// lewat `z.preprocess`, sebelum masuk ke validator .email(). Jadi tidak
+// pernah ada string kosong yang nyasar ke pengecekan format email.
+export const emailSchema = z.preprocess(
+  (val) => (typeof val === "string" && val.trim() === "" ? null : val),
+  z
+    .string()
+    .trim()
+    .email("Format email tidak valid.")
+    .max(254, "Email maksimal 254 karakter.")
+    .nullable()
+    .optional()
+);
 
-export const noHpSchema = z
-  .string()
-  .regex(phonePattern, "Nomor HP tidak valid. Gunakan format: 08xxxxxxxxxx atau +62xxxxxxxxxxx")
-  .max(15, "Nomor HP maksimal 15 karakter.")
-  .optional()
-  .or(z.literal("").transform(() => null));
+export const noHpSchema = z.preprocess(
+  (val) => (typeof val === "string" && val.trim() === "" ? null : val),
+  z
+    .string()
+    .trim()
+    .regex(phonePattern, "Nomor HP tidak valid. Gunakan format: 08xxxxxxxxxx atau +62xxxxxxxxxxx")
+    .max(15, "Nomor HP maksimal 15 karakter.")
+    .nullable()
+    .optional()
+);
 
 export const passwordSchema = z
   .string()

@@ -6,14 +6,28 @@ import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { Role } from "@/lib/auth/roles";
 import { logActivity } from "@/lib/activity-log";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "logo");
 
+function getImageExtension(file: File) {
+  const extensions: Record<string, string> = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/svg+xml": "svg",
+    "image/x-icon": "ico",
+  };
+
+  return extensions[file.type];
+}
+
 export async function updateSettings(formData: FormData) {
   const session = await auth();
 
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user || session.user.role !== Role.ADMIN) {
     throw new Error("Tidak memiliki akses.");
   }
 
@@ -25,6 +39,8 @@ export async function updateSettings(formData: FormData) {
   const appFontSize = formData.get("app_font_size") as string;
   const footerText = formData.get("footer_text") as string;
   const logoFile = formData.get("logo") as File | null;
+  const faviconFile = formData.get("favicon") as File | null;
+  const removeFavicon = formData.get("remove_favicon") === "true";
 
   const updates: { key: string; value: string }[] = [
     { key: "app_name", value: appName },
@@ -40,7 +56,8 @@ export async function updateSettings(formData: FormData) {
   if (logoFile && logoFile.size > 0) {
     await mkdir(UPLOAD_DIR, { recursive: true });
 
-    const ext = logoFile.name.split(".").pop();
+    const ext = getImageExtension(logoFile);
+    if (!ext) throw new Error("Format logo tidak didukung.");
     const fileName = `logo-${Date.now()}.${ext}`;
     const filePath = path.join(UPLOAD_DIR, fileName);
 
@@ -49,6 +66,22 @@ export async function updateSettings(formData: FormData) {
 
     const publicPath = `/uploads/logo/${fileName}`;
     updates.push({ key: "login_logo", value: publicPath });
+  }
+
+  if (faviconFile && faviconFile.size > 0) {
+    await mkdir(UPLOAD_DIR, { recursive: true });
+
+    const ext = getImageExtension(faviconFile);
+    if (!ext) throw new Error("Format icon tidak didukung.");
+    const fileName = `favicon-${Date.now()}.${ext}`;
+    const filePath = path.join(UPLOAD_DIR, fileName);
+
+    const bytes = await faviconFile.arrayBuffer();
+    await writeFile(filePath, Buffer.from(bytes));
+
+    updates.push({ key: "favicon", value: `/uploads/logo/${fileName}` });
+  } else if (removeFavicon) {
+    updates.push({ key: "favicon", value: "" });
   }
 
   // Upsert semua settings

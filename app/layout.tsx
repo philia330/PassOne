@@ -22,13 +22,18 @@ const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito" });
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
-export const metadata: Metadata = {
-  title: {
-    default: "PASSONE",
-    template: "%s | PASSONE",
-  },
-  description: "Sistem Informasi Instalasi dan Monitoring ISP PASSONE",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSettings();
+
+  return {
+    title: {
+      default: settings.app_name,
+      template: `%s | ${settings.app_name}`,
+    },
+    description: settings.app_subtitle,
+    icons: settings.favicon ? { icon: settings.favicon } : undefined,
+  };
+}
 
 export default async function RootLayout({
   children,
