@@ -69,10 +69,13 @@ export function UserSearch({
 
   return (
     <div className="relative w-full max-w-sm">
-      <Search
-        className="absolute left-3 top-1/2 -translate-y-1/2 -translate-x-0.5 text-slate-400 dark:text-slate-500"
-        size={18}
-      />
+      {/* Wrapper ini yang handle posisi (termasuk offset -translate-x-0.5 aslinya), JANGAN kasih animasi transform di sini */}
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 -translate-x-0.5 flex items-center justify-center">
+        <Search
+          className="search-pulse-icon text-slate-400 dark:text-slate-500"
+          size={18}
+        />
+      </div>
 
       <input
         type="text"
@@ -80,30 +83,7 @@ export function UserSearch({
         onChange={(e) => onChange(e.target.value)}
         placeholder="Cari nama, username, email..."
         disabled={isPending}
-        className="
-          h-11
-          w-full
-          rounded-xl
-          border
-          border-slate-200
-          bg-white
-          pl-10
-          pr-9
-          text-sm
-          text-slate-800
-          outline-none
-          transition
-          placeholder:text-slate-400
-          focus:border-indigo-500
-          focus:ring-2
-          focus:ring-indigo-200
-          dark:border-slate-700
-          dark:bg-slate-800
-          dark:text-slate-100
-          dark:placeholder:text-slate-500
-          dark:focus:border-indigo-500
-          dark:focus:ring-indigo-500/20
-        "
+        className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-9 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
       />
 
       {isPending && (
@@ -112,6 +92,24 @@ export function UserSearch({
           size={16}
         />
       )}
+
+      <style jsx global>{`
+        @keyframes searchIconPulse {
+          0%,
+          80%,
+          100% {
+            transform: scale(1);
+          }
+          90% {
+            transform: scale(1.4);
+          }
+        }
+
+        .search-pulse-icon {
+          transform-origin: center;
+          animation: searchIconPulse 10s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -59,7 +59,14 @@ export const OdpSearch = ({ value, onChange }: OdpSearchProps) => {
 
   return (
     <div className={`relative w-full max-w-xs transition-all duration-200 ${focused ? 'scale-[1.02]' : ''}`}>
-      <Search className={`absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors duration-200 ${focused ? 'text-purple-500' : 'text-slate-400 dark:text-slate-500'}`} />
+      {/* Wrapper ini yang handle posisi vertikal, JANGAN kasih animasi transform di sini */}
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
+        <Search
+          className={`search-pulse-icon h-4 w-4 transition-colors duration-200 ${
+            focused ? "text-purple-500" : "text-slate-400 dark:text-slate-500"
+          }`}
+        />
+      </div>
 
       <Input
         value={value}
@@ -70,6 +77,24 @@ export const OdpSearch = ({ value, onChange }: OdpSearchProps) => {
         placeholder="Cari kode, nama, alamat, atau OLT..."
         className={`h-11 rounded-2xl border-slate-200 bg-white pl-9 transition-all duration-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 ${focused ? 'border-purple-500 ring-4 ring-purple-500/10' : 'focus-visible:ring-purple-500'}`}
       />
+
+      <style jsx global>{`
+        @keyframes searchIconPulse {
+          0%,
+          80%,
+          100% {
+            transform: scale(1);
+          }
+          90% {
+            transform: scale(1.4);
+          }
+        }
+
+        .search-pulse-icon {
+          transform-origin: center;
+          animation: searchIconPulse 10s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 };

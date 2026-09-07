@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2 } from "lucide-react";
+import { ArrowUp, ArrowDown, Check, Trash2, Download, X, Loader2, Calendar, Router as RouterIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -13,6 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { OdpFormDialog } from "./OdpFormDialog";
 import { DeleteOdpDialog } from "./DeleteOdpDialog";
 import { OdpSearch } from "./OdpSearch";
@@ -36,6 +43,7 @@ type Odp = {
   jumlah_port?: number | null;
   olt?: { id_olt: number; nama_olt: string } | null;
   _count?: { ont: number; baa: number };
+  createdAt: Date;
 };
 
 type CurrentUser = {
@@ -62,6 +70,16 @@ export function OdpSortableTable({
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
+  // Filter Tahun & OLT
+  const getCurrentYear = () => new Date().getFullYear();
+  const [filterTahun, setFilterTahun] = useState<string>("all");
+  const [filterOlt, setFilterOlt] = useState<string>("all");
+
+  const yearOptions = useMemo(() => {
+    const current = getCurrentYear();
+    return ["all", String(current - 2), String(current - 1), String(current)];
+  }, []);
+
   // Selection state for bulk actions
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
@@ -85,7 +103,7 @@ export function OdpSortableTable({
   useEffect(() => {
     setSelectedIds(new Set());
     setSelectAllPage(false);
-  }, [search]);
+  }, [search, filterTahun, filterOlt]);
 
   // Handle highlight dari Command Palette (query param: highlight=<id_odp>)
   useEffect(() => {
@@ -110,6 +128,8 @@ export function OdpSortableTable({
 
     // Set search ke nama ODP - ini akan sync ke OdpSearch via onChange
     setSearch(item.nama_odp);
+    setFilterTahun("all");
+    setFilterOlt("all");
     setPage(1);
 
     // Update URL search param agar sinkron dengan state
@@ -147,14 +167,21 @@ export function OdpSortableTable({
 
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
-    return initialData.filter(
-      (odp) =>
+    return initialData.filter((odp) => {
+      const matchesSearch =
         odp.kode_odp.toLowerCase().includes(query) ||
         odp.nama_odp.toLowerCase().includes(query) ||
         odp.alamat.toLowerCase().includes(query) ||
-        (odp.olt?.nama_olt?.toLowerCase().includes(query) ?? false)
-    );
-  }, [initialData, search]);
+        (odp.olt?.nama_olt?.toLowerCase().includes(query) ?? false);
+
+      const itemYear = String(new Date(odp.createdAt).getFullYear());
+      const matchesTahun = filterTahun === "all" || itemYear === filterTahun;
+
+      const matchesOlt = filterOlt === "all" || odp.id_olt === Number(filterOlt);
+
+      return matchesSearch && matchesTahun && matchesOlt;
+    });
+  }, [initialData, search, filterTahun, filterOlt]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -165,6 +192,16 @@ export function OdpSortableTable({
 
   const totalPagesCalc = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const clearTahunFilter = () => {
+    setFilterTahun("all");
+    setPage(1);
+  };
+
+  const clearOltFilter = () => {
+    setFilterOlt("all");
+    setPage(1);
+  };
 
   // Selection functions
   const toggleSelect = (id: number) => {
@@ -320,6 +357,7 @@ export function OdpSortableTable({
           </div>
         )}
 
+        {/* Baris 1: Search + Export + Tambah */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <OdpSearch value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
@@ -330,6 +368,73 @@ export function OdpSortableTable({
               <OdpFormDialog mode="create" olts={olts} />
             </div>
           </div>
+        </div>
+
+        {/* Baris 2: Filter Tahun + Filter OLT */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Filter Dropdown Tahun */}
+          <Select value={filterTahun} onValueChange={(value) => { if (value) { setFilterTahun(value); setPage(1); } }}>
+            <SelectTrigger className="h-11 w-[150px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+              <Calendar className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+              <SelectValue>
+                {filterTahun === "all" ? (<span>Semua Thn</span>) : (<span>{filterTahun}</span>)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent side="bottom" className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+              {yearOptions.map((year) => (
+                <SelectItem key={year} value={year} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                  <span className="flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>{year === "all" ? "Semua" : year}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {filterTahun !== "all" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearTahunFilter}
+              className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+            >
+              <X className="h-4 w-4 text-slate-500" />
+            </Button>
+          )}
+
+          {/* Filter Dropdown OLT */}
+          <Select value={filterOlt} onValueChange={(value) => { if (value) { setFilterOlt(value); setPage(1); } }}>
+            <SelectTrigger className="h-11 w-[190px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+              <RouterIcon className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+              <SelectValue placeholder="Filter OLT">
+                {filterOlt !== "all" ? olts.find((o) => String(o.id_olt) === filterOlt)?.nama_olt : "Semua OLT"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent side="bottom" className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+              <SelectItem value="all" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                <RouterIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <span>Semua OLT</span>
+              </SelectItem>
+              {olts.map((olt) => (
+                <SelectItem key={olt.id_olt} value={String(olt.id_olt)} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                  <RouterIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                  <span>{olt.nama_olt}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {filterOlt !== "all" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearOltFilter}
+              className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+            >
+              <X className="h-4 w-4 text-slate-500" />
+            </Button>
+          )}
         </div>
 
         {/* Desktop Table */}
@@ -376,6 +481,7 @@ export function OdpSortableTable({
                 <TableHead className="dark:text-slate-300">OLT</TableHead>
                 <TableHead className="text-center dark:text-slate-300">Port</TableHead>
                 <TableHead className="text-center dark:text-slate-300">Terhubung</TableHead>
+                <TableHead className="dark:text-slate-300">Dibuat</TableHead>
                 <TableHead className="text-center dark:text-slate-300">Aksi</TableHead>
               </TableRow>
             </TableHeader>
@@ -383,7 +489,7 @@ export function OdpSortableTable({
             <TableBody>
               {paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-slate-400 dark:text-slate-500">
+                  <TableCell colSpan={9} className="py-10 text-center text-slate-400 dark:text-slate-500">
                     {search ? "Tidak ada data ODP yang cocok" : "Belum ada data ODP"}
                   </TableCell>
                 </TableRow>
@@ -443,6 +549,13 @@ export function OdpSortableTable({
                       )}
                       {!odp._count && <span className="text-slate-400">-</span>}
                     </TableCell>
+                    <TableCell className="text-slate-500 dark:text-slate-400" onClick={(e) => e.stopPropagation()}>
+                      {new Date(odp.createdAt).toLocaleDateString("id-ID", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center gap-1 group/action">
                         <OdpMapDialog currentId={odp.id_odp} odpNama={odp.nama_odp} allPoints={[]} />
@@ -459,44 +572,53 @@ export function OdpSortableTable({
 
         {/* Mobile Cards */}
         <div className="grid gap-3 md:hidden">
-          {paginated.map((odp) => (
-            <div
-              key={odp.id_odp}
-              className={`space-y-2 rounded-2xl border p-4 dark:border-slate-800 dark:bg-slate-800/40 ${
-                selectedIds.has(odp.id_odp) ? "border-purple-300 bg-purple-50 dark:bg-purple-500/10" : ""
-              }`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => toggleSelect(odp.id_odp)}
-                  className="flex items-center gap-3"
-                >
-                  <div
-                    className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
-                      selectedIds.has(odp.id_odp)
-                        ? "border-purple-500 bg-purple-500"
-                        : "border-slate-300 dark:border-slate-600 hover:border-purple-400"
-                    }`}
-                  >
-                    {selectedIds.has(odp.id_odp) && (
-                      <Check className="h-3.5 w-3.5 text-white" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-semibold dark:text-slate-100">{odp.nama_odp}</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{odp.kode_odp}</p>
-                  </div>
-                </button>
-                <div className="flex shrink-0 gap-1">
-                  <OdpFormDialog mode="edit" olts={olts} data={{ id_odp: odp.id_odp, nama_odp: odp.nama_odp, alamat: odp.alamat, latitude: String(odp.latitude), longitude: String(odp.longitude), id_olt: odp.id_olt, jumlah_port: odp.jumlah_port }} />
-                  <DeleteOdpDialog id={odp.id_odp} namaOdp={odp.nama_odp} />
-                </div>
-              </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300">{odp.alamat}</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">OLT: {odp.olt?.nama_olt ?? "-"}</p>
+          {paginated.length === 0 ? (
+            <div className="rounded-2xl border py-10 text-center text-slate-400 dark:border-slate-800 dark:text-slate-500">
+              {search ? "Tidak ada data ODP yang cocok" : "Belum ada data ODP"}
             </div>
-          ))}
+          ) : (
+            paginated.map((odp) => (
+              <div
+                key={odp.id_odp}
+                className={`space-y-2 rounded-2xl border p-4 dark:border-slate-800 dark:bg-slate-800/40 ${
+                  selectedIds.has(odp.id_odp) ? "border-purple-300 bg-purple-50 dark:bg-purple-500/10" : ""
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleSelect(odp.id_odp)}
+                    className="flex items-center gap-3"
+                  >
+                    <div
+                      className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
+                        selectedIds.has(odp.id_odp)
+                          ? "border-purple-500 bg-purple-500"
+                          : "border-slate-300 dark:border-slate-600 hover:border-purple-400"
+                      }`}
+                    >
+                      {selectedIds.has(odp.id_odp) && (
+                        <Check className="h-3.5 w-3.5 text-white" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-semibold dark:text-slate-100">{odp.nama_odp}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{odp.kode_odp}</p>
+                    </div>
+                  </button>
+                  <div className="flex shrink-0 gap-1">
+                    <OdpFormDialog mode="edit" olts={olts} data={{ id_odp: odp.id_odp, nama_odp: odp.nama_odp, alamat: odp.alamat, latitude: String(odp.latitude), longitude: String(odp.longitude), id_olt: odp.id_olt, jumlah_port: odp.jumlah_port }} />
+                    <DeleteOdpDialog id={odp.id_odp} namaOdp={odp.nama_odp} />
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-300">{odp.alamat}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">OLT: {odp.olt?.nama_olt ?? "-"}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Dibuat: {new Date(odp.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                </p>
+              </div>
+            ))
+          )}
         </div>
 
         <div className="flex justify-end">
