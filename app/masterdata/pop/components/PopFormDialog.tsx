@@ -2,11 +2,12 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
-import { Pencil, Plus, Loader2, Navigation } from "lucide-react";
+import { Pencil, Plus, Loader2, Navigation, Tag, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 import {
   Dialog,
@@ -45,6 +46,7 @@ type Area = { id_area: number; nama_area: string };
 
 type PopData = {
   id_pop: number;
+  kode_pop: string;
   nama_pop: string;
   alamat: string;
   id_area: number;
@@ -60,13 +62,18 @@ export const PopFormDialog = ({
   mode,
   areas,
   data,
+  kodeOtomatis,
 }: {
   mode: "create" | "edit";
   areas: Area[];
   data?: PopData;
+  kodeOtomatis?: string;
 }) => {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Kode POP: pakai kode yang sudah ada (mode edit) atau kode otomatis (mode create)
+  const kodePop = data?.kode_pop ?? kodeOtomatis ?? "";
 
   const [areaValue, setAreaValue] = useState(
     data?.id_area ? String(data.id_area) : ""
@@ -241,6 +248,32 @@ export const PopFormDialog = ({
             dark:[&::-webkit-scrollbar-thumb]:bg-slate-700"
         >
           <form id="pop-form" action={handleSubmit} className="space-y-4">
+            {/* Kode POP - auto-generated, readonly */}
+            <div className="space-y-2">
+              <Label
+                htmlFor="kode_pop_display"
+                className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+              >
+                <Tag size={13} className="text-purple-500" /> Kode POP
+              </Label>
+              <div className="relative">
+                <Input
+                  id="kode_pop_display"
+                  value={kodePop}
+                  readOnly
+                  className="h-12 rounded-2xl border-slate-200 bg-slate-50 font-mono font-semibold text-slate-500 cursor-not-allowed pr-10 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
+                />
+                <Lock
+                  size={14}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+              </div>
+              <input type="hidden" name="kode_pop" value={kodePop} />
+              <p className="text-xs text-slate-400">
+                Dibuat otomatis, tidak bisa diubah manual
+              </p>
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Area</label>
 

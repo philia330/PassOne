@@ -3,7 +3,7 @@
 import { useState, useMemo, ReactNode, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ArrowUp, ArrowDown, Lock, Check, Trash2, Download, X, Loader2 } from "lucide-react";
+import { ArrowUp, ArrowDown, Lock, Check, Trash2, Download, X, Loader2, Calendar, Filter, MapPin } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -13,6 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { OltFormDialog } from "./OltFormDialog";
 import { DeleteOltDialog } from "./DeleteOltDialog";
 import { OltSearch } from "./OltSearch";
@@ -67,6 +74,7 @@ export function OltSortableTable({
   currentRole,
   actions,
   currentUser,
+  kodeOtomatis,
 }: {
   initialData: Olt[];
   pops: { id_pop: number; nama_pop: string; alamat: string }[];
@@ -74,6 +82,7 @@ export function OltSortableTable({
   currentRole: string;
   actions?: ReactNode;
   currentUser?: CurrentUser;
+  kodeOtomatis: string;
 }) {
   const router = useRouter();
   const canViewSecret = currentRole === "ADMIN" || currentRole === "LEADER";
@@ -81,6 +90,16 @@ export function OltSortableTable({
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  // Filter Tahun & POP
+  const getCurrentYear = () => new Date().getFullYear();
+  const [filterTahun, setFilterTahun] = useState<string>("all");
+  const [filterPop, setFilterPop] = useState<string>("all");
+
+  const yearOptions = useMemo(() => {
+    const current = getCurrentYear();
+    return ["all", String(current - 2), String(current - 1), String(current)];
+  }, []);
 
   // Selection state for bulk actions
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -103,7 +122,7 @@ export function OltSortableTable({
   useEffect(() => {
     setSelectedIds(new Set());
     setSelectAllPage(false);
-  }, [search]);
+  }, [search, filterTahun, filterPop]);
 
   // Handle highlight dari Command Palette (query param: highlight=<id_olt>)
   useEffect(() => {
@@ -128,6 +147,8 @@ export function OltSortableTable({
 
     // Set search ke nama OLT - ini akan sync ke OltSearch via onChange
     setSearch(item.nama_olt);
+    setFilterTahun("all");
+    setFilterPop("all");
     setPage(1);
 
     // Update URL search param agar sinkron dengan state
@@ -165,14 +186,21 @@ export function OltSortableTable({
 
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
-    return initialData.filter(
-      (olt) =>
+    return initialData.filter((olt) => {
+      const matchesSearch =
         olt.kode_olt.toLowerCase().includes(query) ||
         olt.nama_olt.toLowerCase().includes(query) ||
         olt.lokasi.toLowerCase().includes(query) ||
-        (olt.pop?.nama_pop?.toLowerCase().includes(query) ?? false)
-    );
-  }, [initialData, search]);
+        (olt.pop?.nama_pop?.toLowerCase().includes(query) ?? false);
+
+      const itemYear = String(new Date(olt.createdAt).getFullYear());
+      const matchesTahun = filterTahun === "all" || itemYear === filterTahun;
+
+      const matchesPop = filterPop === "all" || olt.id_pop === Number(filterPop);
+
+      return matchesSearch && matchesTahun && matchesPop;
+    });
+  }, [initialData, search, filterTahun, filterPop]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -183,6 +211,16 @@ export function OltSortableTable({
 
   const totalPagesCalc = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const clearTahunFilter = () => {
+    setFilterTahun("all");
+    setPage(1);
+  };
+
+  const clearPopFilter = () => {
+    setFilterPop("all");
+    setPage(1);
+  };
 
   // Selection functions
   const toggleSelect = (id: number) => {
@@ -342,12 +380,80 @@ export function OltSortableTable({
           </div>
         )}
 
+        {/* Baris 1: Search + Aksi */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <OltSearch value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
             {actions}
-            <OltFormDialog mode="create" pops={pops} />
+            <OltFormDialog mode="create" pops={pops} kodeOtomatis={kodeOtomatis} />
           </div>
+        </div>
+
+        {/* Baris 2: Filter Tahun + Filter POP */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Filter Dropdown Tahun */}
+          <Select value={filterTahun} onValueChange={(value) => { if (value) { setFilterTahun(value); setPage(1); } }}>
+            <SelectTrigger className="h-11 w-[150px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+              <Calendar className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+              <SelectValue>
+                {filterTahun === "all" ? (<span>Semua Thn</span>) : (<span>{filterTahun}</span>)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent side="bottom" className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+              {yearOptions.map((year) => (
+                <SelectItem key={year} value={year} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                  <span className="flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>{year === "all" ? "Semua" : year}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {filterTahun !== "all" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearTahunFilter}
+              className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+            >
+              <X className="h-4 w-4 text-slate-500" />
+            </Button>
+          )}
+
+          {/* Filter Dropdown POP */}
+          <Select value={filterPop} onValueChange={(value) => { if (value) { setFilterPop(value); setPage(1); } }}>
+            <SelectTrigger className="h-11 w-[190px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+              <MapPin className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+              <SelectValue placeholder="Filter POP">
+                {filterPop !== "all" ? pops.find((p) => String(p.id_pop) === filterPop)?.nama_pop : "Semua POP"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent side="bottom" className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+              <SelectItem value="all" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <span>Semua POP</span>
+              </SelectItem>
+              {pops.map((pop) => (
+                <SelectItem key={pop.id_pop} value={String(pop.id_pop)} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                  <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                  <span>{pop.nama_pop}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {filterPop !== "all" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearPopFilter}
+              className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+            >
+              <X className="h-4 w-4 text-slate-500" />
+            </Button>
+          )}
         </div>
 
         {/* Desktop Table */}
@@ -484,7 +590,7 @@ export function OltSortableTable({
                       <div className="flex justify-center gap-1">
                         <OltMapDialog nama={olt.nama_olt} lat={Number(olt.latitude)} lng={Number(olt.longitude)} />
                         <OpenGoogleMaps lat={Number(olt.latitude)} lng={Number(olt.longitude)} name={olt.nama_olt} />
-                        <OltFormDialog mode="edit" pops={pops} data={{ id_olt: olt.id_olt, nama_olt: olt.nama_olt, lokasi: olt.lokasi, latitude: String(olt.latitude), longitude: String(olt.longitude), id_pop: olt.id_pop, ip_olt: olt.ip_olt, username_olt: olt.username_olt, password_olt: olt.password_olt, foto_olt: olt.foto_olt }} />
+                        <OltFormDialog mode="edit" pops={pops} data={{ id_olt: olt.id_olt, kode_olt: olt.kode_olt, nama_olt: olt.nama_olt, lokasi: olt.lokasi, latitude: String(olt.latitude), longitude: String(olt.longitude), id_pop: olt.id_pop, ip_olt: olt.ip_olt, username_olt: olt.username_olt, password_olt: olt.password_olt, foto_olt: olt.foto_olt }} />
                         <DeleteOltDialog id={olt.id_olt} namaOlt={olt.nama_olt} />
                       </div>
                     </TableCell>
@@ -533,7 +639,7 @@ export function OltSortableTable({
                   </button>
                   <div className="flex shrink-0 gap-1">
                     <OpenGoogleMaps lat={Number(olt.latitude)} lng={Number(olt.longitude)} name={olt.nama_olt} />
-                    <OltFormDialog mode="edit" pops={pops} data={{ id_olt: olt.id_olt, nama_olt: olt.nama_olt, lokasi: olt.lokasi, latitude: String(olt.latitude), longitude: String(olt.longitude), id_pop: olt.id_pop, ip_olt: olt.ip_olt, username_olt: olt.username_olt, password_olt: olt.password_olt, foto_olt: olt.foto_olt }} />
+                    <OltFormDialog mode="edit" pops={pops} data={{ id_olt: olt.id_olt, kode_olt: olt.kode_olt, nama_olt: olt.nama_olt, lokasi: olt.lokasi, latitude: String(olt.latitude), longitude: String(olt.longitude), id_pop: olt.id_pop, ip_olt: olt.ip_olt, username_olt: olt.username_olt, password_olt: olt.password_olt, foto_olt: olt.foto_olt }} />
                     <DeleteOltDialog id={olt.id_olt} namaOlt={olt.nama_olt} />
                   </div>
                 </div>

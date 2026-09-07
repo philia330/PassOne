@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Router } from "lucide-react";
 
-import { getPops, getAreas } from "./actions";
+import { getPops, getAreas, generateKodePop } from "./actions";
 import { prisma } from "@/lib/prisma";
 
 import { PopSortableTable } from "./components/PopSortableTable";
@@ -22,10 +22,11 @@ export default async function PopPage({
   const highlightId = params?.highlight ? Number(params.highlight) : null;
 
   // Hitung total SEMUA data (tanpa filter) untuk card statistik
-  const [totalCount, { data: rawPops, total, totalPages }, areas] = await Promise.all([
+  const [totalCount, { data: rawPops, total, totalPages }, areas, kodeOtomatis] = await Promise.all([
     prisma.pop.count(),
     getPops(search, page),
     getAreas(),
+    generateKodePop(),
   ]);
 
   const currentRole = session.user.role;
@@ -76,6 +77,7 @@ export default async function PopPage({
         defaultValue={search}
         canDelete={canDelete}
         currentUser={currentUser}
+        kodeOtomatis={kodeOtomatis}
         actions={canExport ? <ExportButton apiUrl="/api/pop/export" filenamePrefix="Export_POP" /> : null}
       />
     </div>

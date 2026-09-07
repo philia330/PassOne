@@ -2,7 +2,7 @@
 
 import { useState, useMemo, ReactNode, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, ArrowDown, AlertTriangle, Check, Trash2, Download, X, Loader2, ArrowUpDown, Boxes, Wallet, ShieldCheck } from "lucide-react";
+import { ArrowUp, ArrowDown, AlertTriangle, Check, Trash2, Download, X, Loader2, Boxes, Wallet, ShieldCheck, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -56,24 +56,9 @@ const formatRupiah = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
-type SortBy =
-  | "kode"
-  | "stok_asc"
-  | "stok_desc"
-  | "harga_desc"
-  | "harga_asc"
-  | "kondisi_rusak"
-  | "kondisi_baik";
-
-const SORT_OPTIONS: { key: SortBy; label: string; icon: typeof Boxes }[] = [
-  { key: "kode", label: "Kode (default)", icon: ArrowUpDown },
-  { key: "stok_asc", label: "Stok: Sedikit → Banyak", icon: Boxes },
-  { key: "stok_desc", label: "Stok: Banyak → Sedikit", icon: Boxes },
-  { key: "harga_desc", label: "Harga: Termahal → Termurah", icon: Wallet },
-  { key: "harga_asc", label: "Harga: Termurah → Termahal", icon: Wallet },
-  { key: "kondisi_rusak", label: "Kondisi: Rusak dulu", icon: ShieldCheck },
-  { key: "kondisi_baik", label: "Kondisi: Baik dulu", icon: ShieldCheck },
-];
+type StokSort = "none" | "asc" | "desc";
+type HargaSort = "none" | "asc" | "desc";
+type KondisiFilter = "all" | "BAIK" | "RUSAK";
 
 export function MaterialSortableTable({
   initialData,
@@ -91,8 +76,23 @@ export function MaterialSortableTable({
   const router = useRouter();
   const [search, setSearch] = useState(defaultValue);
   const [page, setPage] = useState(1);
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const [sortBy, setSortBy] = useState<SortBy>("kode");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc"); // sort kode (default, via klik header)
+
+  // Filter & sort terpisah
+  const [sortStok, setSortStok] = useState<StokSort>("none");
+  const [sortHarga, setSortHarga] = useState<HargaSort>("none");
+  const [filterKondisi, setFilterKondisi] = useState<KondisiFilter>("all");
+  const [filterTahun, setFilterTahun] = useState<string>("all");
+
+  // Opsi tahun dibuat dinamis dari data asli (createdAt), jadi otomatis
+  // menyesuaikan kalau suatu saat ada data dari tahun baru (mis. 2027)
+  // tanpa perlu ubah kode lagi.
+  const yearOptions = useMemo(() => {
+    const years = new Set(
+      initialData.map((item) => String(new Date(item.createdAt).getFullYear()))
+    );
+    return ["all", ...Array.from(years).sort((a, b) => Number(b) - Number(a))];
+  }, [initialData]);
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -116,7 +116,7 @@ export function MaterialSortableTable({
     setSelectedIds(new Set());
     setSelectAllPage(false);
     setPage(1);
-  }, [search, sortBy]);
+  }, [search, sortStok, sortHarga, filterKondisi, filterTahun]);
 
   // Handle highlight dari Command Palette (query param: highlight=<id_material>)
   useEffect(() => {
@@ -139,9 +139,12 @@ export function MaterialSortableTable({
 
     highlightHandled.current = true;
 
-    // Set search ke nama material & reset sort - ini akan sync ke MaterialSearch via onChange
+    // Set search ke nama material & reset semua filter/sort - ini akan sync ke MaterialSearch via onChange
     setSearch(item.nama_material);
-    setSortBy("kode");
+    setSortStok("none");
+    setSortHarga("none");
+    setFilterKondisi("all");
+    setFilterTahun("all");
     setPage(1);
 
     // Update URL search param agar sinkron dengan state
@@ -187,49 +190,50 @@ export function MaterialSortableTable({
   }, [initialData]);
 
   const toggleSort = () => {
-    setSortBy("kode");
+    // Klik header Kode = kembali ke urutan default berdasarkan kode
+    setSortStok("none");
+    setSortHarga("none");
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
     setPage(1);
   };
 
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
-    return initialData.filter(
-      (item) =>
+    return initialData.filter((item) => {
+      const matchesSearch =
         item.kode_material.toLowerCase().includes(query) ||
         item.nama_material.toLowerCase().includes(query) ||
-        item.satuan.toLowerCase().includes(query)
-    );
-  }, [initialData, search]);
+        item.satuan.toLowerCase().includes(query);
+
+      const matchesKondisi = filterKondisi === "all" || item.kondisi === filterKondisi;
+
+      const itemYear = String(new Date(item.createdAt).getFullYear());
+      const matchesTahun = filterTahun === "all" || itemYear === filterTahun;
+
+      return matchesSearch && matchesKondisi && matchesTahun;
+    });
+  }, [initialData, search, filterKondisi, filterTahun]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      switch (sortBy) {
-        case "stok_asc":
-          return a.stok - b.stok;
-        case "stok_desc":
-          return b.stok - a.stok;
-        case "harga_desc":
-          return b.harga - a.harga;
-        case "harga_asc":
-          return a.harga - b.harga;
-        case "kondisi_rusak":
-          // RUSAK duluan
-          return (a.kondisi === "RUSAK" ? 0 : 1) - (b.kondisi === "RUSAK" ? 0 : 1);
-        case "kondisi_baik":
-          // BAIK duluan
-          return (a.kondisi === "BAIK" ? 0 : 1) - (b.kondisi === "BAIK" ? 0 : 1);
-        case "kode":
-        default: {
-          const result = a.kode_material.localeCompare(b.kode_material, undefined, { numeric: true });
-          return sortOrder === "asc" ? result : -result;
-        }
+      if (sortStok !== "none") {
+        return sortStok === "asc" ? a.stok - b.stok : b.stok - a.stok;
       }
+      if (sortHarga !== "none") {
+        return sortHarga === "asc" ? a.harga - b.harga : b.harga - a.harga;
+      }
+      const result = a.kode_material.localeCompare(b.kode_material, undefined, { numeric: true });
+      return sortOrder === "asc" ? result : -result;
     });
-  }, [filtered, sortBy, sortOrder]);
+  }, [filtered, sortStok, sortHarga, sortOrder]);
 
   const totalPagesCalc = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const clearSortStok = () => setSortStok("none");
+  const clearSortHarga = () => setSortHarga("none");
+  const clearFilterKondisi = () => setFilterKondisi("all");
+  const clearFilterTahun = () => setFilterTahun("all");
 
   // Selection functions
   const toggleSelect = (id: number) => {
@@ -330,8 +334,6 @@ export function MaterialSortableTable({
     router.refresh();
   };
 
-  const activeSortLabel = SORT_OPTIONS.find((o) => o.key === sortBy)?.label ?? "Urutkan";
-
   return (
     <Card className="rounded-3xl border shadow-xl transition-all hover:shadow-2xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
       <CardContent className="space-y-4 p-4 sm:p-6">
@@ -399,40 +401,113 @@ export function MaterialSortableTable({
           </div>
         </div>
 
-        {/* Baris 2: Navigasi Urutkan */}
-        <div className="flex w-full flex-wrap items-center gap-2 overflow-visible">
-          <Select value={sortBy} onValueChange={(v) => { if (v) { setSortBy(v as SortBy); setPage(1); } }}>
-            <SelectTrigger className="h-11 w-full sm:w-[320px] md:w-[380px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
-              <ArrowUpDown className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
-              <SelectValue className="truncate">{activeSortLabel}</SelectValue>
+        {/* Baris 2: Filter & Sort terpisah */}
+        <div className="flex w-full flex-wrap items-center gap-2">
+          {/* Urutkan Stok */}
+          <Select value={sortStok} onValueChange={(v) => { if (v) { setSortStok(v as StokSort); setSortHarga("none"); } }}>
+            <SelectTrigger className="h-11 w-[190px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+              <Boxes className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+              <SelectValue>
+                {sortStok === "none" && "Urutkan Stok"}
+                {sortStok === "asc" && "Stok: Sedikit → Banyak"}
+                {sortStok === "desc" && "Stok: Banyak → Sedikit"}
+              </SelectValue>
             </SelectTrigger>
-            <SelectContent
-              side="bottom"
-              alignItemWithTrigger={false}
-              className="max-h-72 w-[--radix-select-trigger-width] overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]"
-            >
-              {SORT_OPTIONS.map((opt) => {
-                const Icon = opt.icon;
-                return (
-                  <SelectItem key={opt.key} value={opt.key} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
-                    <span className="flex items-center gap-2">
-                      <Icon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                      <span>{opt.label}</span>
-                    </span>
-                  </SelectItem>
-                );
-              })}
+            <SelectContent side="bottom" className="rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+              <SelectItem value="none" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                <span>Default</span>
+              </SelectItem>
+              <SelectItem value="asc" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                <span>Sedikit → Banyak</span>
+              </SelectItem>
+              <SelectItem value="desc" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                <span>Banyak → Sedikit</span>
+              </SelectItem>
             </SelectContent>
           </Select>
+          {sortStok !== "none" && (
+            <Button variant="ghost" size="sm" onClick={clearSortStok} className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <X className="h-4 w-4 text-slate-500" />
+            </Button>
+          )}
 
-          {sortBy !== "kode" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => { setSortBy("kode"); setSortOrder("asc"); setPage(1); }}
-              className="h-11 w-11 shrink-0 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
-              title="Reset urutan ke default (Kode)"
-            >
+          {/* Urutkan Harga */}
+          <Select value={sortHarga} onValueChange={(v) => { if (v) { setSortHarga(v as HargaSort); setSortStok("none"); } }}>
+            <SelectTrigger className="h-11 w-[210px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+              <Wallet className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+              <SelectValue>
+                {sortHarga === "none" && "Urutkan Harga"}
+                {sortHarga === "asc" && "Harga: Termurah → Termahal"}
+                {sortHarga === "desc" && "Harga: Termahal → Termurah"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent side="bottom" className="rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+              <SelectItem value="none" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                <span>Default</span>
+              </SelectItem>
+              <SelectItem value="asc" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                <span>Termurah → Termahal</span>
+              </SelectItem>
+              <SelectItem value="desc" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                <span>Termahal → Termurah</span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          {sortHarga !== "none" && (
+            <Button variant="ghost" size="sm" onClick={clearSortHarga} className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <X className="h-4 w-4 text-slate-500" />
+            </Button>
+          )}
+
+          {/* Filter Kondisi */}
+          <Select value={filterKondisi} onValueChange={(v) => { if (v) setFilterKondisi(v as KondisiFilter); }}>
+            <SelectTrigger className="h-11 w-[160px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+              <ShieldCheck className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+              <SelectValue>
+                {filterKondisi === "all" && "Semua Kondisi"}
+                {filterKondisi === "BAIK" && "Kondisi: Baik"}
+                {filterKondisi === "RUSAK" && "Kondisi: Rusak"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent side="bottom" className="rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+              <SelectItem value="all" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                <span>Semua</span>
+              </SelectItem>
+              <SelectItem value="BAIK" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                <span>Baik</span>
+              </SelectItem>
+              <SelectItem value="RUSAK" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                <span>Rusak</span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          {filterKondisi !== "all" && (
+            <Button variant="ghost" size="sm" onClick={clearFilterKondisi} className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <X className="h-4 w-4 text-slate-500" />
+            </Button>
+          )}
+
+          {/* Filter Tahun */}
+          <Select value={filterTahun} onValueChange={(v) => { if (v) setFilterTahun(v); }}>
+            <SelectTrigger className="h-11 w-[150px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+              <Calendar className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+              <SelectValue>
+                {filterTahun === "all" ? "Semua Thn" : filterTahun}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent side="bottom" className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+              {yearOptions.map((year) => (
+                <SelectItem key={year} value={year} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                  <span className="flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>{year === "all" ? "Semua" : year}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {filterTahun !== "all" && (
+            <Button variant="ghost" size="sm" onClick={clearFilterTahun} className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700">
               <X className="h-4 w-4 text-slate-500" />
             </Button>
           )}
@@ -470,7 +545,7 @@ export function MaterialSortableTable({
                     className="inline-flex items-center gap-1.5 hover:text-purple-600 transition-colors"
                   >
                     Kode
-                    {sortBy === "kode" && (sortOrder === "asc" ? (
+                    {sortStok === "none" && sortHarga === "none" && (sortOrder === "asc" ? (
                       <ArrowUp size={16} className="text-purple-500" />
                     ) : (
                       <ArrowDown size={16} className="text-purple-500" />
@@ -483,6 +558,7 @@ export function MaterialSortableTable({
                 <TableHead className="dark:text-slate-300">Harga</TableHead>
                 <TableHead className="text-center dark:text-slate-300">Kondisi</TableHead>
                 <TableHead className="dark:text-slate-300">Keterangan</TableHead>
+                <TableHead className="dark:text-slate-300">Dibuat</TableHead>
                 <TableHead className="text-center dark:text-slate-300">Aksi</TableHead>
               </TableRow>
             </TableHeader>
@@ -490,7 +566,7 @@ export function MaterialSortableTable({
             <TableBody>
               {paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-10 text-center text-slate-400 dark:text-slate-500">
+                  <TableCell colSpan={10} className="py-10 text-center text-slate-400 dark:text-slate-500">
                     {search ? "Tidak ada data material yang cocok" : "Belum ada data material"}
                   </TableCell>
                 </TableRow>
@@ -555,6 +631,13 @@ export function MaterialSortableTable({
                         </span>
                       </TableCell>
                       <TableCell className="max-w-[180px] truncate text-slate-500 dark:text-slate-400">{item.keterangan || "-"}</TableCell>
+                      <TableCell className="text-slate-500 dark:text-slate-400">
+                        {new Date(item.createdAt).toLocaleDateString("id-ID", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </TableCell>
                       <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-center gap-1 group/action">
                           <MaterialBaaUsageDialog
@@ -624,6 +707,9 @@ export function MaterialSortableTable({
                 <p className="text-sm dark:text-slate-300">Stok: <span className={`font-semibold ${menipis ? "text-red-600 dark:text-red-400" : ""}`}>{menipis && <AlertTriangle size={11} className="inline mr-0.5" />}{item.stok} {item.satuan}</span></p>
                 <p className="text-sm font-semibold dark:text-slate-300">{formatRupiah(item.harga)}</p>
                 <span className={`text-xs font-semibold ${item.kondisi === "BAIK" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>Kondisi: {item.kondisi === "BAIK" ? "Baik" : "Rusak"}</span>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Dibuat: {new Date(item.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                </p>
               </div>
             );
           })}

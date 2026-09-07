@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Pencil, Plus, Loader2 } from "lucide-react";
+import { Pencil, Plus, Loader2, Tag, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 import {
   Dialog,
@@ -22,6 +23,7 @@ import { validateTextInput } from "@/lib/validations/hooks";
 
 type AreaData = {
   id_area: number;
+  kode_area: string;
   nama_area: string;
   keterangan: string | null;
 };
@@ -29,14 +31,19 @@ type AreaData = {
 export const AreaFormDialog = ({
   mode,
   data,
+  kodeOtomatis,
 }: {
   mode: "create" | "edit";
   data?: AreaData;
+  kodeOtomatis?: string;
 }) => {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [namaArea, setNamaArea] = useState(data?.nama_area ?? "");
   const [keterangan, setKeterangan] = useState(data?.keterangan ?? "");
+
+  // Kode area: pakai kode yang sudah ada (mode edit) atau kode otomatis (mode create)
+  const kodeArea = data?.kode_area ?? kodeOtomatis ?? "";
 
   // Handle nama area change with validation
   const handleNamaAreaChange = useCallback(
@@ -144,6 +151,32 @@ export const AreaFormDialog = ({
         </DialogHeader>
 
         <form action={handleSubmit} className="space-y-4">
+          {/* Kode Area - auto-generated, readonly */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="kode_area_display"
+              className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+            >
+              <Tag size={13} className="text-purple-500" /> Kode Area
+            </Label>
+            <div className="relative">
+              <Input
+                id="kode_area_display"
+                value={kodeArea}
+                readOnly
+                className="h-12 rounded-2xl border-slate-200 bg-slate-50 font-mono font-semibold text-slate-500 cursor-not-allowed pr-10 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
+              />
+              <Lock
+                size={14}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+            </div>
+            <input type="hidden" name="kode_area" value={kodeArea} />
+            <p className="text-xs text-slate-400">
+              Dibuat otomatis, tidak bisa diubah manual
+            </p>
+          </div>
+
           <div className="space-y-2">
             <label htmlFor="nama_area" className="text-sm font-medium dark:text-slate-300">
               Nama Area

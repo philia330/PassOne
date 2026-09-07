@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin } from "lucide-react";
 
-import { getAreas } from "./actions";
+import { getAreas, generateKodeArea } from "./actions";
 import { prisma } from "@/lib/prisma";
 
 import { AreaSortableTable } from "./components/AreaSortableTable";
@@ -22,9 +22,10 @@ export default async function AreaPage({
   const highlightId = params?.highlight ? Number(params.highlight) : null;
 
   // Hitung total SEMUA data (tanpa filter) untuk card statistik
-  const [totalCount, { data: areas, total, totalPages }] = await Promise.all([
+  const [totalCount, { data: areas, total, totalPages }, kodeOtomatis] = await Promise.all([
     prisma.area.count(),
     getAreas(search, page),
+    generateKodeArea(),
   ]);
 
   // Hanya Admin dan Leader yang bisa export
@@ -65,6 +66,7 @@ export default async function AreaPage({
         totalPages={totalPages}
         defaultValue={search}
         currentUser={currentUser}
+        kodeOtomatis={kodeOtomatis}
         actions={canExport ? <ExportButton apiUrl="/api/area/export" filenamePrefix="Export_Area" /> : null}
       />
     </div>

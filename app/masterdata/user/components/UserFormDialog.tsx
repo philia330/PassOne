@@ -19,12 +19,15 @@ import {
   Mars,
   CheckCircle2,
   XCircle,
+  Tag,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { JenisKelamin, Role } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 import {
   Dialog,
@@ -48,6 +51,7 @@ import { createUser, updateUser } from "../actions";
 
 type UserData = {
   id_user: number;
+  kode_user: string;
   nama: string;
   username: string;
   email: string | null;
@@ -69,6 +73,7 @@ type Props = {
   mode: "create" | "edit";
   data?: UserData;
   currentUserRole?: string;
+  kodeOtomatis?: string;
 };
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -84,10 +89,9 @@ const JKL_LABEL: Record<JenisKelamin, string> = {
   PEREMPUAN: "Perempuan",
 };
 
-const ROLE_META: Record<
-  "ADMIN" | "LEADER" | "SALES" | "TEKNISI" | "LOGISTIK",
-  { icon: typeof ShieldCheck; color: string; label: string }
-> = {
+type SelectableRole = "ADMIN" | "LEADER" | "SALES" | "TEKNISI" | "LOGISTIK";
+
+const ROLE_META: Record<SelectableRole, { icon: typeof ShieldCheck; color: string; label: string }> = {
   ADMIN: { icon: ShieldCheck, color: "text-pink-600", label: "ADMIN" },
   LEADER: { icon: Users, color: "text-violet-600", label: "LEADER" },
   SALES: { icon: BriefcaseBusiness, color: "text-blue-600", label: "SALES" },
@@ -95,18 +99,12 @@ const ROLE_META: Record<
   LOGISTIK: { icon: Truck, color: "text-emerald-600", label: "LOGISTIK" },
 };
 
-const JKL_META: Record<
-  JenisKelamin,
-  { icon: typeof Venus; color: string; label: string }
-> = {
+const JKL_META: Record<JenisKelamin, { icon: typeof Venus; color: string; label: string }> = {
   LAKI_LAKI: { icon: Mars, color: "text-blue-600", label: "Laki-laki" },
   PEREMPUAN: { icon: Venus, color: "text-pink-600", label: "Perempuan" },
 };
 
-const STATUS_META: Record<
-  "true" | "false",
-  { icon: typeof CheckCircle2; color: string; label: string }
-> = {
+const STATUS_META: Record<"true" | "false", { icon: typeof CheckCircle2; color: string; label: string }> = {
   true: { icon: CheckCircle2, color: "text-green-600", label: "Aktif" },
   false: { icon: XCircle, color: "text-red-600", label: "Nonaktif" },
 };
@@ -115,12 +113,16 @@ export function UserFormDialog({
   mode,
   data,
   currentUserRole,
+  kodeOtomatis,
 }: Props) {
   const [open, setOpen] =
     useState(false);
 
   const [isSubmitting, setIsSubmitting] =
     useState(false);
+
+  // Kode user: pakai kode yang sudah ada (mode edit) atau kode otomatis (mode create)
+  const kodeUser = data?.kode_user ?? kodeOtomatis ?? "";
 
   const [preview, setPreview] =
     useState<string | null>(
@@ -396,7 +398,35 @@ export function UserFormDialog({
               px-1
               py-4
             "
-          >            {/* ================= FOTO USER ================= */}
+          >
+            {/* ================= KODE USER ================= */}
+            <div className="space-y-2">
+              <Label
+                htmlFor="kode_user_display"
+                className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+              >
+                <Tag size={13} className="text-purple-500" /> Kode User
+              </Label>
+              <div className="relative">
+                <Input
+                  id="kode_user_display"
+                  value={kodeUser}
+                  readOnly
+                  className="h-12 rounded-2xl border-slate-200 bg-slate-50 font-mono font-semibold text-slate-500 cursor-not-allowed pr-10 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
+                />
+                <Lock
+                  size={14}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+              </div>
+              <p className="text-xs text-slate-400">
+                {mode === "create"
+                  ? "Dibuat otomatis, tidak bisa diubah manual"
+                  : "Kode user tidak bisa diubah"}
+              </p>
+            </div>
+
+            {/* ================= FOTO USER ================= */}
             <div className="space-y-3">
               <label className="text-sm font-medium dark:text-slate-300">
                 Foto User

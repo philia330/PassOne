@@ -43,6 +43,7 @@ export function AreaSortableTable({
   totalPages,
   defaultValue,
   currentUser,
+  kodeOtomatis,
   actions,
 }: {
   initialData: Area[];
@@ -50,6 +51,7 @@ export function AreaSortableTable({
   totalPages: number;
   defaultValue: string;
   currentUser: CurrentUser;
+  kodeOtomatis: string;
   actions?: ReactNode;
 }) {
   const router = useRouter();
@@ -309,10 +311,10 @@ export function AreaSortableTable({
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <AreaSearch value={search} onChange={setSearch} />
-          <div className="flex items-center gap-2">
-            {actions}
-            <AreaFormDialog mode="create" />
-          </div>
+         <div className="flex items-center gap-2">
+  {actions}
+  <AreaFormDialog mode="create" kodeOtomatis={kodeOtomatis} />
+</div>
         </div>
 
         {/* Desktop Table */}
@@ -421,6 +423,7 @@ export function AreaSortableTable({
                           mode="edit"
                           data={{
                             id_area: area.id_area,
+                            kode_area: area.kode_area,
                             nama_area: area.nama_area,
                             keterangan: area.keterangan,
                           }}
@@ -476,6 +479,7 @@ export function AreaSortableTable({
                       mode="edit"
                       data={{
                         id_area: area.id_area,
+                        kode_area: area.kode_area,
                         nama_area: area.nama_area,
                         keterangan: area.keterangan,
                       }}

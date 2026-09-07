@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Router } from "lucide-react";
-import { getOlts, getPops } from "./actions";
+import { getOlts, getPops, generateKodeOlt } from "./actions";
 import { prisma } from "@/lib/prisma";
 import { OltSortableTable } from "./components/OltSortableTable";
 import { requirePageAccess } from "@/lib/auth/guards";
@@ -25,10 +25,11 @@ export default async function OltPage({
   const highlightId = params?.highlight ? Number(params.highlight) : null;
 
   // Hitung total SEMUA data (tanpa filter) untuk card statistik
-  const [totalCount, { data: olts, total, totalPages }, pops] = await Promise.all([
+  const [totalCount, { data: olts, total, totalPages }, pops, kodeOtomatis] = await Promise.all([
     prisma.olt.count(),
     getOlts(search, page),
     getPops(),
+    generateKodeOlt(),
   ]);
 
   const currentRole = session.user.role;
@@ -70,6 +71,7 @@ export default async function OltPage({
         defaultValue={search}
         currentRole={currentRole}
         currentUser={currentUser}
+        kodeOtomatis={kodeOtomatis}
         actions={canExport ? <ExportButton apiUrl="/api/olt/export" filenamePrefix="Export_OLT" /> : null}
       />
     </div>

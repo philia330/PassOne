@@ -3,10 +3,11 @@
 import dynamic from "next/dynamic";
 import { useCallback, useRef, useState, useMemo } from "react";
 import Image from "next/image";
-import { Pencil, Plus, Loader2, Navigation, ImageIcon } from "lucide-react";
+import { Pencil, Plus, Loader2, Navigation, ImageIcon, Tag, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { PasswordInput } from "./PasswordInput";
 import {
   Dialog,
@@ -40,6 +41,7 @@ type Pop = {
 
 type OltData = {
   id_olt: number;
+  kode_olt: string;
   nama_olt: string;
   lokasi: string;
   latitude: number | string;
@@ -60,13 +62,19 @@ export const OltFormDialog = ({
   mode,
   pops,
   data,
+  kodeOtomatis,
 }: {
   mode: "create" | "edit";
   pops: Pop[];
   data?: OltData;
+  kodeOtomatis?: string;
 }) => {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Kode OLT: pakai kode yang sudah ada (mode edit) atau kode otomatis (mode create)
+  const kodeOlt = data?.kode_olt ?? kodeOtomatis ?? "";
+
   const [popValue, setPopValue] = useState(
     data?.id_pop ? String(data.id_pop) : ""
   );
@@ -269,7 +277,33 @@ export const OltFormDialog = ({
             dark:[&::-webkit-scrollbar-thumb]:bg-slate-700"
         >
           <form id="olt-form" action={handleSubmit} className="space-y-4">
-            {/* POP - paling atas */}
+            {/* Kode OLT - auto-generated, readonly */}
+            <div className="space-y-2">
+              <Label
+                htmlFor="kode_olt_display"
+                className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+              >
+                <Tag size={13} className="text-purple-500" /> Kode OLT
+              </Label>
+              <div className="relative">
+                <Input
+                  id="kode_olt_display"
+                  value={kodeOlt}
+                  readOnly
+                  className="h-12 rounded-2xl border-slate-200 bg-slate-50 font-mono font-semibold text-slate-500 cursor-not-allowed pr-10 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
+                />
+                <Lock
+                  size={14}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+              </div>
+              <input type="hidden" name="kode_olt" value={kodeOlt} />
+              <p className="text-xs text-slate-400">
+                Dibuat otomatis, tidak bisa diubah manual
+              </p>
+            </div>
+
+            {/* POP */}
             <div className="space-y-2">
               <label className="text-sm font-medium">POP</label>
               <SearchableSelect
