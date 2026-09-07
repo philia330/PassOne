@@ -706,7 +706,7 @@ export const BaaTable = ({
         {/* Baris 1: Search (kiri) + Sort mobile & Export & Tambah (kanan) */}
 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
   <div className="relative w-full max-w-xs">
-    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
+    <Search className="search-pulse-icon absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
     <Input
       type="text"
       placeholder="Cari kode BAA / nama pelanggan..."
@@ -1219,8 +1219,26 @@ export const BaaTable = ({
             }
           }}
           onDeleteStart={() => setIsBulkDeleting(true)}
-        />
+           />
       )}
+
+     <style jsx global>{`
+       @keyframes searchIconPulse {
+         0%,
+         80%,
+         100% {
+           transform: scale(1);
+         }
+         90% {
+           transform: scale(2);
+         }
+       }
+
+       .search-pulse-icon {
+         transform-origin: center;
+         animation: searchIconPulse 10s ease-in-out infinite;
+       }
+     `}</style>
     </Card>
   );
 };

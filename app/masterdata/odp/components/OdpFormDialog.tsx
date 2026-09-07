@@ -2,11 +2,12 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
-import { Pencil, Plus, Loader2, Navigation } from "lucide-react";
+import { Pencil, Plus, Loader2, Navigation, Tag, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 import {
   Dialog,
@@ -46,6 +47,7 @@ type Olt = {
 
 type OdpData = {
   id_odp: number;
+  kode_odp: string;
   nama_odp: string;
   alamat: string;
   latitude: number | string;
@@ -58,13 +60,18 @@ export const OdpFormDialog = ({
   mode,
   olts,
   data,
+  kodeOtomatis,
 }: {
   mode: "create" | "edit";
   olts: Olt[];
   data?: OdpData;
+  kodeOtomatis?: string;
 }) => {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Kode ODP: pakai kode yang sudah ada (mode edit) atau kode otomatis (mode create)
+  const kodeOdp = data?.kode_odp ?? kodeOtomatis ?? "";
 
   const [oltValue, setOltValue] = useState(
     data?.id_olt ? String(data.id_olt) : ""
@@ -250,6 +257,32 @@ export const OdpFormDialog = ({
             dark:[&::-webkit-scrollbar-thumb]:bg-slate-700"
         >
           <form id="odp-form" action={handleSubmit} className="space-y-4">
+            {/* Kode ODP - auto-generated, readonly */}
+            <div className="space-y-2">
+              <Label
+                htmlFor="kode_odp_display"
+                className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+              >
+                <Tag size={13} className="text-purple-500" /> Kode ODP
+              </Label>
+              <div className="relative">
+                <Input
+                  id="kode_odp_display"
+                  value={kodeOdp}
+                  readOnly
+                  className="h-12 rounded-2xl border-slate-200 bg-slate-50 font-mono font-semibold text-slate-500 cursor-not-allowed pr-10 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
+                />
+                <Lock
+                  size={14}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+              </div>
+              <input type="hidden" name="kode_odp" value={kodeOdp} />
+              <p className="text-xs text-slate-400">
+                Dibuat otomatis, tidak bisa diubah manual
+              </p>
+            </div>
+
             {/* OLT dipindah ke paling atas */}
             <div className="space-y-2">
               <label className="text-sm font-medium">OLT</label>

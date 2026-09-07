@@ -130,7 +130,7 @@ const deleteFotoOlt = async (fotoPath: string | null) => {
  * Generate kode OLT otomatis
  * ======================================
  */
-const generateKodeOlt = async (): Promise<string> => {
+export const generateKodeOlt = async (): Promise<string> => {
   const olts = await prisma.olt.findMany({
     select: { kode_olt: true },
     orderBy: { kode_olt: "asc" },

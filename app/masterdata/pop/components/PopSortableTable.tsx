@@ -50,6 +50,7 @@ export function PopSortableTable({
   canDelete = false,
   actions,
   currentUser,
+  kodeOtomatis,
 }: {
   initialData: Pop[];
   areas: { id_area: number; nama_area: string }[];
@@ -57,6 +58,7 @@ export function PopSortableTable({
   canDelete?: boolean;
   actions?: ReactNode;
   currentUser?: CurrentUser;
+  kodeOtomatis: string;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState(defaultValue);
@@ -320,7 +322,7 @@ export function PopSortableTable({
           <PopSearch value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
             {actions}
-            <PopFormDialog mode="create" areas={areas} />
+            <PopFormDialog mode="create" areas={areas} kodeOtomatis={kodeOtomatis} />
           </div>
         </div>
 
@@ -441,6 +443,7 @@ export function PopSortableTable({
                           areas={areas}
                           data={{
                             id_pop: pop.id_pop,
+                            kode_pop: pop.kode_pop,
                             nama_pop: pop.nama_pop,
                             alamat: pop.alamat,
                             id_area: pop.id_area,
@@ -510,6 +513,7 @@ export function PopSortableTable({
                       areas={areas}
                       data={{
                         id_pop: pop.id_pop,
+                        kode_pop: pop.kode_pop,
                         nama_pop: pop.nama_pop,
                         alamat: pop.alamat,
                         id_area: pop.id_area,

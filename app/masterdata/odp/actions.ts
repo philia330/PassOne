@@ -83,7 +83,7 @@ async function requireAccess() {
  * Generate kode ODP otomatis
  * ======================================
  */
-const generateKodeOdp = async (): Promise<string> => {
+export const generateKodeOdp = async (): Promise<string> => {
   const odps = await prisma.odp.findMany({
     select: { kode_odp: true },
     orderBy: { kode_odp: "asc" },

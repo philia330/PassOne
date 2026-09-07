@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon, ImageOff } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,12 @@ export const OltImageDialog = ({
   const [open, setOpen] = useState(false);
 
   if (!fotoUrl) {
-    return <span className="text-slate-400 dark:text-slate-500">-</span>;
+    return (
+      <span className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-500">
+        <ImageOff className="h-4 w-4" />
+        Tidak Ada
+      </span>
+    );
   }
 
   return (
@@ -49,4 +54,4 @@ export const OltImageDialog = ({
       </DialogContent>
     </Dialog>
   );
-}; 
+};

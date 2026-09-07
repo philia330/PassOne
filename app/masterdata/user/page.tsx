@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { Role, normalizeRole } from "@/lib/auth/roles";
-import { getUsers } from "./actions";
+import { getUsers, getNextKodeUser } from "./actions";
 import { prisma } from "@/lib/prisma";
 import { UserSortableTable } from "./components/UserSortableTable";
 import EmptyState from "@/components/shared/empty-state";
@@ -33,10 +33,11 @@ export default async function UserPage({
   const highlightId = params?.highlight ? Number(params.highlight) : null;
 
   // Hitung total SEMUA data (tanpa filter) untuk card statistik
-  const [totalCount, { data: users, total, totalPages }] = await Promise.all([
+  // + ambil preview kode user berikutnya untuk form Tambah User
+  const [totalCount, { data: users, total, totalPages }, nextKodeUser] = await Promise.all([
     prisma.user.count(),
     getUsers(search, page),
-    
+    getNextKodeUser(),
   ]);
 
   const currentUser = {
@@ -89,6 +90,7 @@ export default async function UserPage({
   currentUser={currentUser}
   total={total}
   page={page}
+  nextKodeUser={nextKodeUser}
   actions={canExport ? <ExportButton apiUrl="/api/user/export" filenamePrefix="Export_User" /> : null}
 />
       )}
