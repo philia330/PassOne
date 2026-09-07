@@ -79,7 +79,7 @@ async function requireAccess() {
  * Generate kode POP otomatis
  * ======================================
  */
-const generateKodePop = async (): Promise<string> => {
+export const generateKodePop = async (): Promise<string> => {
   const pops = await prisma.pop.findMany({
     select: { kode_pop: true },
     orderBy: { kode_pop: "asc" },

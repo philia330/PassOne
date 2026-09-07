@@ -98,6 +98,7 @@ export function UserSortableTable({
   total,
   page: initialPage,
   actions,
+  nextKodeUser,
 }: {
   initialData: User[];
   defaultValue: string;
@@ -105,6 +106,7 @@ export function UserSortableTable({
   total: number;
   page: number;
   actions?: ReactNode;
+  nextKodeUser?: string;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState(defaultValue);
@@ -417,7 +419,11 @@ export function UserSortableTable({
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             {actions}
             <div className="add-button">
-              <UserFormDialog mode="create" currentUserRole={currentUser?.role} />
+              <UserFormDialog
+                mode="create"
+                currentUserRole={currentUser?.role}
+                kodeOtomatis={nextKodeUser}
+              />
             </div>
           </div>
         </div>

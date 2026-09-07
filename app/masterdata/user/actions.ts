@@ -72,6 +72,15 @@ const generateKodeUser = async (): Promise<string> => {
 };
 
 // ======================================================
+// Get Next Kode User (preview di form create, tanpa reserve slot)
+// ======================================================
+
+export const getNextKodeUser = async (): Promise<string> => {
+  await requireRole(["ADMIN", "LEADER"]);
+  return generateKodeUser();
+};
+
+// ======================================================
 // Get Users
 // ======================================================
 

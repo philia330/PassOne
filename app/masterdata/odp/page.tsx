@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Router, Wifi, FileText } from "lucide-react";
-import { getOdps, getOlts } from "./actions";
+import { getOdps, getOlts, generateKodeOdp } from "./actions";
 import { prisma } from "@/lib/prisma";
 import { OdpSortableTable } from "./components/OdpSortableTable";
 import { requirePageAccess } from "@/lib/auth/guards";
@@ -38,12 +38,13 @@ export default async function OdpPage({
   const canExport = currentRole === "ADMIN" || currentRole === "LEADER";
 
   // Hitung total SEMUA data (tanpa filter) untuk card statistik
-  const [totalOdp, totalOnt, totalBaa, { data: rawOdps, total, totalPages }, olts] = await Promise.all([
+  const [totalOdp, totalOnt, totalBaa, { data: rawOdps, total, totalPages }, olts, kodeOtomatis] = await Promise.all([
     prisma.odp.count(),
     prisma.ont.count(),
     prisma.baa.count(),
     getOdps(search, page, true, sortOrder),
     getOlts(),
+    generateKodeOdp(),
   ]);
 
   // Convert Decimal to number for sortable table (Prisma returns Decimal objects)
@@ -129,6 +130,7 @@ export default async function OdpPage({
         olts={oltsData}
         defaultValue={search}
         currentUser={currentUser}
+        kodeOtomatis={kodeOtomatis}
       />
     </div>
   );

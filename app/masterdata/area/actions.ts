@@ -69,7 +69,7 @@ async function requireAccess() {
  * Generate kode Area otomatis
  * ======================================
  */
-const generateKodeArea = async (): Promise<string> => {
+export const generateKodeArea = async (): Promise<string> => {
   const areas = await prisma.area.findMany({
     select: { kode_area: true },
     orderBy: { kode_area: "asc" },

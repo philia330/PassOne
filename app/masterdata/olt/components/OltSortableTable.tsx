@@ -74,6 +74,7 @@ export function OltSortableTable({
   currentRole,
   actions,
   currentUser,
+  kodeOtomatis,
 }: {
   initialData: Olt[];
   pops: { id_pop: number; nama_pop: string; alamat: string }[];
@@ -81,6 +82,7 @@ export function OltSortableTable({
   currentRole: string;
   actions?: ReactNode;
   currentUser?: CurrentUser;
+  kodeOtomatis: string;
 }) {
   const router = useRouter();
   const canViewSecret = currentRole === "ADMIN" || currentRole === "LEADER";
@@ -383,7 +385,7 @@ export function OltSortableTable({
           <OltSearch value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
             {actions}
-            <OltFormDialog mode="create" pops={pops} />
+            <OltFormDialog mode="create" pops={pops} kodeOtomatis={kodeOtomatis} />
           </div>
         </div>
 
@@ -588,7 +590,7 @@ export function OltSortableTable({
                       <div className="flex justify-center gap-1">
                         <OltMapDialog nama={olt.nama_olt} lat={Number(olt.latitude)} lng={Number(olt.longitude)} />
                         <OpenGoogleMaps lat={Number(olt.latitude)} lng={Number(olt.longitude)} name={olt.nama_olt} />
-                        <OltFormDialog mode="edit" pops={pops} data={{ id_olt: olt.id_olt, nama_olt: olt.nama_olt, lokasi: olt.lokasi, latitude: String(olt.latitude), longitude: String(olt.longitude), id_pop: olt.id_pop, ip_olt: olt.ip_olt, username_olt: olt.username_olt, password_olt: olt.password_olt, foto_olt: olt.foto_olt }} />
+                        <OltFormDialog mode="edit" pops={pops} data={{ id_olt: olt.id_olt, kode_olt: olt.kode_olt, nama_olt: olt.nama_olt, lokasi: olt.lokasi, latitude: String(olt.latitude), longitude: String(olt.longitude), id_pop: olt.id_pop, ip_olt: olt.ip_olt, username_olt: olt.username_olt, password_olt: olt.password_olt, foto_olt: olt.foto_olt }} />
                         <DeleteOltDialog id={olt.id_olt} namaOlt={olt.nama_olt} />
                       </div>
                     </TableCell>
@@ -637,7 +639,7 @@ export function OltSortableTable({
                   </button>
                   <div className="flex shrink-0 gap-1">
                     <OpenGoogleMaps lat={Number(olt.latitude)} lng={Number(olt.longitude)} name={olt.nama_olt} />
-                    <OltFormDialog mode="edit" pops={pops} data={{ id_olt: olt.id_olt, nama_olt: olt.nama_olt, lokasi: olt.lokasi, latitude: String(olt.latitude), longitude: String(olt.longitude), id_pop: olt.id_pop, ip_olt: olt.ip_olt, username_olt: olt.username_olt, password_olt: olt.password_olt, foto_olt: olt.foto_olt }} />
+                    <OltFormDialog mode="edit" pops={pops} data={{ id_olt: olt.id_olt, kode_olt: olt.kode_olt, nama_olt: olt.nama_olt, lokasi: olt.lokasi, latitude: String(olt.latitude), longitude: String(olt.longitude), id_pop: olt.id_pop, ip_olt: olt.ip_olt, username_olt: olt.username_olt, password_olt: olt.password_olt, foto_olt: olt.foto_olt }} />
                     <DeleteOltDialog id={olt.id_olt} namaOlt={olt.nama_olt} />
                   </div>
                 </div>

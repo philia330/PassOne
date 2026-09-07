@@ -59,11 +59,13 @@ export function OdpSortableTable({
   olts,
   defaultValue,
   currentUser,
+  kodeOtomatis,
 }: {
   initialData: Odp[];
   olts: Olt[];
   defaultValue: string;
   currentUser?: CurrentUser;
+  kodeOtomatis: string;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState(defaultValue);
@@ -365,7 +367,7 @@ export function OdpSortableTable({
               <ExportButton apiUrl="/api/odp/export" filenamePrefix="Export_ODP" />
             )}
             <div className="add-button">
-              <OdpFormDialog mode="create" olts={olts} />
+              <OdpFormDialog mode="create" olts={olts} kodeOtomatis={kodeOtomatis} />
             </div>
           </div>
         </div>
@@ -559,7 +561,7 @@ export function OdpSortableTable({
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center gap-1 group/action">
                         <OdpMapDialog currentId={odp.id_odp} odpNama={odp.nama_odp} allPoints={[]} />
-                        <OdpFormDialog mode="edit" olts={olts} data={{ id_odp: odp.id_odp, nama_odp: odp.nama_odp, alamat: odp.alamat, latitude: String(odp.latitude), longitude: String(odp.longitude), id_olt: odp.id_olt, jumlah_port: odp.jumlah_port }} />
+                        <OdpFormDialog mode="edit" olts={olts} data={{ id_odp: odp.id_odp, kode_odp: odp.kode_odp, nama_odp: odp.nama_odp, alamat: odp.alamat, latitude: String(odp.latitude), longitude: String(odp.longitude), id_olt: odp.id_olt, jumlah_port: odp.jumlah_port }} />
                         <DeleteOdpDialog id={odp.id_odp} namaOdp={odp.nama_odp} />
                       </div>
                     </TableCell>
@@ -607,7 +609,7 @@ export function OdpSortableTable({
                     </div>
                   </button>
                   <div className="flex shrink-0 gap-1">
-                    <OdpFormDialog mode="edit" olts={olts} data={{ id_odp: odp.id_odp, nama_odp: odp.nama_odp, alamat: odp.alamat, latitude: String(odp.latitude), longitude: String(odp.longitude), id_olt: odp.id_olt, jumlah_port: odp.jumlah_port }} />
+                    <OdpFormDialog mode="edit" olts={olts} data={{ id_odp: odp.id_odp, kode_odp: odp.kode_odp, nama_odp: odp.nama_odp, alamat: odp.alamat, latitude: String(odp.latitude), longitude: String(odp.longitude), id_olt: odp.id_olt, jumlah_port: odp.jumlah_port }} />
                     <DeleteOdpDialog id={odp.id_odp} namaOdp={odp.nama_odp} />
                   </div>
                 </div>
