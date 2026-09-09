@@ -8,7 +8,6 @@ import {
   Phone,
   ArrowUp,
   ArrowDown,
-  Filter,
   X,
   Loader2,
   IdCard,
@@ -20,6 +19,8 @@ import {
   Download,
   Check,
   UserCog,
+  Users,
+  Bell,
 } from "lucide-react";
 import { FabActionsDropdown } from "./FabActionsDropdown";
 import { FabViewDialog } from "./FabViewDialog";
@@ -195,17 +196,9 @@ export const FabTable = ({
   const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
 
   // Handle highlight dari Command Palette / notifikasi (query param: highlight=<id_fab>)
-  // PERBAIKAN BUG HIGHLIGHT: `data` yang diterima di sini SEKARANG SELALU
-  // berisi semua FAB (lihat perbaikan di actions.ts getFabs) -- sebelumnya
-  // server memfilter jadi cuma 1 baris kalau ada highlightId, makanya
-  // menghapus teks pencarian di client percuma. Di effect ini sendiri tidak
-  // ada yang perlu diubah soal itu, cukup cara menghapus query param `highlight`
-  // dari URL yang diganti pakai router.replace() (bukan window.history
-  // langsung) supaya searchParams dari useSearchParams() ikut konsisten.
   useEffect(() => {
     const highlightId = searchParams.get("highlight");
 
-    // Reset highlightHandled jika nilai highlight berubah (navigasi baru)
     if (highlightId !== lastHighlightId.current) {
       highlightHandled.current = false;
       lastHighlightId.current = highlightId;
@@ -217,36 +210,27 @@ export const FabTable = ({
     const targetId = Number(highlightId);
     if (isNaN(targetId)) return;
 
-    // Cari item di data
     const item = data.find((f) => f.id_fab === targetId);
     if (!item) return;
 
-    // Set search ke nama pelanggan dan reset filters
     setSearch(item.nama_pelanggan);
     setFilterPenginput("all");
     setFilterTahun("all");
     setFilterBulan("all");
     setPage(1);
 
-    // Buka dialog detail setelah render
     setTimeout(() => {
       setViewItem(item);
 
-      // Scroll ke baris setelah dialog terbuka
       setTimeout(() => {
         const row = rowRefs.current.get(targetId);
         if (row) {
           row.scrollIntoView({ behavior: "smooth", block: "center" });
         }
-        // Hapus highlight setelah 3 detik
         setTimeout(() => setHighlightedId(null), 3000);
       }, 100);
     }, 200);
 
-    // Hapus highlight param dari URL -- pakai router.replace (bukan
-    // window.history.replaceState langsung) supaya searchParams dari
-    // useSearchParams() ikut ter-update konsisten di sisi Next.js, bukan
-    // cuma tampilan address bar doang.
     const timer = setTimeout(() => {
       const url = new URL(window.location.href);
       url.searchParams.delete("highlight");
@@ -260,18 +244,44 @@ export const FabTable = ({
   // Detect when navigation happens (e.g., after router.refresh())
   useEffect(() => {
     setIsLoading(true);
-    // Small delay to prevent flicker for fast operations
     const timer = setTimeout(() => setIsLoading(false), 300);
     return () => clearTimeout(timer);
   }, [searchParams.toString(), pathname]);
 
-  // Untuk SALES dan TEKNISI, default filter ke diri sendiri
   const isSalesOrTeknisi = currentUser.role === "SALES" || currentUser.role === "TEKNISI";
 
-  // Lazy initialization untuk filter - hitung nilai default sekali saat mount
   const [filterPenginput, setFilterPenginput] = useState<string>(() => {
     return isSalesOrTeknisi ? String(currentUser.id_user) : "all";
   });
+
+  // ==========================================================
+  // SEARCH BOX di dalam dropdown Filter Sales/Penginput -- list
+  // opsinya sendiri sudah lengkap di memory (dikirim dari server),
+  // jadi filternya langsung instan tanpa perlu fetch/debounce.
+  // Baru mulai menyaring begitu user ketik MINIMAL 3 huruf; kalau
+  // kurang dari itu, semua opsi tetap tampil apa adanya.
+  // ==========================================================
+  const [penginputSearch, setPenginputSearch] = useState("");
+
+  const filteredPenginputOptions = useMemo(() => {
+    const q = penginputSearch.trim().toLowerCase();
+    if (q.length < 3) return penginputOptions;
+    return penginputOptions.filter((opt) => opt.nama.toLowerCase().includes(q));
+  }, [penginputOptions, penginputSearch]);
+
+  // Label yang ditampilkan di trigger filter Sales/Penginput.
+  // PERBAIKAN: sebelumnya SelectValue menerima "function sebagai children"
+  // ({(value) => {...}}), pola ini tidak didukung dengan aman oleh Select
+  // berbasis Radix dan bisa gagal render / tidak update saat value berubah.
+  // Sekarang dihitung sebagai string biasa lewat useMemo.
+  const filterPenginputLabel = useMemo(() => {
+    if (filterPenginput === "all") return "Semua";
+    if (isSalesOrTeknisi && filterPenginput === String(currentUser.id_user)) {
+      return `Saya (${currentUser.nama})`;
+    }
+    const opt = penginputOptions.find((o) => String(o.id_user) === filterPenginput);
+    return opt?.nama ?? "Filter penginput";
+  }, [filterPenginput, isSalesOrTeknisi, currentUser, penginputOptions]);
 
   // Filter bulan - default ke bulan berjalan
   const getCurrentYear = () => new Date().getFullYear();
@@ -303,13 +313,11 @@ export const FabTable = ({
     setSelectAllPage(false);
   }, [search, filterPenginput, filterTahun, filterBulan, filterTeknisi]);
 
-  // Generate year options (current year - 2 to current year)
   const yearOptions = useMemo(() => {
     const current = getCurrentYear();
     return ["all", String(current - 2), String(current - 1), String(current)];
   }, []);
 
-  // Month options
   const monthOptions = [
     { key: "all", label: "Semua" },
     { key: "01", label: "Jan" },
@@ -342,21 +350,17 @@ export const FabTable = ({
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
     return sortedData.filter((item) => {
-      // Filter search
       const matchesSearch =
         item.kode_fab.toLowerCase().includes(query) ||
         item.nama_pelanggan.toLowerCase().includes(query) ||
         item.nik.includes(search);
 
-      // Filter berdasarkan penginput
       const penginputId = item.penginput?.id_user;
       const matchesPenginput = filterPenginput === "all" || penginputId === Number(filterPenginput);
 
-      // Filter berdasarkan teknisi yang ditugaskan (khusus TEKNISI)
       const teknisiId = (item as any).teknisiDitugaskan?.id_user;
       const matchesTeknisi = filterTeknisi === "all" || teknisiId === Number(filterTeknisi);
 
-      // Filter berdasarkan tahun dan bulan
       const itemDate = new Date(item.createdAt);
       const itemYear = String(itemDate.getFullYear());
       const itemMonth = String(itemDate.getMonth() + 1).padStart(2, "0");
@@ -369,8 +373,6 @@ export const FabTable = ({
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
-
-  // Selection persists across pages but does NOT auto-select on page change
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -402,10 +404,8 @@ export const FabTable = ({
     return item.penginput?.id_user === currentUser.id_user;
   };
 
-  // Hanya Admin yang bisa hapus
   const canDelete = currentUser.role === "ADMIN";
 
-  // Toggle single item selection
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -418,11 +418,9 @@ export const FabTable = ({
     });
   };
 
-  // Toggle all visible items (per page)
   const toggleSelectAll = () => {
     const allSelected = paginated.every((item) => selectedIds.has(item.id_fab));
     if (selectAllPage && allSelected) {
-      // Uncheck all on current page only
       setSelectAllPage(false);
       setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -430,7 +428,6 @@ export const FabTable = ({
         return next;
       });
     } else {
-      // Select all on current page and enable auto-select mode
       setSelectAllPage(true);
       setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -440,7 +437,6 @@ export const FabTable = ({
     }
   };
 
-  // Bulk delete handler
   const handleBulkDelete = () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) {
@@ -451,7 +447,6 @@ export const FabTable = ({
     setBulkDeleteOpen(true);
   };
 
-  // Bulk export handler
   const handleBulkExport = async () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) {
@@ -493,7 +488,6 @@ export const FabTable = ({
     }
   };
 
-  // Handle delete success
   const handleDeleteSuccess = () => {
     setSelectedIds(new Set());
     setSelectAllPage(false);
@@ -577,7 +571,6 @@ export const FabTable = ({
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {/* Bulk Assign ke Teknisi - hanya untuk ADMIN, LEADER, SALES */}
               {canBulkAssign && (
                 <Button
                   size="sm"
@@ -633,90 +626,150 @@ export const FabTable = ({
         )}
 
         {/* Baris 1: Search (kiri) + Sort mobile & Aksi & Tambah (kanan) */}
-<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-  <div className="relative w-full max-w-xs">
-    <Search className="search-pulse-icon absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
-    <Input
-      type="text"
-      placeholder="Cari kode FAB / nama pelanggan / NIK..."
-      value={search}
-      onChange={(e) => handleSearchChange(e.target.value)}
-      className="h-11 rounded-2xl border-slate-200 pl-11 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
-    />
-  </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full max-w-xs">
+            <Search className="search-pulse-icon absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
+            <Input
+              type="text"
+              placeholder="Cari kode FAB / nama pelanggan / NIK..."
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="h-11 rounded-2xl border-slate-200 pl-11 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+            />
+          </div>
 
-  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-    <button
-      type="button"
-      onClick={toggleSort}
-      className="md:hidden inline-flex h-11 items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors flex-shrink-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-800/70"
-    >
-      {sortOrder === "asc" ? (
-        <ArrowUp size={16} className="text-purple-500" />
-      ) : (
-        <ArrowDown size={16} className="text-purple-500" />
-      )}
-      <span>{sortOrder === "asc" ? "Terlama" : "Terbaru"}</span>
-    </button>
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <button
+              type="button"
+              onClick={toggleSort}
+              className="md:hidden inline-flex h-11 items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors flex-shrink-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-800/70"
+            >
+              {sortOrder === "asc" ? (
+                <ArrowUp size={16} className="text-purple-500" />
+              ) : (
+                <ArrowDown size={16} className="text-purple-500" />
+              )}
+              <span>{sortOrder === "asc" ? "Terlama" : "Terbaru"}</span>
+            </button>
 
-    {actions}
-    <FabDialog
-      mode="create"
-      kodeOtomatis={kodeOtomatis}
-      areaOptions={areaOptions}
-      paketOptions={paketOptions}
-      salesOptions={salesOptions}
-      currentUser={currentUser}
-    />
-  </div>
-</div>
+            {actions}
+            <FabDialog
+              mode="create"
+              kodeOtomatis={kodeOtomatis}
+              areaOptions={areaOptions}
+              paketOptions={paketOptions}
+              salesOptions={salesOptions}
+              currentUser={currentUser}
+            />
+          </div>
+        </div>
 
         {/* Baris 2: Filter Penginput + Filter Bulan + Page Size Selector */}
         <div className="flex flex-wrap items-center gap-2 overflow-visible">
           {/* Filter Dropdown Penginput - hanya tampil jika ada opsi atau role yang sesuai */}
           {showFilterDropdown && (
             <div className="flex items-center gap-2">
-              <Select value={filterPenginput} onValueChange={handleFilterChange}>
-                <SelectTrigger className="h-11 w-[190px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
-                  <Filter className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
-                  <SelectValue placeholder="Filter penginput">
-                    {(value: string) => {
-                      if (value === "all") return "Semua";
-                      if (isSalesOrTeknisi && value === String(currentUser.id_user)) {
-                        return `Saya (${currentUser.nama})`;
-                      }
-                      const opt = penginputOptions.find((o) => String(o.id_user) === value);
-                      return opt?.nama ?? "Filter penginput";
-                    }}
+              <Select
+                value={filterPenginput}
+                onValueChange={handleFilterChange}
+                onOpenChange={(open) => {
+                  if (!open) setPenginputSearch("");
+                }}
+              >
+                <SelectTrigger
+                  className="h-11 w-[210px] rounded-2xl border-slate-200 bg-white shadow-sm transition-all hover:border-purple-300 focus:ring-2 focus:ring-purple-500/20 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700"
+                >
+                  <Users className="mr-2 h-4 w-4 shrink-0 text-purple-500" />
+                  <SelectValue placeholder="Pilih Sales">
+                    {filterPenginputLabel}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent className="max-h-64 overflow-y-auto rounded-2xl border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+
+                <SelectContent
+                  side="bottom"
+                  align="start"
+                  className="dropdown-scroll z-[100] w-[280px] overflow-y-auto rounded-2xl border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+                >
+                  {/* Search Sales: dibuat menyatu dengan permukaan dropdown */}
+                  <div className="px-1 pb-2">
+                    <div className="relative flex items-center">
+                      <Search className="pointer-events-none absolute left-3 h-4 w-4 text-slate-400 transition-colors peer-focus:text-purple-500" />
+                      <input
+                        type="text"
+                        value={penginputSearch}
+                        onChange={(e) => setPenginputSearch(e.target.value)}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        placeholder="Cari nama sales..."
+                        autoFocus
+                        className="peer h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-9 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-purple-400 focus:bg-white focus:ring-2 focus:ring-purple-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-purple-500 dark:focus:bg-slate-800"
+                      />
+                      {penginputSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setPenginputSearch("")}
+                          className="absolute right-2.5 flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                          title="Hapus pencarian"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {penginputSearch.trim().length > 0 && (
+                      <p className="px-1 pt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+                        {filteredPenginputOptions.length > 0
+                          ? `${filteredPenginputOptions.length} sales ditemukan`
+                          : "Sales tidak ditemukan"}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mb-1 border-t border-slate-100 dark:border-slate-800" />
+
+                  {/* Pilihan cepat */}
                   {isSalesOrTeknisi && (
                     <SelectItem
                       value={String(currentUser.id_user)}
-                      className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                      className="cursor-pointer rounded-xl gap-2 py-2.5 focus:bg-purple-50 dark:focus:bg-purple-500/10"
                     >
-                      <UserRound className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                      <UserRound className="h-4 w-4 shrink-0 text-purple-500" />
                       <span className="font-medium">Saya ({currentUser.nama})</span>
                     </SelectItem>
                   )}
+
                   <SelectItem
                     value="all"
-                    className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                    className="cursor-pointer rounded-xl gap-2 py-2.5 focus:bg-purple-50 dark:focus:bg-purple-500/10"
                   >
-                    <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    <span>Semua</span>
+                    <Users className="h-4 w-4 shrink-0 text-slate-400" />
+                    <span>Semua Sales</span>
                   </SelectItem>
-                  {penginputOptions.map((opt) => (
-                    <SelectItem
-                      key={opt.id_user}
-                      value={String(opt.id_user)}
-                      className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
-                    >
-                      <UserRound className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                      <span>{opt.nama}</span>
-                    </SelectItem>
-                  ))}
+
+                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+                  {/* Hasil pencarian */}
+                  {filteredPenginputOptions.length === 0 ? (
+                    <div className="flex flex-col items-center gap-1 px-3 py-5 text-center">
+                      <Search className="h-5 w-5 text-slate-300 dark:text-slate-600" />
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                        Sales tidak ditemukan
+                      </p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                        Coba kata kunci lain
+                      </p>
+                    </div>
+                  ) : (
+                    filteredPenginputOptions.map((opt) => (
+                      <SelectItem
+                        key={opt.id_user}
+                        value={String(opt.id_user)}
+                        className="cursor-pointer rounded-xl gap-2 py-2.5 focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                      >
+                        <UserRound className="h-4 w-4 shrink-0 text-slate-400" />
+                        <span>{opt.nama}</span>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
 
@@ -734,23 +787,27 @@ export const FabTable = ({
             </div>
           )}
 
-          {/* Filter Dropdown Teknisi - khusus untuk TEKNISI melihat FAB yang ditugaskan ke mereka */}
+          {/* Filter Dropdown Teknisi - khusus untuk TEKNISI melihat FAB yang ditugaskan ke mereka.
+              Lebar diperbesar (230px -> 270px) supaya teks "Ditugaskan ke Saya" + icon lonceng
+              tidak terpotong / kebaca dengan jelas. */}
           {isTeknisi && (
             <div className="flex items-center gap-2">
               <Select value={filterTeknisi} onValueChange={(value) => { if (value) { setFilterTeknisi(value); setPage(1); } }}>
-                <SelectTrigger className="h-11 w-[200px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
-                  <UserCog className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+                <SelectTrigger className="h-11 w-[270px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+                  <Bell className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
                   <SelectValue>
-                    {filterTeknisi === String(currentUser.id_user) ? "Ditugaskan ke Saya" : "Semua FAB"}
+                    <span className="whitespace-nowrap">
+                      {filterTeknisi === String(currentUser.id_user) ? "Ditugaskan ke Saya" : "Semua FAB"}
+                    </span>
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent className="max-h-64 overflow-y-auto rounded-2xl border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+                <SelectContent className="dropdown-scroll max-h-64 overflow-y-auto rounded-2xl border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
                   <SelectItem
                     value="all"
                     className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
                   >
                     <span className="flex items-center gap-2">
-                      <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <Users className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                       <span>Semua FAB</span>
                     </span>
                   </SelectItem>
@@ -759,7 +816,7 @@ export const FabTable = ({
                     className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
                   >
                     <span className="flex items-center gap-2">
-                      <UserCog className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                      <Bell className="h-3.5 w-3.5 text-purple-500 shrink-0" />
                       <span className="font-medium">Ditugaskan ke Saya</span>
                     </span>
                   </SelectItem>
@@ -792,13 +849,20 @@ export const FabTable = ({
                 )}
               </SelectValue>
             </SelectTrigger>
-             <SelectContent
-    side="bottom"
-    alignItemWithTrigger={false}
-    className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]"
-  >
-  {yearOptions.map((year) => (<SelectItem key={year} value={year} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"><span className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" /><span>{year === "all" ? "Semua" : year}</span></span></SelectItem>))}
-</SelectContent>
+            <SelectContent
+              side="bottom"
+              alignItemWithTrigger={false}
+              className="dropdown-scroll max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]"
+            >
+              {yearOptions.map((year) => (
+                <SelectItem key={year} value={year} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                  <span className="flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>{year === "all" ? "Semua" : year}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
 
           {/* Filter Dropdown Bulan */}
@@ -813,12 +877,12 @@ export const FabTable = ({
                 )}
               </SelectValue>
             </SelectTrigger>
-              <SelectContent
-    side="bottom"
-    alignItemWithTrigger={false}
-    className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]"
-  >
-  {monthOptions.map((opt) => (
+            <SelectContent
+              side="bottom"
+              alignItemWithTrigger={false}
+              className="dropdown-scroll max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]"
+            >
+              {monthOptions.map((opt) => (
                 <SelectItem key={opt.key} value={opt.key} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
                   <span className="flex items-center gap-2">
                     <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -969,8 +1033,8 @@ export const FabTable = ({
                       {item.kode_fab}
                     </TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-            <FabImageDialog fotoUrl={item.foto} namaPelanggan={item.nama_pelanggan} />
-          </TableCell>
+                      <FabImageDialog fotoUrl={item.foto} namaPelanggan={item.nama_pelanggan} />
+                    </TableCell>
                     <TableCell className="dark:text-slate-300">
                       {item.nama_pelanggan}
                     </TableCell>
@@ -1042,8 +1106,8 @@ export const FabTable = ({
                   {/* Header: kode + nama + status + aksi */}
                   <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
                     <div className="flex items-start gap-3 min-w-0">
-                <FabImageDialog fotoUrl={item.foto} namaPelanggan={item.nama_pelanggan} />
-                <div className="min-w-0">
+                      <FabImageDialog fotoUrl={item.foto} namaPelanggan={item.nama_pelanggan} />
+                      <div className="min-w-0">
                         <p className="truncate font-semibold text-slate-900 dark:text-slate-100">
                           {item.nama_pelanggan}
                         </p>
@@ -1227,6 +1291,30 @@ export const FabTable = ({
         .search-pulse-icon {
           transform-origin: center;
           animation: searchIconPulse 10s ease-in-out infinite;
+        }
+
+        /* Scrollbar yang keliatan buat semua dropdown filter (Sales,
+           Teknisi, Tahun, Bulan, Page Size) -- ditarget lewat role
+           "listbox" (dipakai Radix Select untuk isi dropdown-nya)
+           supaya otomatis kena ke semua dropdown sejenis di halaman ini,
+           termasuk PageSizeSelector kalau dia dibuat dengan komponen
+           Select yang sama. */
+        [role="listbox"] {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(168, 85, 247, 0.5) transparent;
+        }
+        [role="listbox"]::-webkit-scrollbar {
+          width: 6px;
+        }
+        [role="listbox"]::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        [role="listbox"]::-webkit-scrollbar-thumb {
+          background-color: rgba(168, 85, 247, 0.5);
+          border-radius: 9999px;
+        }
+        [role="listbox"]::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(168, 85, 247, 0.8);
         }
       `}</style>
     </Card>

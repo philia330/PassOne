@@ -225,7 +225,7 @@ export const OntFormDialog = ({
 
   const confirmationTitle = mode === "create" ? "Konfirmasi Tambah ONT" : "Konfirmasi Perubahan ONT";
   const confirmationDesc = mode === "create"
-    ? "Pastikan data yang Anda masukkan sudah benar. ONT akan segera ditambahkan ke sistem."
+    ? "Pastikan data yang Anda masukkan sudah benar, terutama serial number dan model ONT karna tidak akan bisa di edit. ONT akan segera ditambahkan ke sistem jika semua sudah benar."
     : "Periksa kembali perubahan yang akan dilakukan. Data akan langsung diperbarui.";
 
   const createTriggerButton = (

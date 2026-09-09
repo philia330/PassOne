@@ -21,6 +21,7 @@ import {
   Download,
   Check,
   Package,
+  Users,
   Eye,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -522,6 +523,60 @@ export const BaaTable = ({
   const [filterOlt, setFilterOlt] = useState<string>("all");
   const [filterOdp, setFilterOdp] = useState<string>("all");
 
+  // Pencarian teknisi di dalam dropdown filter.
+  // Pencarian langsung bekerja saat user mengetik, tanpa debounce.
+  const [teknisiSearch, setTeknisiSearch] = useState("");
+
+  const filteredTeknisiOptions = useMemo(() => {
+    const query = teknisiSearch.trim().toLowerCase();
+
+    if (!query) return allTeknisiOptions;
+
+    return allTeknisiOptions.filter((opt) =>
+      opt.nama.toLowerCase().includes(query)
+    );
+  }, [allTeknisiOptions, teknisiSearch]);
+
+  const filterTeknisiLabel = useMemo(() => {
+    if (filterTeknisi === "all") return "Semua";
+
+    if (isTeknisi && filterTeknisi === String(currentUser.id_user)) {
+      return `Saya (${currentUser.nama})`;
+    }
+
+    const opt = allTeknisiOptions.find(
+      (item) => String(item.id_user) === filterTeknisi
+    );
+
+    return opt?.nama ?? "Filter teknisi";
+  }, [
+    filterTeknisi,
+    isTeknisi,
+    currentUser.id_user,
+    currentUser.nama,
+    allTeknisiOptions,
+  ]);
+
+  // Pencarian OLT dan ODP di dalam dropdown filter.
+  const [oltSearch, setOltSearch] = useState("");
+  const [odpSearch, setOdpSearch] = useState("");
+
+  const filteredOltOptions = useMemo(() => {
+    const query = oltSearch.trim().toLowerCase();
+    if (!query) return oltOptions;
+    return oltOptions.filter((opt) =>
+      opt.nama_olt.toLowerCase().includes(query)
+    );
+  }, [oltOptions, oltSearch]);
+
+  const filteredOdpOptions = useMemo(() => {
+    const query = odpSearch.trim().toLowerCase();
+    if (!query) return odpOptions;
+    return odpOptions.filter((opt) =>
+      opt.nama_odp.toLowerCase().includes(query)
+    );
+  }, [odpOptions, odpSearch]);
+
   // Clear selection when filters/search change
   useEffect(() => {
     setSelectedIds(new Set());
@@ -747,52 +802,146 @@ export const BaaTable = ({
   </div>
 </div>
 
-        {/* Baris 2: Filter Teknisi + Filter Bulan + Filter OLT + Filter ODP + Page Size Selector */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Filter Dropdown Teknisi - hanya tampil jika ada opsi atau role teknisi */}
+        {/* Baris 2: semua filter */}
+        <div className="flex flex-wrap items-center gap-2.5 overflow-visible">
+          {/* Filter Dropdown Teknisi */}
           {showFilterDropdown && (
             <div className="flex items-center gap-2">
-              <Select value={filterTeknisi} onValueChange={handleFilterChange}>
-                <SelectTrigger className="h-11 w-[190px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
-                  <Filter className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+              <Select
+                value={filterTeknisi}
+                onValueChange={handleFilterChange}
+                onOpenChange={(open) => {
+                  if (!open) setTeknisiSearch("");
+                }}
+              >
+                <SelectTrigger
+                  className={cn(
+                    "h-11 w-[210px] rounded-2xl border-slate-200 bg-white",
+                    "shadow-sm transition-all duration-200",
+                    "hover:border-purple-300 hover:shadow-md",
+                    "focus:ring-purple-500 focus:ring-offset-0",
+                    "dark:border-slate-700 dark:bg-slate-800",
+                    "dark:hover:border-purple-700"
+                  )}
+                >
+                  {filterTeknisi === "all" ? (
+                    <Users className="mr-2 h-4 w-4 shrink-0 text-purple-500" />
+                  ) : (
+                    <UserRound className="mr-2 h-4 w-4 shrink-0 text-purple-500" />
+                  )}
                   <SelectValue placeholder="Filter teknisi">
-                    {(value: string) => {
-                      if (value === "all") return "Semua";
-                      if (isTeknisi && value === String(currentUser.id_user)) {
-                        return `Saya (${currentUser.nama})`;
-                      }
-                      const opt = allTeknisiOptions.find((o) => String(o.id_user) === value);
-                      return opt?.nama ?? "Filter teknisi";
-                    }}
+                    <span className="truncate">{filterTeknisiLabel}</span>
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent className="rounded-2xl border-slate-200 p-1.5 shadow-lg dark:border-slate-700">
+
+                <SelectContent
+                  side="bottom"
+                  alignItemWithTrigger={false}
+                  className={cn(
+                    "dropdown-scroll z-[100] w-[260px] rounded-2xl",
+                    "border border-slate-200 bg-white p-1.5 shadow-xl",
+                    "dark:border-slate-700 dark:bg-slate-900"
+                  )}
+                >
+                  {/* Search teknisi menyatu dengan dropdown */}
+                  <div className="sticky top-0 z-10 mb-1 rounded-xl border-b border-slate-100 bg-white/95 px-2 pb-2 pt-1 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/95">
+                    <div className="group relative">
+                      <Search
+                        className={cn(
+                          "pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 transition-colors",
+                          teknisiSearch
+                            ? "text-purple-500"
+                            : "text-slate-400 group-focus-within:text-purple-500"
+                        )}
+                      />
+                      <input
+                        type="text"
+                        value={teknisiSearch}
+                        onChange={(e) => setTeknisiSearch(e.target.value)}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        placeholder="Cari nama teknisi..."
+                        autoFocus
+                        className={cn(
+                          "h-9 w-full rounded-lg border-0 bg-transparent",
+                          "pl-9 pr-8 text-xs text-slate-700 outline-none",
+                          "placeholder:text-slate-400",
+                          "focus:ring-0",
+                          "dark:text-slate-100 dark:placeholder:text-slate-500"
+                        )}
+                      />
+
+                      {teknisiSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setTeknisiSearch("")}
+                          className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                          title="Hapus pencarian"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="mt-1 px-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                      {teknisiSearch.trim().length > 0
+                        ? `${filteredTeknisiOptions.length} teknisi ditemukan`
+                        : `${allTeknisiOptions.length} teknisi tersedia`}
+                    </p>
+                  </div>
+
+                  {/* Shortcut untuk teknisi yang sedang login */}
                   {isTeknisi && (
                     <SelectItem
                       value={String(currentUser.id_user)}
-                      className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                      className="rounded-xl py-2.5 pl-2 pr-2 cursor-pointer data-[state=checked]:bg-purple-50 data-[state=checked]:text-purple-700 focus:bg-purple-50 dark:data-[state=checked]:bg-purple-500/15 dark:data-[state=checked]:text-purple-300 dark:focus:bg-purple-500/10 [&_[data-slot=select-item-indicator]]:hidden"
                     >
-                      <UserRound className="h-3.5 w-3.5 text-purple-500 shrink-0" />
-                      <span className="font-medium">Saya ({currentUser.nama})</span>
+                      <span className="flex items-center gap-2">
+                        <UserRound className="h-3.5 w-3.5 shrink-0 text-purple-500" />
+                        <span className="truncate font-medium">
+                          Saya ({currentUser.nama})
+                        </span>
+                      </span>
                     </SelectItem>
                   )}
+
                   <SelectItem
                     value="all"
-                    className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
+                    className="rounded-xl py-2.5 pl-2 pr-2 cursor-pointer data-[state=checked]:bg-purple-50 data-[state=checked]:text-purple-700 focus:bg-purple-50 dark:data-[state=checked]:bg-purple-500/15 dark:data-[state=checked]:text-purple-300 dark:focus:bg-purple-500/10 [&_[data-slot=select-item-indicator]]:hidden"
                   >
-                    <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    <span>Semua</span>
+                    <span className="flex items-center gap-2">
+                      <Users className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                      <span>Semua Teknisi</span>
+                    </span>
                   </SelectItem>
-                  {allTeknisiOptions.map((opt) => (
-                    <SelectItem
-                      key={opt.id_user}
-                      value={String(opt.id_user)}
-                      className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"
-                    >
-                      <UserRound className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                      <span>{opt.nama}</span>
-                    </SelectItem>
-                  ))}
+
+                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+                  {filteredTeknisiOptions.length === 0 ? (
+                    <div className="px-3 py-6 text-center">
+                      <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                        <Search className="h-4 w-4 text-slate-400" />
+                      </div>
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                        Teknisi tidak ditemukan
+                      </p>
+                      <p className="mt-1 text-[10px] text-slate-400 dark:text-slate-500">
+                        Coba kata kunci lain
+                      </p>
+                    </div>
+                  ) : (
+                    filteredTeknisiOptions.map((opt) => (
+                      <SelectItem
+                        key={opt.id_user}
+                        value={String(opt.id_user)}
+                        className="rounded-xl py-2.5 pl-2 pr-2 cursor-pointer data-[state=checked]:bg-purple-50 data-[state=checked]:text-purple-700 focus:bg-purple-50 dark:data-[state=checked]:bg-purple-500/15 dark:data-[state=checked]:text-purple-300 dark:focus:bg-purple-500/10 [&_[data-slot=select-item-indicator]]:hidden"
+                      >
+                        <span className="flex items-center gap-2">
+                          <UserRound className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                          <span className="truncate">{opt.nama}</span>
+                        </span>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
 
@@ -802,7 +951,8 @@ export const BaaTable = ({
                   variant="ghost"
                   size="sm"
                   onClick={clearFilter}
-                  className="h-11 w-11 p-0 rounded-2xl border border-slate-200 dark:border-slate-700"
+                  className="h-11 w-11 rounded-2xl border border-slate-200 p-0 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                  title="Hapus filter teknisi"
                 >
                   <X className="h-4 w-4 text-slate-500" />
                 </Button>
@@ -818,7 +968,7 @@ export const BaaTable = ({
                 {filterTahun === "all" ? (<span>Semua Thn</span>) : (<span>{filterTahun}</span>)}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent side="bottom" alignItemWithTrigger={false} className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+            <SelectContent side="bottom" alignItemWithTrigger={false} className="dropdown-scroll max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
   {yearOptions.map((year) => (<SelectItem key={year} value={year} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10"><span className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" /><span>{year === "all" ? "Semua" : year}</span></span></SelectItem>))}
 </SelectContent>
           </Select>
@@ -831,7 +981,7 @@ export const BaaTable = ({
                 {filterBulan === "all" ? (<span>Semua</span>) : (<span>{getMonthName(filterBulan)}</span>)}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent side="bottom" alignItemWithTrigger={false} className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+            <SelectContent side="bottom" alignItemWithTrigger={false} className="dropdown-scroll max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
   {monthOptions.map((opt) => (
                 <SelectItem key={opt.key} value={opt.key} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
                   <span className="flex items-center gap-2">
@@ -843,25 +993,72 @@ export const BaaTable = ({
             </SelectContent>
           </Select>
 
-          {/* Filter Dropdown OLT */}
-          <Select value={filterOlt} onValueChange={(value) => { if (value) { setFilterOlt(value); setPage(1); } }}>
-            <SelectTrigger className="h-11 w-[150px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
-              <Router className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+          {/* Filter Dropdown OLT + Search */}
+          <Select
+            value={filterOlt}
+            onValueChange={(value) => {
+              if (value) {
+                setFilterOlt(value);
+                setPage(1);
+              }
+            }}
+            onOpenChange={(open) => {
+              if (!open) setOltSearch("");
+            }}
+          >
+            <SelectTrigger className="h-11 w-[170px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+              <Router className="mr-2 h-4 w-4 shrink-0 text-purple-500" />
               <SelectValue placeholder="Filter OLT">
-                {filterOlt !== "all" ? oltOptions.find(o => String(o.id_olt) === filterOlt)?.nama_olt : "Semua OLT"}
+                {filterOlt !== "all"
+                  ? oltOptions.find((o) => String(o.id_olt) === filterOlt)?.nama_olt
+                  : "Semua OLT"}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent side="bottom" className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
-              <SelectItem value="all" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
-                <Router className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                <span>Semua OLT</span>
+            <SelectContent
+              side="bottom"
+              alignItemWithTrigger={false}
+              className="dropdown-scroll z-[100] max-h-72 w-[280px] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+            >
+              <div className="sticky top-0 z-10 mb-1 rounded-xl border-b border-slate-100 bg-white/95 px-2 pb-2 pt-1 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/95">
+                <div className="group relative">
+                  <Search className={cn("pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2", oltSearch ? "text-purple-500" : "text-slate-400 group-focus-within:text-purple-500")} />
+                  <input
+                    type="text"
+                    value={oltSearch}
+                    onChange={(e) => setOltSearch(e.target.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    placeholder="Cari nama OLT..."
+                    autoFocus
+                    className="h-9 w-full rounded-lg border-0 bg-transparent pl-9 pr-8 text-xs text-slate-700 outline-none placeholder:text-slate-400 focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  />
+                  {oltSearch && (
+                    <button type="button" onClick={() => setOltSearch("")} className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200">
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+                <p className="mt-1 px-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                  {oltSearch.trim() ? `${filteredOltOptions.length} OLT ditemukan` : `${oltOptions.length} OLT tersedia`}
+                </p>
+              </div>
+
+              <SelectItem value="all" className="rounded-xl py-2.5 pl-2 pr-2 cursor-pointer data-[state=checked]:bg-purple-50 data-[state=checked]:text-purple-700 focus:bg-purple-50 dark:data-[state=checked]:bg-purple-500/15 dark:data-[state=checked]:text-purple-300 dark:focus:bg-purple-500/10 [&_[data-slot=select-item-indicator]]:hidden">
+                <span className="flex items-center gap-2"><Router className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span>Semua OLT</span></span>
               </SelectItem>
-              {oltOptions.map((opt) => (
-                <SelectItem key={opt.id_olt} value={String(opt.id_olt)} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
-                  <Router className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <span>{opt.nama_olt}</span>
-                </SelectItem>
-              ))}
+
+              <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+              {filteredOltOptions.length === 0 ? (
+                <div className="px-3 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
+                  OLT tidak ditemukan
+                </div>
+              ) : (
+                filteredOltOptions.map((opt) => (
+                  <SelectItem key={opt.id_olt} value={String(opt.id_olt)} className="rounded-xl py-2.5 pl-2 pr-2 cursor-pointer data-[state=checked]:bg-purple-50 data-[state=checked]:text-purple-700 focus:bg-purple-50 dark:data-[state=checked]:bg-purple-500/15 dark:data-[state=checked]:text-purple-300 dark:focus:bg-purple-500/10 [&_[data-slot=select-item-indicator]]:hidden">
+                    <span className="flex items-center gap-2"><Router className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span className="truncate">{opt.nama_olt}</span></span>
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
 
@@ -876,25 +1073,72 @@ export const BaaTable = ({
             </Button>
           )}
 
-          {/* Filter Dropdown ODP */}
-          <Select value={filterOdp} onValueChange={(value) => { if (value) { setFilterOdp(value); setPage(1); } }}>
-            <SelectTrigger className="h-11 w-[150px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
-              <GitBranch className="h-4 w-4 mr-2 text-purple-500 shrink-0" />
+          {/* Filter Dropdown ODP + Search */}
+          <Select
+            value={filterOdp}
+            onValueChange={(value) => {
+              if (value) {
+                setFilterOdp(value);
+                setPage(1);
+              }
+            }}
+            onOpenChange={(open) => {
+              if (!open) setOdpSearch("");
+            }}
+          >
+            <SelectTrigger className="h-11 w-[170px] rounded-2xl border-slate-200 bg-white shadow-sm transition-colors hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-purple-700">
+              <GitBranch className="mr-2 h-4 w-4 shrink-0 text-purple-500" />
               <SelectValue placeholder="Filter ODP">
-                {filterOdp !== "all" ? odpOptions.find(o => String(o.id_odp) === filterOdp)?.nama_odp : "Semua ODP"}
+                {filterOdp !== "all"
+                  ? odpOptions.find((o) => String(o.id_odp) === filterOdp)?.nama_odp
+                  : "Semua ODP"}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent side="bottom" className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
-              <SelectItem value="all" className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
-                <GitBranch className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                <span>Semua ODP</span>
+            <SelectContent
+              side="bottom"
+              alignItemWithTrigger={false}
+              className="dropdown-scroll z-[100] max-h-72 w-[280px] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+            >
+              <div className="sticky top-0 z-10 mb-1 rounded-xl border-b border-slate-100 bg-white/95 px-2 pb-2 pt-1 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/95">
+                <div className="group relative">
+                  <Search className={cn("pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2", odpSearch ? "text-purple-500" : "text-slate-400 group-focus-within:text-purple-500")} />
+                  <input
+                    type="text"
+                    value={odpSearch}
+                    onChange={(e) => setOdpSearch(e.target.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    placeholder="Cari nama ODP..."
+                    autoFocus
+                    className="h-9 w-full rounded-lg border-0 bg-transparent pl-9 pr-8 text-xs text-slate-700 outline-none placeholder:text-slate-400 focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  />
+                  {odpSearch && (
+                    <button type="button" onClick={() => setOdpSearch("")} className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200">
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+                <p className="mt-1 px-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                  {odpSearch.trim() ? `${filteredOdpOptions.length} ODP ditemukan` : `${odpOptions.length} ODP tersedia`}
+                </p>
+              </div>
+
+              <SelectItem value="all" className="rounded-xl py-2.5 pl-2 pr-2 cursor-pointer data-[state=checked]:bg-purple-50 data-[state=checked]:text-purple-700 focus:bg-purple-50 dark:data-[state=checked]:bg-purple-500/15 dark:data-[state=checked]:text-purple-300 dark:focus:bg-purple-500/10 [&_[data-slot=select-item-indicator]]:hidden">
+                <span className="flex items-center gap-2"><GitBranch className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span>Semua ODP</span></span>
               </SelectItem>
-              {odpOptions.map((opt) => (
-                <SelectItem key={opt.id_odp} value={String(opt.id_odp)} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
-                  <GitBranch className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <span>{opt.nama_odp}</span>
-                </SelectItem>
-              ))}
+
+              <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+              {filteredOdpOptions.length === 0 ? (
+                <div className="px-3 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
+                  ODP tidak ditemukan
+                </div>
+              ) : (
+                filteredOdpOptions.map((opt) => (
+                  <SelectItem key={opt.id_odp} value={String(opt.id_odp)} className="rounded-xl py-2.5 pl-2 pr-2 cursor-pointer data-[state=checked]:bg-purple-50 data-[state=checked]:text-purple-700 focus:bg-purple-50 dark:data-[state=checked]:bg-purple-500/15 dark:data-[state=checked]:text-purple-300 dark:focus:bg-purple-500/10 [&_[data-slot=select-item-indicator]]:hidden">
+                    <span className="flex items-center gap-2"><GitBranch className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span className="truncate">{opt.nama_odp}</span></span>
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
 

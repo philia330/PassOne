@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import React, { useState } from "react";
-import { Eye, MapPin, User, Phone, Package, Users, Calendar, Hash, FileText, CreditCard, Briefcase, Clock, CheckCircle, ExternalLink } from "lucide-react";
+import { Eye, MapPin, User, Phone, Package, Users, Calendar, Hash, FileText, CreditCard, Briefcase, Clock, CheckCircle, ExternalLink, Download, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type { FabData } from "@/types/fab";
 
 const LocationPickerMap = dynamic(() => import("@/components/shared/LocationPickerMap"), {
@@ -84,6 +85,7 @@ function SectionDivider({ children }: { children: React.ReactNode }) {
 
 export function FabViewDialog({ fab, children, open: controlledOpen, onOpenChange }: FabViewDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled ? controlledOpen : internalOpen;
   const setIsOpen = isControlled ? onOpenChange! : setInternalOpen;
@@ -113,6 +115,49 @@ export function FabViewDialog({ fab, children, open: controlledOpen, onOpenChang
     setIsOpen(true);
   };
 
+  const handleDownloadFoto = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!fab.foto) return;
+
+    setIsDownloading(true);
+    try {
+      const response = await fetch(fab.foto);
+      if (!response.ok) {
+        throw new Error("Gagal mengambil gambar");
+      }
+
+      const blob = await response.blob();
+
+      // Tentukan ekstensi file dari content-type, fallback ke .jpg
+      const contentType = response.headers.get("Content-Type") ?? "";
+      const extMatch = contentType.match(/image\/(\w+)/);
+      const ext = extMatch ? extMatch[1].replace("jpeg", "jpg") : "jpg";
+
+      const safeName = fab.nama_pelanggan
+        .trim()
+        .replace(/\s+/g, "_")
+        .replace(/[^a-zA-Z0-9_-]/g, "");
+
+      const urlBlob = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = urlBlob;
+      link.download = `Foto_FAB_${safeName || "pelanggan"}.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(urlBlob);
+
+      toast.success("Berhasil mengunduh foto");
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Terjadi kesalahan saat mengunduh foto");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       {children ? (
@@ -135,10 +180,10 @@ export function FabViewDialog({ fab, children, open: controlledOpen, onOpenChang
         className="
           flex h-full max-h-[100dvh] w-full max-w-full flex-col
           overflow-hidden rounded-none p-0
-          sm:h-auto sm:max-h-[90vh] sm:max-w-[700px] sm:rounded-3xl sm:p-6
+          sm:h-auto sm:max-h-[90vh] sm:max-w-[700px] sm:rounded-3xl
         "
       >
-        <DialogHeader className="flex-shrink-0 px-4 pt-4 sm:px-0 sm:pt-0 pb-2">
+        <DialogHeader className="flex-shrink-0 px-4 pt-4 sm:px-6 sm:pt-6 pb-2">
           <DialogTitle className="flex items-start gap-3 text-base sm:text-lg">
             <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-fuchsia-500 text-white shadow-lg shadow-purple-500/30">
               <FileText size={22} />
@@ -177,7 +222,37 @@ export function FabViewDialog({ fab, children, open: controlledOpen, onOpenChang
           </DialogTitle>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-0 py-3 space-y-4">
+        {/*
+          Wrapper scroll ini SENGAJA dibuat full-width tanpa padding
+          horizontal, supaya scrollbar-nya nempel pas di tepi/border kanan
+          dialog (bukan ngambang di tengah karena kepotong padding parent).
+          Padding kiri-kanan konten dipindah ke div pembungkus di dalamnya.
+        */}
+        <div
+          className="
+            min-h-0 flex-1 overflow-y-auto overflow-x-hidden
+            scroll-smooth pt-1.5
+            [&::-webkit-scrollbar]:w-1.5
+            [&::-webkit-scrollbar-button]:hidden
+            [&::-webkit-scrollbar-button]:h-0
+            [&::-webkit-scrollbar-button]:w-0
+            [&::-webkit-scrollbar-track]:bg-transparent
+            [&::-webkit-scrollbar-track]:my-1
+            [&::-webkit-scrollbar-corner]:bg-transparent
+            [&::-webkit-scrollbar-thumb]:rounded-full
+            [&::-webkit-scrollbar-thumb]:bg-slate-300
+            [&::-webkit-scrollbar-thumb]:border-2
+            [&::-webkit-scrollbar-thumb]:border-solid
+            [&::-webkit-scrollbar-thumb]:border-transparent
+            [&::-webkit-scrollbar-thumb]:bg-clip-padding
+            hover:[&::-webkit-scrollbar-thumb]:bg-purple-400
+            dark:[&::-webkit-scrollbar-thumb]:bg-slate-700
+            dark:hover:[&::-webkit-scrollbar-thumb]:bg-purple-500/70
+            [&::-webkit-scrollbar-thumb]:transition-colors
+          "
+          style={{ scrollbarWidth: "thin", scrollbarColor: "rgb(203 213 225) transparent" }}
+        >
+        <div className="px-4 sm:px-6 py-3 space-y-4">
           {/* Foto Lokasi */}
           {fab.foto && (
             <div className="relative overflow-hidden rounded-2xl">
@@ -187,6 +262,22 @@ export function FabViewDialog({ fab, children, open: controlledOpen, onOpenChang
                 className="h-44 w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+              {/* Tombol Download */}
+              <button
+                type="button"
+                onClick={handleDownloadFoto}
+                disabled={isDownloading}
+                title="Download foto"
+                className="absolute top-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isDownloading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Download size={16} />
+                )}
+              </button>
+
               <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
                 <div className="text-white">
                   <p className="text-xs font-semibold opacity-90">Foto Lokasi</p>
@@ -272,6 +363,7 @@ export function FabViewDialog({ fab, children, open: controlledOpen, onOpenChang
               </div>
             </div>
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

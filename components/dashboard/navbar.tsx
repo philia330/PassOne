@@ -13,16 +13,33 @@ type SettingsData = {
   app_subtitle: string;
 };
 
+// Cuma butuh field "role"-nya aja di sini -- dibikin longgar (bukan
+// nge-import CurrentUser dari salah satu modul fitur) supaya Navbar ini
+// tetap netral dan bisa dipakai di halaman mana pun tanpa ketergantungan
+// ke tipe data spesifik satu fitur.
+type NavbarCurrentUser = {
+  role: string;
+};
+
 export default function Navbar({
   settings,
   onMenuClick,
+  currentUser,
 }: {
   settings: SettingsData;
   onMenuClick: () => void;
+  // Optional + default di bawah -- supaya kalau parent (layout) belum/lupa
+  // ngirim prop ini, Navbar tidak crash. Efeknya cuma tombol Settings
+  // ikut disembunyikan (dianggap bukan admin), bukan error runtime.
+  currentUser?: NavbarCurrentUser;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [now, setNow] = useState<Date | null>(null);
+
+  // Tombol Pengaturan cuma boleh kelihatan buat ADMIN. currentUser bisa
+  // saja undefined kalau parent belum ngirim propnya -- fallback ke "".
+  const isAdmin = currentUser?.role === "ADMIN";
 
   useEffect(() => {
     setNow(new Date());
@@ -116,14 +133,18 @@ export default function Navbar({
         )}
         <ThemeToggle />
         <NotificationBell />
-        
-        <button
-          onClick={() => router.push("/workspace?view=settings")}
-          className="rounded-xl border border-slate-200 p-2.5 transition hover:bg-slate-100 hover:scale-110 active:scale-95 dark:border-slate-700 dark:hover:bg-slate-800 sm:p-3"
-          title="Pengaturan"
-        >
-          <Settings size={20} />
-        </button>
+
+        {/* Pengaturan -- cuma tampil buat ADMIN, role lain nggak lihat
+            tombolnya sama sekali (bukan cuma di-disable). */}
+        {isAdmin && (
+          <button
+            onClick={() => router.push("/workspace?view=settings")}
+            className="rounded-xl border border-slate-200 p-2.5 transition hover:bg-slate-100 hover:scale-110 active:scale-95 dark:border-slate-700 dark:hover:bg-slate-800 sm:p-3"
+            title="Pengaturan"
+          >
+            <Settings size={20} />
+          </button>
+        )}
       </div>
     </header>
   );

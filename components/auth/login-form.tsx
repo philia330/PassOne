@@ -30,6 +30,7 @@ export default function LoginForm({
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [passwordReadOnly, setPasswordReadOnly] = useState(true); // trik anti-autofill
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -101,7 +102,14 @@ export default function LoginForm({
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-5 sm:mt-10 sm:space-y-6">
+        <form
+          onSubmit={handleSubmit}
+          className="mt-8 space-y-5 sm:mt-10 sm:space-y-6"
+          autoComplete="off"
+        >
+          {/* Dummy fields tersembunyi untuk "mengecoh" autofill Chrome */}
+          <input type="text" name="fake-username" autoComplete="username" className="hidden" />
+          <input type="password" name="fake-password" autoComplete="new-password" className="hidden" />
 
           {/* Username */}
           <div>
@@ -116,26 +124,27 @@ export default function LoginForm({
               />
 
               <Input
-  type="text"
-  value={username}
-  onChange={(e) => setUsername(e.target.value)}
-  placeholder="Masukkan Username atau Email"
-  autoComplete="off"
-  className="
-    h-12
-    rounded-2xl
-    border-slate-200
-    bg-white
-    pl-12
-    text-slate-800
-    placeholder:text-slate-400
-    shadow-sm
-    focus:border-purple-500
-    focus:ring-2
-    focus:ring-purple-200
-    sm:h-14
-  "
-/>
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Masukkan Username atau Email"
+                autoComplete="off"
+                name="login-username-field"
+                className="
+                  h-12
+                  rounded-2xl
+                  border-slate-200
+                  bg-white
+                  pl-12
+                  text-slate-800
+                  placeholder:text-slate-400
+                  shadow-sm
+                  focus:border-purple-500
+                  focus:ring-2
+                  focus:ring-purple-200
+                  sm:h-14
+                "
+              />
             </div>
           </div>
 
@@ -152,27 +161,30 @@ export default function LoginForm({
               />
 
               <Input
-  type={showPassword ? "text" : "password"}
-  value={password}
-  onChange={(e) => setPassword(e.target.value)}
-  placeholder="Masukkan Password"
-  autoComplete="current-password"
-  className="
-    h-12
-    rounded-2xl
-    border-slate-200
-    bg-white
-    pl-12
-    pr-14
-    text-slate-800
-    placeholder:text-slate-400
-    shadow-sm
-    focus:border-purple-500
-    focus:ring-2
-    focus:ring-purple-200
-    sm:h-14
-  "
-/>
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onFocus={() => setPasswordReadOnly(false)}
+                placeholder="Masukkan Password"
+                autoComplete="new-password"
+                name="login-password-field"
+                readOnly={passwordReadOnly}
+                className="
+                  h-12
+                  rounded-2xl
+                  border-slate-200
+                  bg-white
+                  pl-12
+                  pr-14
+                  text-slate-800
+                  placeholder:text-slate-400
+                  shadow-sm
+                  focus:border-purple-500
+                  focus:ring-2
+                  focus:ring-purple-200
+                  sm:h-14
+                "
+              />
 
               <button
                 type="button"
@@ -210,7 +222,6 @@ export default function LoginForm({
           >
             {loading ? "Loading..." : "Login"}
           </Button>
-
         </form>
 
         <div className="mt-8 border-t pt-6 text-center text-sm text-slate-500 sm:mt-10">

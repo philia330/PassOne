@@ -83,6 +83,16 @@ function makeRowId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+// ==========================================================
+// Tanda wajib (*) merah -- dipasang di sebelah label field yang
+// harus diisi supaya user langsung tahu tanpa perlu coba submit dulu.
+// ==========================================================
+const RequiredMark = () => (
+  <span className="text-red-500 ml-0.5" aria-hidden="true">
+    *
+  </span>
+);
+
 export const BaaForm = ({
   defaultValues,
   kodeOtomatis,
@@ -95,6 +105,55 @@ export const BaaForm = ({
   currentUser,
 }: BaaFormProps) => {
   const [idFab, setIdFab] = useState(defaultValues?.id_fab ? String(defaultValues.id_fab) : "");
+
+  // ==========================================================
+  // VALIDASI VISUAL -- satu state error + satu "pemicu getar" yang
+  // dipakai bareng-bareng oleh semua field. Field ditandai invalid
+  // lewat event `onInvalid` bawaan HTML5 (otomatis muncul begitu form
+  // dicoba disubmit dan field yang required belum terisi benar).
+  // ==========================================================
+  const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
+  const [shakeField, setShakeField] = useState<string | null>(null);
+
+  const markInvalid = (field: string) => {
+    setFieldErrors((prev) => ({ ...prev, [field]: true }));
+    setShakeField(field);
+    window.setTimeout(() => {
+      setShakeField((current) => (current === field ? null : current));
+    }, 500);
+  };
+
+  const markValid = (field: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  // Gabungan class border+ring merah, ditambah animasi getar SELAMA
+  // 0.4 detik setelah field itu baru saja terdeteksi invalid. Dipakai
+  // untuk input/textarea biasa (bukan yang lewat SearchableSelect).
+  const errorClass = (field: string) =>
+    [
+      fieldErrors[field]
+        ? "border-red-500 focus-visible:ring-red-500 focus-visible:border-red-400"
+        : "",
+      shakeField === field ? "field-shake" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+  // Dipakai buat bungkus SearchableSelect (border-nya bukan di komponen
+  // itu sendiri, jadi dikasih ring merah dari luar).
+  const selectWrapClass = (field: string) =>
+    [
+      fieldErrors[field] ? "ring-2 ring-red-500 rounded-2xl" : "",
+      shakeField === field ? "field-shake" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
   // ================================================================
   // TANGGAL INSTALASI -- terkunci otomatis. Mode create: hari ini.
@@ -228,6 +287,7 @@ export const BaaForm = ({
           return [newOnt, ...prev];
         });
         setIdOnt(String(newOnt.id_ont));
+        markValid("id_ont");
         toast.success(`ONT ${newOnt.serial_number} berhasil ditambahkan dan dipilih.`);
       }
     } catch (err) {
@@ -274,6 +334,7 @@ export const BaaForm = ({
       ...rows,
       { rowId: makeRowId(), id_material: "", jumlah: "1", keterangan: "" },
     ]);
+    markValid("materialRows");
   };
 
   const removeRow = (rowId: string) => {
@@ -287,7 +348,10 @@ export const BaaForm = ({
   };
 
   const handleOltChange = (value: string | null) => {
-    if (value !== null) setIdOlt(value);
+    if (value !== null) {
+      setIdOlt(value);
+      markValid("id_olt");
+    }
   };
 
   const handleMaterialChange = (rowId: string, value: string | null) => {
@@ -367,6 +431,7 @@ export const BaaForm = ({
         const found = allOntOptions.find((o) => o.id_ont === targetId);
         if (found) {
           setIdOnt(String(found.id_ont));
+          markValid("id_ont");
           toast.success(`ONT ${found.serial_number} dipilih.`);
           return;
         }
@@ -432,11 +497,13 @@ export const BaaForm = ({
             return [newOnt, ...prev];
           });
           setIdOnt(String(newOnt.id_ont));
+          markValid("id_ont");
           setQuickAddOntOpen(false);
           toast.success(`ONT ${newOnt.serial_number} yang sudah terdaftar dipilih.`);
         } else {
           setExtraOntOptions((prev) => [newOnt, ...prev]);
           setIdOnt(String(newOnt.id_ont));
+          markValid("id_ont");
           setQuickAddOntOpen(false);
           toast.success(`ONT ${newOnt.serial_number} berhasil ditambahkan dan dipilih.`);
         }
@@ -450,657 +517,856 @@ export const BaaForm = ({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-      {/* Kode BAA */}
-      <div className="col-span-1 md:col-span-2 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          <Tag size={13} className="text-purple-500" /> Kode BAA
-        </Label>
-        <div className="relative">
-          <Input
-            value={defaultValues?.kode_baa ?? kodeOtomatis ?? ""}
-            readOnly
-            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-mono font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
-          />
-          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-        </div>
-        <p className="text-xs text-slate-400 dark:text-slate-500">Dibuat otomatis, tidak bisa diubah manual</p>
-      </div>
+    <>
+      {/* Animasi getar dipakai bareng di semua field -- scoped ke
+          komponen ini saja lewat styled-jsx, tidak perlu ubah
+          tailwind.config. */}
+      <style jsx>{`
+        @keyframes field-shake {
+          0%,
+          100% {
+            transform: translateX(0);
+          }
+          20% {
+            transform: translateX(-6px);
+          }
+          40% {
+            transform: translateX(6px);
+          }
+          60% {
+            transform: translateX(-4px);
+          }
+          80% {
+            transform: translateX(4px);
+          }
+        }
+        .field-shake {
+          animation: field-shake 0.4s ease-in-out;
+        }
+      `}</style>
 
-      {/* Tanggal Instalasi -- terkunci otomatis ke hari ini (mode create) */}
-      <div className="col-span-1 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          <Calendar size={13} className="text-purple-500" /> Tanggal Instalasi
-        </Label>
-        <div className="relative">
-          <Input
-            value={tanggalDisplay}
-            readOnly
-            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
-          />
-          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-        </div>
-        <p className="text-xs text-slate-400 dark:text-slate-500">
-          Otomatis tercatat sesuai tanggal BAA ini diinput.
-        </p>
-        <input type="hidden" name="tanggal_instalasi" value={tanggalValue} />
-      </div>
+      {/* Fix panah spinner bawaan browser di input angka (RX/TX Power,
+          Port OLT/ODP, Ping) -- defaultnya putih polos dan kelihatan
+          nabrak di dark mode / rounded card. Dihilangkan total supaya
+          konsisten sama input teks lainnya; user tetap bisa ketik angka
+          biasa. Global (bukan scoped) karena harus menembus elemen
+          <input> yang dirender di dalam komponen Input dari shadcn. */}
+      <style jsx global>{`
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type="number"] {
+          -moz-appearance: textfield;
+          appearance: textfield;
+        }
+      `}</style>
 
-      {/* Status -- selalu terkunci "Selesai" */}
-      <div className="col-span-1 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          <Activity size={13} className="text-purple-500" /> Status
-        </Label>
-        <div className="relative">
-          <Input
-            value="Selesai"
-            readOnly
-            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
-          />
-          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-        </div>
-        <p className="text-xs text-slate-400 dark:text-slate-500">
-          BAA otomatis selesai saat disimpan — FAB terkait ikut jadi Aktif.
-        </p>
-        <input type="hidden" name="status" value={status} />
-      </div>
-
-      {/* FAB */}
-      <div className="col-span-1 md:col-span-2 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          <ClipboardList size={13} className="text-purple-500" /> FAB (Pelanggan)
-        </Label>
-        <SearchableSelect
-          value={idFab}
-          onValueChange={setIdFab}
-          options={mergedFabOptions.map((f) => ({
-            value: String(f.id_fab),
-            label: `${f.kode_fab} — ${f.nama_pelanggan}`,
-          }))}
-          placeholder="Pilih FAB"
-          searchPlaceholder="Cari nama pelanggan / kode FAB..."
-          emptyText="FAB tidak ditemukan"
-        />
-        <input type="hidden" name="id_fab" value={idFab} required />
-      </div>
-
-      {/* TEKNISI UTAMA -- dikunci ke user yang login */}
-      <div className="col-span-1 md:col-span-2 space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 pt-3 dark:text-slate-400">
-          <User size={13} className="text-purple-500" /> Teknisi Utama (Anda)
-        </Label>
-        <div className="relative">
-          <Input
-            value={currentUser.nama}
-            readOnly
-            className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
-          />
-          <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-        </div>
-        <p className="text-xs text-slate-400 dark:text-slate-500">Tercatat otomatis sebagai teknisi yang menginput BAA ini.</p>
-        <input type="hidden" name="id_user" value={mainTeknisiId} required />
-      </div>
-
-      {/* TEKNISI TAMBAHAN */}
-      <div className="col-span-1 md:col-span-2 space-y-3">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+        {/* Kode BAA */}
+        <div className="col-span-1 md:col-span-2 space-y-2">
           <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            <UserCog size={13} className="text-purple-500" /> Teknisi Tambahan
+            <Tag size={13} className="text-purple-500" /> Kode BAA
           </Label>
-
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={addTeknisiRow}
-            className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 w-full sm:w-auto dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" /> Tambah Teknisi
-          </Button>
+          <div className="relative">
+            <Input
+              value={defaultValues?.kode_baa ?? kodeOtomatis ?? ""}
+              readOnly
+              className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-mono font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+            />
+            <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+          </div>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Dibuat otomatis, tidak bisa diubah manual</p>
         </div>
 
-        {extraTeknisiRows.length === 0 ? (
-          <p className="text-xs text-slate-400 italic bg-slate-50 rounded-xl px-3 py-3 text-center dark:text-slate-500 dark:bg-slate-800/50">
-            Belum ada teknisi tambahan. Klik &quot;Tambah Teknisi&quot; kalau ada rekan yang ikut
-            mengerjakan instalasi ini.
+        {/* Tanggal Instalasi -- terkunci otomatis ke hari ini (mode create) */}
+        <div className="col-span-1 space-y-2">
+          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <Calendar size={13} className="text-purple-500" /> Tanggal Instalasi
+          </Label>
+          <div className="relative">
+            <Input
+              value={tanggalDisplay}
+              readOnly
+              className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+            />
+            <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+          </div>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            Otomatis tercatat sesuai tanggal BAA ini diinput.
           </p>
-        ) : (
-          <div className="space-y-2">
-            {extraTeknisiRows.map((row) => (
-              <div
-                key={row.rowId}
-                className="flex items-center gap-2 rounded-2xl border border-slate-200 p-3 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50"
-              >
-                <div className="flex-1">
-                  <SearchableSelect
-                    value={row.id_user}
-                    onValueChange={(v) => handleTeknisiRowChange(row.rowId, v)}
-                    options={getAvailableTeknisiOptions(row.rowId).map((t) => ({
-                      value: String(t.id_user),
-                      label: `${t.nama}${t.username ? ` (@${t.username})` : ""}`,
-                      avatarUrl: t.foto,
-                    }))}
-                    placeholder="Pilih teknisi"
-                    searchPlaceholder="Cari teknisi..."
-                    showAvatar
-                    className="rounded-xl"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => removeTeknisiRow(row.rowId)}
-                  className="h-10 w-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 dark:hover:bg-red-500/10"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <input
-          type="hidden"
-          name="teknisi_tambahan"
-          value={JSON.stringify(extraTeknisiIds.map(Number))}
-        />
-      </div>
-
-      {/* OLT */}
-      <div className="col-span-1 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          <Router size={13} className="text-purple-500" /> OLT
-        </Label>
-        <SearchableSelect
-          value={idOlt}
-          onValueChange={handleOltChange}
-          options={oltOptions.map((o) => ({
-            value: String(o.id_olt),
-            label: o.nama_olt,
-          }))}
-          placeholder="Pilih OLT"
-          searchPlaceholder="Cari nama OLT..."
-          emptyText="OLT tidak ditemukan"
-        />
-        <input type="hidden" name="id_olt" value={idOlt} required />
-      </div>
-
-      {/* ODP -- sekarang searchable, sama pola dengan FAB */}
-      <div className="col-span-1 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          <GitBranch size={13} className="text-purple-500" /> ODP
-        </Label>
-        <SearchableSelect
-          value={idOdp}
-          onValueChange={setIdOdp}
-          options={mergedOdpOptions.map((o) => ({
-            value: String(o.id_odp),
-            label: o.nama_odp,
-          }))}
-          placeholder="Pilih ODP"
-          searchPlaceholder="Cari nama ODP..."
-          emptyText="ODP tidak ditemukan"
-        />
-        <input type="hidden" name="id_odp" value={idOdp} required />
-      </div>
-
-      {/* ONT -- searchable + tombol Scan + tombol Tambah ONT untuk isi cepat dari kamera atau manual */}
-      <div className="col-span-1 space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            <Wifi size={13} className="text-purple-500" /> ONT
-          </Label>
-          <div className="flex items-center gap-1.5">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                if (!idOdp) {
-                  toast.error("Pilih ODP terlebih dahulu sebelum scan ONT.");
-                  return;
-                }
-                setScannerOpen(true);
-              }}
-              className="rounded-xl h-7 px-2 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
-            >
-              <ScanLine className="mr-1 h-3.5 w-3.5" /> Scan
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                if (!idOdp) {
-                  toast.error("Pilih ODP terlebih dahulu sebelum menambahkan ONT.");
-                  return;
-                }
-                setManualAddOntOpen(true);
-              }}
-              className="rounded-xl h-7 px-2 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" /> Tambah ONT
-            </Button>
-          </div>
+          <input type="hidden" name="tanggal_instalasi" value={tanggalValue} />
         </div>
-        <SearchableSelect
-          value={idOnt}
-          onValueChange={setIdOnt}
-          options={allOntOptions.map((o) => ({
-            value: String(o.id_ont),
-            label: o.model
-              ? `${o.serial_number} — ${o.model}`
-              : o.serial_number,
-          }))}
-          placeholder="Pilih ONT"
-          searchPlaceholder="Cari serial number / model ONT..."
-          emptyText="ONT tidak ditemukan"
-        />
-        <input type="hidden" name="id_ont" value={idOnt} required />
-      </div>
 
-      {/* Port OLT */}
-      <div className="col-span-1 space-y-2">
-        <Label
-          htmlFor="port_olt"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-        >
-          <Hash size={13} className="text-purple-500" /> Port OLT
-        </Label>
-        <Input
-          id="port_olt"
-          name="port_olt"
-          type="number"
-          placeholder="Contoh: 3"
-          min={1}
-          max={9999}
-          defaultValue={defaultValues?.port_olt ?? ""}
-          autoComplete="off"
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          required
-        />
-      </div>
+        {/* Status -- selalu terkunci "Selesai" */}
+        <div className="col-span-1 space-y-2">
+          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <Activity size={13} className="text-purple-500" /> Status
+          </Label>
+          <div className="relative">
+            <Input
+              value="Selesai"
+              readOnly
+              className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+            />
+            <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+          </div>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            BAA otomatis selesai saat disimpan — FAB terkait ikut jadi Aktif.
+          </p>
+          <input type="hidden" name="status" value={status} />
+        </div>
 
-      {/* Port ODP */}
-      <div className="col-span-1 space-y-2">
-        <Label
-          htmlFor="port_odp"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-        >
-          <Hash size={13} className="text-purple-500" /> Port ODP
-        </Label>
-        <Input
-          id="port_odp"
-          name="port_odp"
-          type="number"
-          placeholder="Contoh: 5"
-          min={1}
-          max={9999}
-          defaultValue={defaultValues?.port_odp ?? ""}
-          autoComplete="off"
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          required
-        />
-      </div>
+        {/* FAB */}
+        <div className="col-span-1 md:col-span-2 space-y-2">
+          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <ClipboardList size={13} className="text-purple-500" /> FAB (Pelanggan)
+            <RequiredMark />
+          </Label>
+          <div className={selectWrapClass("id_fab")}>
+            <SearchableSelect
+              value={idFab}
+              onValueChange={(v) => {
+                setIdFab(v);
+                markValid("id_fab");
+              }}
+              options={mergedFabOptions.map((f) => ({
+                value: String(f.id_fab),
+                label: `${f.kode_fab} — ${f.nama_pelanggan}`,
+              }))}
+              placeholder="Pilih FAB"
+              searchPlaceholder="Cari nama pelanggan / kode FAB..."
+              emptyText="FAB tidak ditemukan"
+            />
+          </div>
+          {/* Input "hantu" (bukan type=hidden) supaya tetap ikut validasi
+              HTML5 -- type=hidden dikecualikan dari constraint validation
+              browser, jadi required-nya tidak akan pernah kedeteksi. */}
+          <input
+            type="text"
+            name="id_fab"
+            value={idFab}
+            onChange={() => {}}
+            onInvalid={() => markInvalid("id_fab")}
+            required
+            tabIndex={-1}
+            aria-hidden="true"
+            className="sr-only"
+          />
+          {fieldErrors.id_fab && <p className="text-xs text-red-500">FAB wajib dipilih.</p>}
+        </div>
 
-      {/* RX Power */}
-      <div className="col-span-1 space-y-2">
-        <Label
-          htmlFor="rx_power_dbm"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-        >
-          <Gauge size={13} className="text-purple-500" /> RX Power (dBm)
-        </Label>
-        <Input
-          id="rx_power_dbm"
-          name="rx_power_dbm"
-          type="number"
-          step="any"
-          placeholder="Contoh: -18.5 (biasanya minus)"
-          required
-          defaultValue={defaultValues?.rx_power_dbm ?? ""}
-          autoComplete="off"
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-        />
-      </div>
+        {/* TEKNISI UTAMA -- dikunci ke user yang login */}
+        <div className="col-span-1 md:col-span-2 space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 pt-3 dark:text-slate-400">
+            <User size={13} className="text-purple-500" /> Teknisi Utama (Anda)
+          </Label>
+          <div className="relative">
+            <Input
+              value={currentUser.nama}
+              readOnly
+              className="rounded-2xl h-12 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed pr-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+            />
+            <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+          </div>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Tercatat otomatis sebagai teknisi yang menginput BAA ini.</p>
+          <input type="hidden" name="id_user" value={mainTeknisiId} required />
+        </div>
 
-      {/* TX Power */}
-      <div className="col-span-1 space-y-2">
-        <Label
-          htmlFor="tx_power_dbm"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-        >
-          <Gauge size={13} className="text-purple-500" /> TX Power (dBm)
-        </Label>
-        <Input
-          id="tx_power_dbm"
-          name="tx_power_dbm"
-          type="number"
-          step="any"
-          placeholder="Contoh: 3.2"
-          required
-          defaultValue={defaultValues?.tx_power_dbm ?? ""}
-          autoComplete="off"
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-        />
-      </div>
+        {/* TEKNISI TAMBAHAN */}
+        <div className="col-span-1 md:col-span-2 space-y-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <UserCog size={13} className="text-purple-500" /> Teknisi Tambahan
+            </Label>
 
-      {/* Speed Download */}
-      <div className="col-span-1 space-y-2">
-        <Label
-          htmlFor="speed_download"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-        >
-          <Download size={13} className="text-purple-500" /> Speed Download
-        </Label>
-        <Input
-          id="speed_download"
-          name="speed_download"
-          placeholder="Contoh: 50 Mbps"
-          required
-          defaultValue={defaultValues?.speed_download ?? ""}
-          autoComplete="off"
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-        />
-      </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={addTeknisiRow}
+              className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 w-full sm:w-auto dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" /> Tambah Teknisi
+            </Button>
+          </div>
 
-      {/* Speed Upload */}
-      <div className="col-span-1 space-y-2">
-        <Label
-          htmlFor="speed_upload"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-        >
-          <Upload size={13} className="text-purple-500" /> Speed Upload
-        </Label>
-        <Input
-          id="speed_upload"
-          name="speed_upload"
-          placeholder="Contoh: 20 Mbps"
-          required
-          defaultValue={defaultValues?.speed_upload ?? ""}
-          autoComplete="off"
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-        />
-      </div>
-
-      {/* Ping */}
-      <div className="col-span-1 space-y-2">
-        <Label
-          htmlFor="ping_ms"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-        >
-          <Timer size={13} className="text-purple-500" /> Ping (ms)
-        </Label>
-        <Input
-          id="ping_ms"
-          name="ping_ms"
-          type="number"
-          step="any"
-          placeholder="Contoh: 12"
-          required
-          defaultValue={defaultValues?.ping_ms ?? ""}
-          autoComplete="off"
-          className="rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-        />
-      </div>
-
-      {/* ================================================ */}
-      {/* FOTO INSTALASI -- dropzone custom, ganti input file bawaan */}
-      {/* ================================================ */}
-      <div className="col-span-1 md:col-span-2 space-y-2">
-        <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          <ImageIcon size={13} className="text-purple-500" /> Foto Instalasi
-        </Label>
-
-        <input
-          ref={fotoInputRef}
-          id="foto_instalasi"
-          name="foto_instalasi"
-          type="file"
-          accept="image/*"
-          onChange={handleFotoChange}
-          className="sr-only"
-        />
-
-        <button
-          type="button"
-          onClick={openGallery}
-          className="group relative w-full overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-purple-300 hover:bg-purple-50/50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-purple-700 dark:hover:bg-purple-500/10"
-        >
-          {fotoPreview ? (
-            <div className="relative">
-              <img
-                src={fotoPreview}
-                alt="Preview foto instalasi"
-                className="h-40 w-full object-cover"
-              />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100">
-                <span className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">
-                  Ganti Foto
-                </span>
-              </div>
-            </div>
+          {extraTeknisiRows.length === 0 ? (
+            <p className="text-xs text-slate-400 italic bg-slate-50 rounded-xl px-3 py-3 text-center dark:text-slate-500 dark:bg-slate-800/50">
+              Belum ada teknisi tambahan. Klik &quot;Tambah Teknisi&quot; kalau ada rekan yang ikut
+              mengerjakan instalasi ini.
+            </p>
           ) : (
-            <div className="flex flex-col items-center justify-center gap-2 px-4 py-8">
-              <div className="rounded-full bg-purple-100 p-3 dark:bg-purple-500/20">
-                <ImageIcon size={20} className="text-purple-600 dark:text-purple-400" />
-              </div>
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                Klik untuk pilih foto instalasi
-              </p>
-              <p className="text-xs text-slate-400 dark:text-slate-500">
-                JPG, PNG — maks. 5MB
-              </p>
+            <div className="space-y-2">
+              {extraTeknisiRows.map((row) => (
+                <div
+                  key={row.rowId}
+                  className="flex items-center gap-2 rounded-2xl border border-slate-200 p-3 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50"
+                >
+                  <div className="flex-1">
+                    <SearchableSelect
+                      value={row.id_user}
+                      onValueChange={(v) => handleTeknisiRowChange(row.rowId, v)}
+                      options={getAvailableTeknisiOptions(row.rowId).map((t) => ({
+                        value: String(t.id_user),
+                        label: `${t.nama}${t.username ? ` (@${t.username})` : ""}`,
+                        avatarUrl: t.foto,
+                      }))}
+                      placeholder="Pilih teknisi"
+                      searchPlaceholder="Cari teknisi..."
+                      showAvatar
+                      className="rounded-xl"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => removeTeknisiRow(row.rowId)}
+                    className="h-10 w-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 dark:hover:bg-red-500/10"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
-        </button>
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={openCamera}
-            className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-purple-300 hover:text-purple-600 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-purple-700 dark:hover:text-purple-400"
+          <input
+            type="hidden"
+            name="teknisi_tambahan"
+            value={JSON.stringify(extraTeknisiIds.map(Number))}
+          />
+        </div>
+
+        {/* OLT */}
+        <div className="col-span-1 space-y-2">
+          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <Router size={13} className="text-purple-500" /> OLT
+            <RequiredMark />
+          </Label>
+          <div className={selectWrapClass("id_olt")}>
+            <SearchableSelect
+              value={idOlt}
+              onValueChange={handleOltChange}
+              options={oltOptions.map((o) => ({
+                value: String(o.id_olt),
+                label: o.nama_olt,
+              }))}
+              placeholder="Pilih OLT"
+              searchPlaceholder="Cari nama OLT..."
+              emptyText="OLT tidak ditemukan"
+            />
+          </div>
+          <input
+            type="text"
+            name="id_olt"
+            value={idOlt}
+            onChange={() => {}}
+            onInvalid={() => markInvalid("id_olt")}
+            required
+            tabIndex={-1}
+            aria-hidden="true"
+            className="sr-only"
+          />
+          {fieldErrors.id_olt && <p className="text-xs text-red-500">OLT wajib dipilih.</p>}
+        </div>
+
+        {/* ODP -- sekarang searchable, sama pola dengan FAB */}
+        <div className="col-span-1 space-y-2">
+          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <GitBranch size={13} className="text-purple-500" /> ODP
+            <RequiredMark />
+          </Label>
+          <div className={selectWrapClass("id_odp")}>
+            <SearchableSelect
+              value={idOdp}
+              onValueChange={(v) => {
+                setIdOdp(v);
+                markValid("id_odp");
+              }}
+              options={mergedOdpOptions.map((o) => ({
+                value: String(o.id_odp),
+                label: o.nama_odp,
+              }))}
+              placeholder="Pilih ODP"
+              searchPlaceholder="Cari nama ODP..."
+              emptyText="ODP tidak ditemukan"
+            />
+          </div>
+          <input
+            type="text"
+            name="id_odp"
+            value={idOdp}
+            onChange={() => {}}
+            onInvalid={() => markInvalid("id_odp")}
+            required
+            tabIndex={-1}
+            aria-hidden="true"
+            className="sr-only"
+          />
+          {fieldErrors.id_odp && <p className="text-xs text-red-500">ODP wajib dipilih.</p>}
+        </div>
+
+        {/* ONT -- searchable + tombol Scan + tombol Tambah ONT untuk isi cepat dari kamera atau manual */}
+        <div className="col-span-1 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <Wifi size={13} className="text-purple-500" /> ONT
+              <RequiredMark />
+            </Label>
+            <div className="flex items-center gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (!idOdp) {
+                    toast.error("Pilih ODP terlebih dahulu sebelum scan ONT.");
+                    return;
+                  }
+                  setScannerOpen(true);
+                }}
+                className="rounded-xl h-7 px-2 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
+              >
+                <ScanLine className="mr-1 h-3.5 w-3.5" /> Scan
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (!idOdp) {
+                    toast.error("Pilih ODP terlebih dahulu sebelum menambahkan ONT.");
+                    return;
+                  }
+                  setManualAddOntOpen(true);
+                }}
+                className="rounded-xl h-7 px-2 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" /> Tambah ONT
+              </Button>
+            </div>
+          </div>
+          <div className={selectWrapClass("id_ont")}>
+            <SearchableSelect
+              value={idOnt}
+              onValueChange={(v) => {
+                setIdOnt(v);
+                markValid("id_ont");
+              }}
+              options={allOntOptions.map((o) => ({
+                value: String(o.id_ont),
+                label: o.model
+                  ? `${o.serial_number} — ${o.model}`
+                  : o.serial_number,
+              }))}
+              placeholder="Pilih ONT"
+              searchPlaceholder="Cari serial number / model ONT..."
+              emptyText="ONT tidak ditemukan"
+            />
+          </div>
+          <input
+            type="text"
+            name="id_ont"
+            value={idOnt}
+            onChange={() => {}}
+            onInvalid={() => markInvalid("id_ont")}
+            required
+            tabIndex={-1}
+            aria-hidden="true"
+            className="sr-only"
+          />
+          {fieldErrors.id_ont && <p className="text-xs text-red-500">ONT wajib dipilih.</p>}
+        </div>
+
+        {/* Port OLT */}
+        <div className="col-span-1 space-y-2">
+          <Label
+            htmlFor="port_olt"
+            className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
           >
-            <Camera size={14} /> Ambil Foto
-          </button>
+            <Hash size={13} className="text-purple-500" /> Port OLT
+            <RequiredMark />
+          </Label>
+          <Input
+            id="port_olt"
+            name="port_olt"
+            type="number"
+            placeholder="Contoh: 3"
+            min={1}
+            max={9999}
+            defaultValue={defaultValues?.port_olt ?? ""}
+            autoComplete="off"
+            onInvalid={() => markInvalid("port_olt")}
+            onChange={(e) => {
+              if (e.target.value.trim()) markValid("port_olt");
+            }}
+            className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${errorClass(
+              "port_olt"
+            )}`}
+            required
+          />
+          {fieldErrors.port_olt && <p className="text-xs text-red-500">Port OLT wajib diisi.</p>}
+        </div>
+
+        {/* Port ODP */}
+        <div className="col-span-1 space-y-2">
+          <Label
+            htmlFor="port_odp"
+            className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+          >
+            <Hash size={13} className="text-purple-500" /> Port ODP
+            <RequiredMark />
+          </Label>
+          <Input
+            id="port_odp"
+            name="port_odp"
+            type="number"
+            placeholder="Contoh: 5"
+            min={1}
+            max={9999}
+            defaultValue={defaultValues?.port_odp ?? ""}
+            autoComplete="off"
+            onInvalid={() => markInvalid("port_odp")}
+            onChange={(e) => {
+              if (e.target.value.trim()) markValid("port_odp");
+            }}
+            className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${errorClass(
+              "port_odp"
+            )}`}
+            required
+          />
+          {fieldErrors.port_odp && <p className="text-xs text-red-500">Port ODP wajib diisi.</p>}
+        </div>
+
+        {/* RX Power */}
+        <div className="col-span-1 space-y-2">
+          <Label
+            htmlFor="rx_power_dbm"
+            className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+          >
+            <Gauge size={13} className="text-purple-500" /> RX Power (dBm)
+            <RequiredMark />
+          </Label>
+          <Input
+            id="rx_power_dbm"
+            name="rx_power_dbm"
+            type="number"
+            step="any"
+            placeholder="Contoh: -18.5 (biasanya minus)"
+            required
+            defaultValue={defaultValues?.rx_power_dbm ?? ""}
+            autoComplete="off"
+            onInvalid={() => markInvalid("rx_power_dbm")}
+            onChange={(e) => {
+              if (e.target.value.trim()) markValid("rx_power_dbm");
+            }}
+            className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${errorClass(
+              "rx_power_dbm"
+            )}`}
+          />
+          {fieldErrors.rx_power_dbm && (
+            <p className="text-xs text-red-500">RX Power wajib diisi.</p>
+          )}
+        </div>
+
+        {/* TX Power */}
+        <div className="col-span-1 space-y-2">
+          <Label
+            htmlFor="tx_power_dbm"
+            className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+          >
+            <Gauge size={13} className="text-purple-500" /> TX Power (dBm)
+            <RequiredMark />
+          </Label>
+          <Input
+            id="tx_power_dbm"
+            name="tx_power_dbm"
+            type="number"
+            step="any"
+            placeholder="Contoh: 3.2"
+            required
+            defaultValue={defaultValues?.tx_power_dbm ?? ""}
+            autoComplete="off"
+            onInvalid={() => markInvalid("tx_power_dbm")}
+            onChange={(e) => {
+              if (e.target.value.trim()) markValid("tx_power_dbm");
+            }}
+            className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${errorClass(
+              "tx_power_dbm"
+            )}`}
+          />
+          {fieldErrors.tx_power_dbm && (
+            <p className="text-xs text-red-500">TX Power wajib diisi.</p>
+          )}
+        </div>
+
+        {/* Speed Download */}
+        <div className="col-span-1 space-y-2">
+          <Label
+            htmlFor="speed_download"
+            className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+          >
+            <Download size={13} className="text-purple-500" /> Speed Download
+            <RequiredMark />
+          </Label>
+          <Input
+            id="speed_download"
+            name="speed_download"
+            placeholder="Contoh: 50 Mbps"
+            required
+            defaultValue={defaultValues?.speed_download ?? ""}
+            autoComplete="off"
+            onInvalid={() => markInvalid("speed_download")}
+            onChange={(e) => {
+              if (e.target.value.trim()) markValid("speed_download");
+            }}
+            className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${errorClass(
+              "speed_download"
+            )}`}
+          />
+          {fieldErrors.speed_download && (
+            <p className="text-xs text-red-500">Speed download wajib diisi.</p>
+          )}
+        </div>
+
+        {/* Speed Upload */}
+        <div className="col-span-1 space-y-2">
+          <Label
+            htmlFor="speed_upload"
+            className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+          >
+            <Upload size={13} className="text-purple-500" /> Speed Upload
+            <RequiredMark />
+          </Label>
+          <Input
+            id="speed_upload"
+            name="speed_upload"
+            placeholder="Contoh: 20 Mbps"
+            required
+            defaultValue={defaultValues?.speed_upload ?? ""}
+            autoComplete="off"
+            onInvalid={() => markInvalid("speed_upload")}
+            onChange={(e) => {
+              if (e.target.value.trim()) markValid("speed_upload");
+            }}
+            className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${errorClass(
+              "speed_upload"
+            )}`}
+          />
+          {fieldErrors.speed_upload && (
+            <p className="text-xs text-red-500">Speed upload wajib diisi.</p>
+          )}
+        </div>
+
+        {/* Ping */}
+        <div className="col-span-1 space-y-2">
+          <Label
+            htmlFor="ping_ms"
+            className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+          >
+            <Timer size={13} className="text-purple-500" /> Ping (ms)
+            <RequiredMark />
+          </Label>
+          <Input
+            id="ping_ms"
+            name="ping_ms"
+            type="number"
+            step="any"
+            placeholder="Contoh: 12"
+            required
+            defaultValue={defaultValues?.ping_ms ?? ""}
+            autoComplete="off"
+            onInvalid={() => markInvalid("ping_ms")}
+            onChange={(e) => {
+              if (e.target.value.trim()) markValid("ping_ms");
+            }}
+            className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${errorClass(
+              "ping_ms"
+            )}`}
+          />
+          {fieldErrors.ping_ms && <p className="text-xs text-red-500">Ping wajib diisi.</p>}
+        </div>
+
+        {/* ================================================ */}
+        {/* FOTO INSTALASI -- dropzone custom, ganti input file bawaan */}
+        {/* ================================================ */}
+        <div className="col-span-1 md:col-span-2 space-y-2">
+          <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <ImageIcon size={13} className="text-purple-500" /> Foto Instalasi
+          </Label>
+
+          <input
+            ref={fotoInputRef}
+            id="foto_instalasi"
+            name="foto_instalasi"
+            type="file"
+            accept="image/*"
+            onChange={handleFotoChange}
+            className="sr-only"
+          />
+
           <button
             type="button"
             onClick={openGallery}
-            className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-purple-300 hover:text-purple-600 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-purple-700 dark:hover:text-purple-400"
+            className="group relative w-full overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-purple-300 hover:bg-purple-50/50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-purple-700 dark:hover:bg-purple-500/10"
           >
-            <ImageIcon size={14} /> Pilih dari Galeri
+            {fotoPreview ? (
+              <div className="relative">
+                <img
+                  src={fotoPreview}
+                  alt="Preview foto instalasi"
+                  className="h-40 w-full object-cover"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100">
+                  <span className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                    Ganti Foto
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-2 px-4 py-8">
+                <div className="rounded-full bg-purple-100 p-3 dark:bg-purple-500/20">
+                  <ImageIcon size={20} className="text-purple-600 dark:text-purple-400" />
+                </div>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                  Klik untuk pilih foto instalasi
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  JPG, PNG — maks. 5MB
+                </p>
+              </div>
+            )}
           </button>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={openCamera}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-purple-300 hover:text-purple-600 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-purple-700 dark:hover:text-purple-400"
+            >
+              <Camera size={14} /> Ambil Foto
+            </button>
+            <button
+              type="button"
+              onClick={openGallery}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-purple-300 hover:text-purple-600 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-purple-700 dark:hover:text-purple-400"
+            >
+              <ImageIcon size={14} /> Pilih dari Galeri
+            </button>
+          </div>
+
+          {fotoFileName ? (
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+              File dipilih: <span className="font-medium">{fotoFileName}</span>
+            </p>
+          ) : fotoPreview && fotoPreview === defaultValues?.foto_instalasi ? (
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Foto saat ini. Klik dropzone kalau mau menggantinya.
+            </p>
+          ) : null}
+
+          <input
+            type="hidden"
+            name="foto_instalasi_existing"
+            value={defaultValues?.foto_instalasi ?? ""}
+          />
         </div>
 
-        {fotoFileName ? (
-          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-            File dipilih: <span className="font-medium">{fotoFileName}</span>
-          </p>
-        ) : fotoPreview && fotoPreview === defaultValues?.foto_instalasi ? (
-          <p className="text-xs text-slate-400 dark:text-slate-500">
-            Foto saat ini. Klik dropzone kalau mau menggantinya.
-          </p>
-        ) : null}
+        {/* Catatan */}
+        <div className="col-span-1 md:col-span-2 space-y-2">
+          <Label
+            htmlFor="catatan"
+            className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+          >
+            <StickyNote size={13} className="text-purple-500" /> Catatan Teknisi
+          </Label>
+          <textarea
+            id="catatan"
+            name="catatan"
+            rows={2}
+            placeholder="Catatan tambahan (opsional)"
+            defaultValue={defaultValues?.catatan ?? ""}
+            autoComplete="off"
+            className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 resize-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+          />
+        </div>
 
-        <input
-          type="hidden"
-          name="foto_instalasi_existing"
-          value={defaultValues?.foto_instalasi ?? ""}
-        />
-      </div>
-
-      {/* Catatan */}
-      <div className="col-span-1 md:col-span-2 space-y-2">
-        <Label
-          htmlFor="catatan"
-          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-        >
-          <StickyNote size={13} className="text-purple-500" /> Catatan Teknisi
-        </Label>
-        <textarea
-          id="catatan"
-          name="catatan"
-          rows={2}
-          placeholder="Catatan tambahan (opsional)"
-          defaultValue={defaultValues?.catatan ?? ""}
-          autoComplete="off"
-          className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 resize-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
-        />
-      </div>
-
-      {/* DAFTAR MATERIAL */}
-      <div className="col-span-1 md:col-span-2 space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-3 gap-2">
-          <div className="flex items-center gap-2">
+        {/* DAFTAR MATERIAL */}
+        <div className="col-span-1 md:col-span-2 space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-3 gap-2">
             <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               <Boxes size={13} className="text-purple-500" /> Material yang Dipakai
+              <RequiredMark />
             </Label>
-            <span className="text-xs text-red-500 font-medium">*Wajib diisi</span>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={addRow}
-            className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 w-full sm:w-auto dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" /> Tambah Material
-          </Button>
-        </div>
-
-        {materialRows.length === 0 ? (
-          <p className="text-xs text-red-500 italic bg-red-50 rounded-xl px-3 py-3 text-center dark:text-red-400 dark:bg-red-900/20">
-            Minimal harus ada 1 material yang dipakai pada instalasi ini. Klik &quot;Tambah Material&quot; di atas untuk menambahkan.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {materialRows.map((row) => (
-              <div
-                key={row.rowId}
-                className="flex flex-col sm:flex-row items-start sm:items-center gap-2 rounded-2xl border border-slate-200 p-3 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50"
-              >
-                <div className="flex-1 w-full sm:w-auto space-y-1.5">
-                  <SearchableSelect
-                    value={row.id_material}
-                    onValueChange={(v) => handleMaterialChange(row.rowId, v)}
-                    options={materialOptions.map((m) => ({
-                      value: String(m.id_material),
-                      label: `${m.nama_material} (${m.satuan})`,
-                    }))}
-                    placeholder="Pilih material"
-                    searchPlaceholder="Cari nama material..."
-                    emptyText="Material tidak ditemukan"
-                  />
-                </div>
-
-                <div className="w-full sm:w-20 space-y-1.5">
-                  <Input
-                    type="number"
-                    min={1}
-                    placeholder="Jml"
-                    value={row.jumlah}
-                    onChange={(e) => updateRow(row.rowId, "jumlah", e.target.value)}
-                    className="rounded-xl h-10 border-slate-200 bg-white text-sm text-center dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                  />
-                </div>
-
-                <div className="flex-1 w-full sm:w-auto space-y-1.5">
-                  <Input
-                    placeholder="Keterangan (opsional)"
-                    value={row.keterangan}
-                    onChange={(e) => updateRow(row.rowId, "keterangan", e.target.value)}
-                    autoComplete="off"
-                    className="rounded-xl h-10 border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => removeRow(row.rowId)}
-                  className="h-10 w-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 dark:hover:bg-red-500/10"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <input type="hidden" name="baa_details" value={JSON.stringify(materialRows)} />
-      </div>
-
-      {/* Scanner QR untuk ONT — bisa scan QR aplikasi (pilih ONT terdaftar)
-          atau barcode/QR stiker pabrik (tambah ONT baru) */}
-      <QrScannerDialog
-        open={scannerOpen}
-        onOpenChange={setScannerOpen}
-        onScanResult={handleOntScanResult}
-        title="Scan QR ONT"
-        description="Scan QR aplikasi untuk pilih ONT terdaftar, atau barcode/QR stiker pabrik untuk tambah ONT baru"
-      />
-
-      {/* Dialog Tambah ONT Baru (quick-add dari hasil scan barcode pabrik) */}
-      <Dialog open={quickAddOntOpen} onOpenChange={setQuickAddOntOpen}>
-        <DialogContent className="rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-slate-900 dark:text-slate-100">
-              Tambah ONT Baru
-            </DialogTitle>
-            <DialogDescription className="text-slate-500 dark:text-slate-400">
-              Serial number terisi otomatis dari hasil scan. Nama pelanggan akan terisi otomatis mengikuti FAB saat BAA ini disimpan. ODP mengikuti pilihan di form ini dan tidak bisa diubah dari sini.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                ODP
-              </Label>
-              <Input
-                value={mergedOdpOptions.find((o) => String(o.id_odp) === idOdp)?.nama_odp ?? "-"}
-                readOnly
-                className="rounded-2xl h-11 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
-              />
-              <p className="text-xs text-slate-400 dark:text-slate-500">
-                ONT baru otomatis terdaftar di ODP ini (mengikuti ODP yang dipilih di form).
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Serial Number
-              </Label>
-              <Input
-                value={scannedSerial}
-                onChange={(e) => setScannedSerial(e.target.value)}
-                placeholder="Serial number ONT"
-                autoComplete="off"
-                className="rounded-2xl h-11 border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
-
             <Button
               type="button"
-              onClick={handleQuickAddOnt}
-              disabled={isCreatingOnt}
-              className="w-full rounded-xl h-11 bg-purple-600 hover:bg-purple-700 text-white"
+              size="sm"
+              variant="outline"
+              onClick={addRow}
+              className="rounded-xl h-8 text-xs border-purple-200 text-purple-700 hover:bg-purple-50 w-full sm:w-auto dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-500/10"
             >
-              {isCreatingOnt ? "Menyimpan..." : "Simpan & Pilih ONT Ini"}
+              <Plus className="mr-1 h-3.5 w-3.5" /> Tambah Material
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
 
-      {/* Dialog Tambah ONT Manual (dari tombol "Tambah ONT") - menggunakan form ONT yang sama */}
-      <OntFormDialog
-        mode="create"
-        pops={[]}
-        odps={mergedOdpOptions}
-        defaultOdpId={idOdp ? Number(idOdp) : undefined}
-        onOntCreated={handleOntCreated}
-        externalOpen={manualAddOntOpen}
-        onExternalOpenChange={setManualAddOntOpen}
-      />
-    </div>
+          <div
+            className={`space-y-2 rounded-2xl ${
+              fieldErrors.materialRows ? "ring-2 ring-red-500 p-1" : ""
+            } ${shakeField === "materialRows" ? "field-shake" : ""}`}
+          >
+            {materialRows.length === 0 ? (
+              <p className="text-xs text-red-500 italic bg-red-50 rounded-xl px-3 py-3 text-center dark:text-red-400 dark:bg-red-900/20">
+                Minimal harus ada 1 material yang dipakai pada instalasi ini. Klik &quot;Tambah Material&quot; di atas untuk menambahkan.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {materialRows.map((row) => (
+                  <div
+                    key={row.rowId}
+                    className="flex flex-col sm:flex-row items-start sm:items-center gap-2 rounded-2xl border border-slate-200 p-3 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50"
+                  >
+                    <div className="flex-1 w-full sm:w-auto space-y-1.5">
+                      <SearchableSelect
+                        value={row.id_material}
+                        onValueChange={(v) => handleMaterialChange(row.rowId, v)}
+                        options={materialOptions.map((m) => ({
+                          value: String(m.id_material),
+                          label: `${m.nama_material} (${m.satuan})`,
+                        }))}
+                        placeholder="Pilih material"
+                        searchPlaceholder="Cari nama material..."
+                        emptyText="Material tidak ditemukan"
+                      />
+                    </div>
+
+                    <div className="w-full sm:w-20 space-y-1.5">
+                      <Input
+                        type="number"
+                        min={1}
+                        placeholder="Jml"
+                        value={row.jumlah}
+                        onChange={(e) => updateRow(row.rowId, "jumlah", e.target.value)}
+                        className="rounded-xl h-10 border-slate-200 bg-white text-sm text-center dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                      />
+                    </div>
+
+                    <div className="flex-1 w-full sm:w-auto space-y-1.5">
+                      <Input
+                        placeholder="Keterangan (opsional)"
+                        value={row.keterangan}
+                        onChange={(e) => updateRow(row.rowId, "keterangan", e.target.value)}
+                        autoComplete="off"
+                        className="rounded-xl h-10 border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => removeRow(row.rowId)}
+                      className="h-10 w-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 dark:hover:bg-red-500/10"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Input "hantu" khusus buat menangkap kasus "belum ada material
+              sama sekali" lewat validasi HTML5 bawaan, sama seperti trik
+              di FAB/Area/ODP/dst -- value cuma terisi kalau baris material
+              sudah ada minimal satu. */}
+          <input
+            type="text"
+            name="_material_required_check"
+            value={materialRows.length > 0 ? "ok" : ""}
+            onChange={() => {}}
+            onInvalid={() => markInvalid("materialRows")}
+            required
+            tabIndex={-1}
+            aria-hidden="true"
+            className="sr-only"
+          />
+
+          <input type="hidden" name="baa_details" value={JSON.stringify(materialRows)} />
+        </div>
+
+        {/* Scanner QR untuk ONT — bisa scan QR aplikasi (pilih ONT terdaftar)
+            atau barcode/QR stiker pabrik (tambah ONT baru) */}
+        <QrScannerDialog
+          open={scannerOpen}
+          onOpenChange={setScannerOpen}
+          onScanResult={handleOntScanResult}
+          title="Scan QR ONT"
+          description="Scan QR aplikasi untuk pilih ONT terdaftar, atau barcode/QR stiker pabrik untuk tambah ONT baru"
+        />
+
+        {/* Dialog Tambah ONT Baru (quick-add dari hasil scan barcode pabrik) */}
+        <Dialog open={quickAddOntOpen} onOpenChange={setQuickAddOntOpen}>
+          <DialogContent className="rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-slate-900 dark:text-slate-100">
+                Tambah ONT Baru
+              </DialogTitle>
+              <DialogDescription className="text-slate-500 dark:text-slate-400">
+                Serial number terisi otomatis dari hasil scan. Nama pelanggan akan terisi otomatis mengikuti FAB saat BAA ini disimpan. ODP mengikuti pilihan di form ini dan tidak bisa diubah dari sini.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  ODP
+                </Label>
+                <Input
+                  value={mergedOdpOptions.find((o) => String(o.id_odp) === idOdp)?.nama_odp ?? "-"}
+                  readOnly
+                  className="rounded-2xl h-11 border-slate-200 bg-slate-50 font-semibold text-slate-500 cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+                />
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  ONT baru otomatis terdaftar di ODP ini (mengikuti ODP yang dipilih di form).
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Serial Number
+                </Label>
+                <Input
+                  value={scannedSerial}
+                  onChange={(e) => setScannedSerial(e.target.value)}
+                  placeholder="Serial number ONT"
+                  autoComplete="off"
+                  className="rounded-2xl h-11 border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              <Button
+                type="button"
+                onClick={handleQuickAddOnt}
+                disabled={isCreatingOnt}
+                className="w-full rounded-xl h-11 bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                {isCreatingOnt ? "Menyimpan..." : "Simpan & Pilih ONT Ini"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog Tambah ONT Manual (dari tombol "Tambah ONT") - menggunakan form ONT yang sama */}
+        <OntFormDialog
+          mode="create"
+          pops={[]}
+          odps={mergedOdpOptions}
+          defaultOdpId={idOdp ? Number(idOdp) : undefined}
+          onOntCreated={handleOntCreated}
+          externalOpen={manualAddOntOpen}
+          onExternalOpenChange={setManualAddOntOpen}
+        />
+      </div>
+    </>
   );
 };

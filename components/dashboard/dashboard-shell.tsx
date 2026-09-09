@@ -12,11 +12,20 @@ type Settings = {
   footer_text: string;
 };
 
+// Cuma butuh "role"-nya di level ini -- sengaja dibikin longgar (bukan
+// import tipe User dari salah satu fitur) karena DashboardShell dipakai
+// di semua halaman dashboard, bukan cuma satu modul tertentu.
+type ShellCurrentUser = {
+  role: string;
+};
+
 export default function DashboardShell({
   settings,
+  currentUser,
   children,
 }: {
   settings: Settings;
+  currentUser: ShellCurrentUser;
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -41,7 +50,11 @@ export default function DashboardShell({
         <Sidebar settings={settings} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-          <Navbar settings={settings} onMenuClick={() => setSidebarOpen(true)} />
+          <Navbar
+            settings={settings}
+            onMenuClick={() => setSidebarOpen(true)}
+            currentUser={currentUser}
+          />
 
           {/* min-h-0 di sini yang paling krusial: ini yang bikin konten
               notifikasi panjang tadi bisa scroll DI DALAM main, bukan

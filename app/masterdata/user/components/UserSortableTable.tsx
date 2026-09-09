@@ -47,6 +47,7 @@ import { DeleteUserDialog } from "./DeleteUserDialog";
 import { UserSearch } from "./UserSearch";
 import { UserPagination } from "./UserPagination";
 import ImagePreview from "@/components/shared/image-preview";
+import { ExportButton } from "@/components/ui/ExportButton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -138,6 +139,8 @@ export function UserSortableTable({
 
   const isAdmin = currentUser?.role === "ADMIN";
   const canBulkDelete = isAdmin;
+  // Samakan hak akses export dengan ODP: ADMIN & LEADER boleh export
+  const canExport = currentUser?.role === "ADMIN" || currentUser?.role === "LEADER";
   const roleFilterOptions = currentUser?.role === "LEADER"
     ? (["ALL", "SALES", "TEKNISI"] as const)
     : (["ALL", "ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"] as const);
@@ -408,8 +411,8 @@ export function UserSortableTable({
         )}
 
         {/* ====================================================== */}
-        {/* NAVIGASI - diselaraskan dengan gaya FabTable            */}
-        {/* Baris 1: Search (kiri) + Aksi & Tambah (kanan)           */}
+        {/* NAVIGASI - diselaraskan dengan gaya FabTable/OdpTable   */}
+        {/* Baris 1: Search (kiri) + Export + Tambah (kanan)        */}
         {/* ====================================================== */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="w-full max-w-xs">
@@ -418,6 +421,9 @@ export function UserSortableTable({
 
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             {actions}
+            {canExport && (
+              <ExportButton apiUrl="/api/user/export" filenamePrefix="Export_User" />
+            )}
             <div className="add-button">
               <UserFormDialog
                 mode="create"

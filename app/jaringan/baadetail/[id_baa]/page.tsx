@@ -42,9 +42,9 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  PENDING: "bg-slate-100 text-slate-600 border-slate-200",
-  PROSES: "bg-sky-100 text-sky-700 border-sky-200",
-  SELESAI: "bg-green-100 text-green-700 border-green-200",
+  PENDING: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
+  PROSES: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-900",
+  SELESAI: "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-900",
 };
 
 const STATUS_ICON: Record<string, React.ReactNode> = {
@@ -216,214 +216,214 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
 
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-          <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
-              <Users className="h-4 w-4 text-purple-500" />
+          <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6 dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2 dark:text-slate-400">
+              <Users className="h-4 w-4 text-purple-500 dark:text-purple-400" />
               Informasi Pelanggan
             </h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-slate-500">Nama</span>
-                <span className="font-semibold text-slate-900">{baa.fab?.nama_pelanggan}</span>
+                <span className="text-slate-500 dark:text-slate-400">Nama</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">{baa.fab?.nama_pelanggan}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Kode FAB</span>
-                <span className="font-mono font-semibold text-purple-700">{baa.fab?.kode_fab}</span>
+                <span className="text-slate-500 dark:text-slate-400">Kode FAB</span>
+                <span className="font-mono font-semibold text-purple-700 dark:text-purple-400">{baa.fab?.kode_fab}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Paket</span>
-                <span className="font-semibold text-slate-900">{baa.fab?.paket?.nama_paket}</span>
+                <span className="text-slate-500 dark:text-slate-400">Paket</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">{baa.fab?.paket?.nama_paket}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Area</span>
-                <span className="font-semibold text-slate-900">{baa.fab?.area?.nama_area}</span>
+                <span className="text-slate-500 dark:text-slate-400">Area</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">{baa.fab?.area?.nama_area}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Sales</span>
-                <span className="font-semibold text-slate-900">{baa.fab?.users?.nama}</span>
+                <span className="text-slate-500 dark:text-slate-400">Sales</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">{baa.fab?.users?.nama}</span>
               </div>
             </div>
           </Card>
 
-          <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
-              <UserCog className="h-4 w-4 text-purple-500" />
+          <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6 dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2 dark:text-slate-400">
+              <UserCog className="h-4 w-4 text-purple-500 dark:text-purple-400" />
               Teknisi
             </h3>
             <div className="space-y-3">
-              <div className="rounded-xl bg-purple-50 border border-purple-100 p-3">
-                <p className="text-xs text-purple-600 font-medium">Teknisi Utama</p>
-                <p className="font-semibold text-slate-900">{baa.users?.nama}</p>
+              <div className="rounded-xl bg-purple-50 border border-purple-100 p-3 dark:bg-purple-500/10 dark:border-purple-900">
+                <p className="text-xs text-purple-600 font-medium dark:text-purple-400">Teknisi Utama</p>
+                <p className="font-semibold text-slate-900 dark:text-slate-100">{baa.users?.nama}</p>
               </div>
 
               {baa.fab?.penginput && baa.fab?.penginput.id_user !== baa.fab?.id_user && (
-                <div className="rounded-xl bg-amber-50 border border-amber-100 p-3">
-                  <p className="text-xs text-amber-600 font-medium">Referal / Sales</p>
+                <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 dark:bg-amber-500/10 dark:border-amber-900">
+                  <p className="text-xs text-amber-600 font-medium dark:text-amber-400">Referal / Sales</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <p className="font-semibold text-slate-900">{baa.fab?.users?.nama}</p>
-                    <Badge className="text-[10px] px-1.5 py-0 rounded-md bg-amber-100 text-amber-700">Referral</Badge>
+                    <p className="font-semibold text-slate-900 dark:text-slate-100">{baa.fab?.users?.nama}</p>
+                    <Badge className="text-[10px] px-1.5 py-0 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">Referral</Badge>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    FAB diinput oleh teknisi <span className="font-medium text-amber-700">{baa.fab?.penginput?.nama}</span>
+                  <p className="text-xs text-slate-500 mt-1 dark:text-slate-400">
+                    FAB diinput oleh teknisi <span className="font-medium text-amber-700 dark:text-amber-400">{baa.fab?.penginput?.nama}</span>
                   </p>
                 </div>
               )}
 
               {baa.teknisiTambahan.length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-xs text-slate-400 font-medium">Teknisi Tambahan</p>
+                  <p className="text-xs text-slate-400 font-medium dark:text-slate-500">Teknisi Tambahan</p>
                   {baa.teknisiTambahan.map((t) => (
-                    <div key={t.id_baa_teknisi} className="rounded-xl bg-slate-50 border border-slate-200 p-2.5 flex items-center justify-between">
-                      <span className="font-medium text-slate-700">{t.users?.nama}</span>
+                    <div key={t.id_baa_teknisi} className="rounded-xl bg-slate-50 border border-slate-200 p-2.5 flex items-center justify-between dark:bg-slate-800/50 dark:border-slate-700">
+                      <span className="font-medium text-slate-700 dark:text-slate-200">{t.users?.nama}</span>
                     </div>
                   ))}
                 </div>
               )}
               {baa.teknisiTambahan.length === 0 && (
-                <p className="text-xs text-slate-400 italic">Tidak ada teknisi tambahan</p>
+                <p className="text-xs text-slate-400 italic dark:text-slate-500">Tidak ada teknisi tambahan</p>
               )}
             </div>
           </Card>
         </div>
 
-        <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
-            <Router className="h-4 w-4 text-purple-500" />
+        <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6 dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2 dark:text-slate-400">
+            <Router className="h-4 w-4 text-purple-500 dark:text-purple-400" />
             Perangkat Jaringan
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="rounded-xl bg-slate-50 p-3 text-center">
-              <p className="text-xs text-slate-400">OLT</p>
-              <p className="font-semibold text-sm text-slate-800 truncate">{baa.olt?.nama_olt}</p>
-              <p className="text-xs text-slate-500">Port: {baa.port_olt ?? "-"}</p>
+            <div className="rounded-xl bg-slate-50 p-3 text-center dark:bg-slate-800/50">
+              <p className="text-xs text-slate-400 dark:text-slate-500">OLT</p>
+              <p className="font-semibold text-sm text-slate-800 truncate dark:text-slate-100">{baa.olt?.nama_olt}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Port: {baa.port_olt ?? "-"}</p>
             </div>
-            <div className="rounded-xl bg-slate-50 p-3 text-center">
-              <p className="text-xs text-slate-400">ODP</p>
-              <p className="font-semibold text-sm text-slate-800 truncate">{baa.odp?.nama_odp}</p>
-              <p className="text-xs text-slate-500">Port: {baa.port_odp ?? "-"}</p>
+            <div className="rounded-xl bg-slate-50 p-3 text-center dark:bg-slate-800/50">
+              <p className="text-xs text-slate-400 dark:text-slate-500">ODP</p>
+              <p className="font-semibold text-sm text-slate-800 truncate dark:text-slate-100">{baa.odp?.nama_odp}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Port: {baa.port_odp ?? "-"}</p>
             </div>
-            <div className="rounded-xl bg-slate-50 p-3 text-center">
-              <p className="text-xs text-slate-400">ONT</p>
-              <p className="font-semibold text-sm text-slate-800 truncate font-mono">{baa.ont?.serial_number}</p>
+            <div className="rounded-xl bg-slate-50 p-3 text-center dark:bg-slate-800/50">
+              <p className="text-xs text-slate-400 dark:text-slate-500">ONT</p>
+              <p className="font-semibold text-sm text-slate-800 truncate font-mono dark:text-slate-100">{baa.ont?.serial_number}</p>
             </div>
-            <div className="rounded-xl bg-slate-50 p-3 text-center">
-              <p className="text-xs text-slate-400">Tanggal Instalasi</p>
-              <p className="font-semibold text-sm text-slate-800">{formatTanggal(baa.tanggal_instalasi)}</p>
+            <div className="rounded-xl bg-slate-50 p-3 text-center dark:bg-slate-800/50">
+              <p className="text-xs text-slate-400 dark:text-slate-500">Tanggal Instalasi</p>
+              <p className="font-semibold text-sm text-slate-800 dark:text-slate-100">{formatTanggal(baa.tanggal_instalasi)}</p>
             </div>
           </div>
         </Card>
 
-        <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
-            <Gauge className="h-4 w-4 text-purple-500" />
+        <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6 dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2 dark:text-slate-400">
+            <Gauge className="h-4 w-4 text-purple-500 dark:text-purple-400" />
             Hasil Pengukuran
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="text-center">
-              <p className="text-xs text-slate-400">RX Power</p>
-              <p className="font-bold text-slate-800">{rxPower !== null ? `${rxPower} dBm` : "-"}</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">RX Power</p>
+              <p className="font-bold text-slate-800 dark:text-slate-100">{rxPower !== null ? `${rxPower} dBm` : "-"}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs text-slate-400">TX Power</p>
-              <p className="font-bold text-slate-800">{txPower !== null ? `${txPower} dBm` : "-"}</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">TX Power</p>
+              <p className="font-bold text-slate-800 dark:text-slate-100">{txPower !== null ? `${txPower} dBm` : "-"}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs text-slate-400">Ping</p>
-              <p className="font-bold text-slate-800">{ping !== null ? `${ping} ms` : "-"}</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Ping</p>
+              <p className="font-bold text-slate-800 dark:text-slate-100">{ping !== null ? `${ping} ms` : "-"}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs text-slate-400">Status</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Status</p>
               <Badge className={`rounded-lg font-semibold ${STATUS_BADGE[baa.status]}`}>
                 {STATUS_LABEL[baa.status]}
               </Badge>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
+          <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t dark:border-slate-800">
             <div className="text-center">
-              <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+              <p className="text-xs text-slate-400 flex items-center justify-center gap-1 dark:text-slate-500">
                 <Download className="h-3 w-3" /> Download
               </p>
-              <p className="font-bold text-slate-800">{baa.speed_download ?? "-"}</p>
+              <p className="font-bold text-slate-800 dark:text-slate-100">{baa.speed_download ?? "-"}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+              <p className="text-xs text-slate-400 flex items-center justify-center gap-1 dark:text-slate-500">
                 <Upload className="h-3 w-3" /> Upload
               </p>
-              <p className="font-bold text-slate-800">{baa.speed_upload ?? "-"}</p>
+              <p className="font-bold text-slate-800 dark:text-slate-100">{baa.speed_upload ?? "-"}</p>
             </div>
           </div>
         </Card>
 
-        <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
+        <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6 dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 flex items-center gap-2">
-              <Boxes className="h-4 w-4 text-purple-500" />
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 flex items-center gap-2 dark:text-slate-400">
+              <Boxes className="h-4 w-4 text-purple-500 dark:text-purple-400" />
               Material yang Dipakai
             </h3>
-            <Badge variant="outline" className="rounded-xl">{baa.baadetail.length} item</Badge>
+            <Badge variant="outline" className="rounded-xl dark:border-slate-700 dark:text-slate-300">{baa.baadetail.length} item</Badge>
           </div>
           {baa.baadetail.length === 0 ? (
-            <p className="text-center text-sm text-slate-400 py-6">Tidak ada material yang dicatat pada instalasi ini.</p>
+            <p className="text-center text-sm text-slate-400 py-6 dark:text-slate-500">Tidak ada material yang dicatat pada instalasi ini.</p>
           ) : (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="text-left py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Nama Material</th>
-                      <th className="text-center py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Jumlah</th>
-                      <th className="text-right py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Harga</th>
-                      <th className="text-right py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Total</th>
-                      <th className="text-left py-3 pl-3 text-xs font-bold uppercase tracking-wide text-slate-500">Keterangan</th>
+                    <tr className="border-b border-slate-100 dark:border-slate-800">
+                      <th className="text-left py-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Nama Material</th>
+                      <th className="text-center py-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Jumlah</th>
+                      <th className="text-right py-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Harga</th>
+                      <th className="text-right py-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Total</th>
+                      <th className="text-left py-3 pl-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Keterangan</th>
                     </tr>
                   </thead>
                   <tbody>
                     {baa.baadetail.map((detail) => (
-                      <tr key={detail.id_baa_detail} className="border-b border-slate-50 hover:bg-slate-50/50">
-                        <td className="py-2.5 font-medium text-slate-800">{detail.material?.nama_material}</td>
-                        <td className="text-center py-2.5">{detail.jumlah} {detail.material?.satuan}</td>
-                        <td className="text-right py-2.5 text-slate-600">
+                      <tr key={detail.id_baa_detail} className="border-b border-slate-50 hover:bg-slate-50/50 dark:border-slate-800/50 dark:hover:bg-slate-800/30">
+                        <td className="py-2.5 font-medium text-slate-800 dark:text-slate-100">{detail.material?.nama_material}</td>
+                        <td className="text-center py-2.5 text-slate-700 dark:text-slate-200">{detail.jumlah} {detail.material?.satuan}</td>
+                        <td className="text-right py-2.5 text-slate-600 dark:text-slate-300">
                           {detail.material?.harga ? formatRupiah(Number(detail.material.harga)) : "-"}
                         </td>
-                        <td className="text-right py-2.5 font-semibold text-purple-700">
+                        <td className="text-right py-2.5 font-semibold text-purple-700 dark:text-purple-400">
                           {detail.material?.harga ? formatRupiah(Number(detail.material.harga) * detail.jumlah) : "-"}
                         </td>
-                        <td className="py-2.5 pl-3 text-sm leading-relaxed text-slate-500">
+                        <td className="py-2.5 pl-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                           <span className="inline-block min-h-[1.5rem]">{detail.keterangan || "-"}</span>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t-2 border-slate-200">
-                      <td colSpan={3} className="py-3 text-right font-bold text-slate-900">Total</td>
-                      <td className="py-3 text-right font-bold text-purple-700">{formatRupiah(totalHarga)}</td>
+                    <tr className="border-t-2 border-slate-200 dark:border-slate-700">
+                      <td colSpan={3} className="py-3 text-right font-bold text-slate-900 dark:text-slate-100">Total</td>
+                      <td className="py-3 text-right font-bold text-purple-700 dark:text-purple-400">{formatRupiah(totalHarga)}</td>
                       <td></td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
-              <div className="mt-3 text-xs text-slate-400">Total item: {totalMaterial} unit</div>
+              <div className="mt-3 text-xs text-slate-400 dark:text-slate-500">Total item: {totalMaterial} unit</div>
             </>
           )}
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-          <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-3 flex items-center gap-2">
-              <StickyNote className="h-4 w-4 text-purple-500" />
+          <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6 dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-3 flex items-center gap-2 dark:text-slate-400">
+              <StickyNote className="h-4 w-4 text-purple-500 dark:text-purple-400" />
               Catatan Teknisi
             </h3>
             {baa.catatan ? (
-              <p className="text-sm text-slate-700 whitespace-pre-wrap">{baa.catatan}</p>
+              <p className="text-sm text-slate-700 whitespace-pre-wrap dark:text-slate-200">{baa.catatan}</p>
             ) : (
-              <p className="text-sm text-slate-400 italic">Tidak ada catatan</p>
+              <p className="text-sm text-slate-400 italic dark:text-slate-500">Tidak ada catatan</p>
             )}
           </Card>
 
-          <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-3 flex items-center gap-2">
-              <ImageIcon className="h-4 w-4 text-purple-500" />
+          <Card className="rounded-3xl shadow-xl border bg-white p-4 sm:p-6 dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-3 flex items-center gap-2 dark:text-slate-400">
+              <ImageIcon className="h-4 w-4 text-purple-500 dark:text-purple-400" />
               Foto Instalasi
             </h3>
             {baa.foto_instalasi ? (
@@ -431,7 +431,7 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
                 fotoUrl={baa.foto_instalasi}
                 kodeBaa={baa.kode_baa}
                 trigger={
-                  <div className="rounded-xl overflow-hidden border border-slate-200">
+                  <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
                     <div className="relative w-full h-80">
                       <Image
                         src={baa.foto_instalasi}
@@ -441,8 +441,8 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
                         unoptimized={true}
                       />
                     </div>
-                    <div className="p-2 bg-slate-50 text-center">
-                      <span className="text-sm text-purple-600 hover:underline">
+                    <div className="p-2 bg-slate-50 text-center dark:bg-slate-800/50">
+                      <span className="text-sm text-purple-600 hover:underline dark:text-purple-400">
                         Lihat foto full size
                       </span>
                     </div>
@@ -450,12 +450,12 @@ export default async function BaaDetailPage({ params }: BaaDetailPageProps) {
                 }
               />
             ) : (
-              <p className="text-sm text-slate-400 italic">Tidak ada foto</p>
+              <p className="text-sm text-slate-400 italic dark:text-slate-500">Tidak ada foto</p>
             )}
           </Card>
         </div>
 
-        <div className="text-center text-xs text-slate-400 pt-2">
+        <div className="text-center text-xs text-slate-400 pt-2 dark:text-slate-500">
           <p>
             Dibuat: {format(new Date(baa.createdAt), "dd MMM yyyy HH:mm")} • 
             Terakhir diubah: {format(new Date(baa.updatedAt), "dd MMM yyyy HH:mm")}
