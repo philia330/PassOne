@@ -7,11 +7,12 @@ import * as XLSX from "xlsx";
 export async function GET(request: Request) {
   try {
     const session = await auth();
+    const role = session?.user?.role;
 
-    // Only ADMIN can export
-    if (!session || session.user?.role !== Role.ADMIN) {
+    // ADMIN dan LEADER boleh export; role lain tetap ditolak.
+    if (!session || (role !== Role.ADMIN && role !== Role.LEADER)) {
       return NextResponse.json(
-        { success: false, message: "Akses ditolak. Hanya Admin yang dapat mengekspor data." },
+        { success: false, message: "Akses ditolak. Hanya Admin atau Leader yang dapat mengekspor data." },
         { status: 403 }
       );
     }
@@ -19,13 +20,22 @@ export async function GET(request: Request) {
     // Parse query params untuk filter by IDs
     const { searchParams } = new URL(request.url);
     const idsParam = searchParams.get("ids");
-    let whereClause: any = {};
+    const whereClause: any = {};
 
     if (idsParam) {
       const ids = idsParam.split(",").map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
       if (ids.length > 0) {
-        whereClause = { id_user: { in: ids } };
+        whereClause.id_user = { in: ids };
       }
+    }
+
+    // LEADER cuma boleh export data user ber-role SALES/TEKNISI. Ini
+    // SENGAJA dipaksakan di server (bukan cuma disembunyikan di UI) --
+    // kalau LEADER kirim ?ids=... yang isinya ID user ADMIN/LEADER/LOGISTIK
+    // secara manual, filter role ini tetap membuang mereka dari hasil query,
+    // jadi tidak bisa "dicuri" lewat request langsung ke endpoint ini.
+    if (role === Role.LEADER) {
+      whereClause.role = { in: [Role.SALES, Role.TEKNISI] };
     }
 
     // Ambil data User

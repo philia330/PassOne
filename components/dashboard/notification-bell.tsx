@@ -166,9 +166,22 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-14 z-50 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+        // PERBAIKAN MOBILE: dulu dropdown ini `absolute` tanpa batas tinggi
+        // total -- cuma bagian list yang di-scroll (max-h-[calc(100vh-200px)]),
+        // jadi kalau header+list+footer gabungan lebih tinggi dari sisa layar
+        // di bawah tombol bell, footer ("Lihat Semua Notifikasi") kedorong
+        // keluar layar dan gak ada cara scroll ke situ. Sekarang:
+        // - di mobile (<sm): posisi `fixed` dari atas viewport (bukan relatif
+        //   ke tombol), lebar menyesuaikan layar, dan `max-h-[calc(100vh-90px)]`
+        //   membatasi TOTAL tinggi dropdown (header+list+footer).
+        // - flex-col + list `flex-1 min-h-0 overflow-y-auto` supaya cuma
+        //   list yang scroll, sementara header & footer (`shrink-0`) selalu
+        //   kebagian ruang dan gak pernah terpotong.
+        // - di layar sm: ke atas, balik ke perilaku dropdown biasa (absolute,
+        //   lebar tetap 320px) seperti sebelumnya.
+        <div className="fixed inset-x-4 top-[70px] z-50 mx-auto flex max-h-[calc(100vh-90px)] w-auto max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900 sm:absolute sm:inset-x-auto sm:right-0 sm:top-14 sm:mx-0 sm:w-80 sm:max-w-none">
           {/* Header */}
-          <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+          <div className="shrink-0 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
             <h3 className="font-semibold text-slate-800 dark:text-slate-100">Notifikasi</h3>
             <p className="text-xs text-slate-400 dark:text-slate-500">
               {unreadCount === 0 ? "Semua sudah dibaca" : `${unreadCount} belum dibaca`}
@@ -176,7 +189,7 @@ export default function NotificationBell() {
           </div>
 
           {/* Notification list */}
-          <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
@@ -235,8 +248,8 @@ export default function NotificationBell() {
             )}
           </div>
 
-          {/* Footer - Lihat Semua (satu-satunya jalan ke halaman lengkap) */}
-          <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+          {/* Footer - Lihat Semua (sekarang SELALU dalam batas layar) */}
+          <div className="shrink-0 border-t border-slate-100 px-4 py-3 dark:border-slate-800">
             <Link
               href="/workspace?view=notifications"
               onClick={() => setOpen(false)}

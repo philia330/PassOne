@@ -4,6 +4,7 @@ const MONTH_LABELS = [
   "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
   "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
 ];
+
 export async function getMonthlyTrend(monthsCount = 6) {
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - (monthsCount - 1));
@@ -11,10 +12,18 @@ export async function getMonthlyTrend(monthsCount = 6) {
   startDate.setHours(0, 0, 0, 0);
 
   const [fabs, baas] = await Promise.all([
+    // Dipakai untuk fabOpen -- "FAB dibuka bulan ini", murni dari createdAt,
+    // tidak peduli status sekarang (status FAB bisa berubah kapan saja,
+    // jadi tidak boleh dipakai untuk mengklasifikasikan histori).
     prisma.fab.findMany({
       where: { createdAt: { gte: startDate } },
-      select: { createdAt: true, status: true },
+      select: { createdAt: true },
     }),
+    // Dipakai untuk fabAktif -- setiap BAA dibuat = FAB-nya SAAT ITU JUGA
+    // diaktifkan (lihat createBaa: tx.fab.update status: "AKTIF" dalam
+    // transaksi yang sama dengan tx.baa.create). Jadi baa.createdAt SAMA
+    // DENGAN momen fab menjadi aktif -- tidak perlu kolom tambahan apa pun
+    // di tabel fab, dan angkanya tidak akan berubah lagi di kemudian hari.
     prisma.baa.findMany({
       where: { createdAt: { gte: startDate } },
       select: { createdAt: true },
@@ -34,18 +43,15 @@ export async function getMonthlyTrend(monthsCount = 6) {
   fabs.forEach((f) => {
     const key = `${f.createdAt.getFullYear()}-${f.createdAt.getMonth()}`;
     const bucket = bucketMap.get(key);
-    if (!bucket) return;
-    if (f.status === "AKTIF") {
-      bucket.fabAktif += 1;
-    } else {
-      bucket.fabOpen += 1;
-    }
+    if (bucket) bucket.fabOpen += 1;
   });
 
   baas.forEach((b) => {
     const key = `${b.createdAt.getFullYear()}-${b.createdAt.getMonth()}`;
     const bucket = bucketMap.get(key);
-    if (bucket) bucket.baa += 1;
+    if (!bucket) return;
+    bucket.fabAktif += 1; // 1 BAA dibuat = 1 FAB aktif di bulan itu
+    bucket.baa += 1;      // metrik BAA tetap dihitung terpisah seperti semula
   });
 
   return buckets.map(({ label, fabOpen, fabAktif, baa }) => ({ label, fabOpen, fabAktif, baa }));

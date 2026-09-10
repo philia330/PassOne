@@ -46,8 +46,12 @@ export default async function UserPage({
     role: currentRole,
   };
 
-  // Hanya Admin yang bisa export (samakan dengan pengecekan role di /api/user/export)
-  const canExport = currentRole === Role.ADMIN;
+  // ADMIN dan LEADER sama-sama bisa export (samakan dengan pengecekan role
+  // di /api/user/export). LEADER tetap bisa klik tombol ini -- datanya
+  // otomatis dibatasi cuma SALES/TEKNISI di server (bukan di sini), karena
+  // getUsers() di atas juga sudah otomatis memfilter role SALES/TEKNISI
+  // untuk LEADER, jadi tampilan tabel dan hasil export tetap konsisten.
+  const canExport = currentRole === Role.ADMIN || currentRole === Role.LEADER;
 
   return (
     <div className="space-y-6 p-4 sm:p-6">

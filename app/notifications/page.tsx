@@ -88,16 +88,18 @@ export default function NotificationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
+  // Filter urutan: "desc" (terbaru dulu, default) atau "asc" (terlama dulu).
+  const [sort, setSort] = useState<"desc" | "asc">("desc");
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [, startTransition] = useTransition();
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  async function fetchNotifications(requestPage: number, signal?: AbortSignal) {
+  async function fetchNotifications(requestPage: number, requestSort: "desc" | "asc", signal?: AbortSignal) {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/notifications/all?page=${requestPage}&pageSize=${pageSize}`, { signal });
+      const res = await fetch(`/api/notifications/all?page=${requestPage}&pageSize=${pageSize}&sort=${requestSort}`, { signal });
       if (res.ok) {
         const data = await res.json();
         if (signal?.aborted) return;
@@ -115,9 +117,15 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetchNotifications(page, controller.signal);
+    void fetchNotifications(page, sort, controller.signal);
     return () => controller.abort();
-  }, [page]);
+  }, [page, sort]);
+
+  const handleSortChange = (value: "desc" | "asc") => {
+    if (value === sort) return;
+    setSort(value);
+    setPage(1); // balik ke halaman 1 supaya urutan baru gak nyasar di tengah
+  };
 
     const handleNotificationClick = async (item: NotificationItem) => {
     // Item live (id negatif) tidak bisa di-mark-read lewat API -- lihat
@@ -214,7 +222,28 @@ export default function NotificationsPage() {
               : "Semua notifikasi sudah dibaca"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Filter urutan terbaru/terlama */}
+          <div className="flex items-center rounded-xl border border-slate-200 p-1 dark:border-slate-700">
+            <Button
+              type="button"
+              size="sm"
+              variant={sort === "desc" ? "default" : "ghost"}
+              onClick={() => handleSortChange("desc")}
+              className="h-8 rounded-lg text-xs"
+            >
+              Terbaru
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={sort === "asc" ? "default" : "ghost"}
+              onClick={() => handleSortChange("asc")}
+              className="h-8 rounded-lg text-xs"
+            >
+              Terlama
+            </Button>
+          </div>
           <Button variant="outline" onClick={() => router.back()} className="rounded-xl gap-2">
             <ArrowLeft className="h-4 w-4" />
             Kembali
