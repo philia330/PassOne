@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   Pencil,
@@ -21,6 +21,7 @@ import {
   XCircle,
   Tag,
   Lock,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { JenisKelamin, Role } from "@prisma/client";
@@ -109,6 +110,65 @@ const STATUS_META: Record<"true" | "false", { icon: typeof CheckCircle2; color: 
   false: { icon: XCircle, color: "text-red-600", label: "Nonaktif" },
 };
 
+/**
+ * ======================================
+ * FIX BUG: role tidak bisa dipilih
+ * ======================================
+ * `selectableRoles` sebelumnya array literal baru tiap render -> reference
+ * selalu berubah -> useEffect di bawah (yang punya selectableRoles di
+ * dependency array) jalan ulang tiap render, termasuk tepat setelah role
+ * dipilih, dan langsung mereset role balik ke "". Perbaikan: pindahkan ke
+ * module-level constant supaya reference stabil.
+ */
+const LEADER_SELECTABLE_ROLES = ["SALES", "TEKNISI"] as const;
+const ALL_SELECTABLE_ROLES = ["ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"] as const;
+
+/**
+ * ======================================
+ * GENERATE PASSWORD OTOMATIS (client-side, khusus form Masterdata User)
+ * ======================================
+ * Pola: {NamaDepan, huruf pertama dipaksa kapital, huruf lain acak
+ * besar/kecil}{KodeRole 3 huruf, casing diacak}{4 digit random}.
+ * Contoh: "Budi Santoso" + TEKNISI -> bisa jadi "BuDiotEk7392",
+ * "BudIOTek4180", dst -- beda tiap generate walau nama & role sama, karena
+ * setiap huruf (kecuali huruf pertama nama) diacak sendiri-sendiri.
+ * CATATAN: ini KHUSUS untuk form ini (sesuai keputusan) -- generateSecurePassword
+ * di server (createTeknisi, app/jaringan/baa/actions.ts) TETAP pakai pola
+ * lama (huruf pertama kapital, sisanya lowercase), TIDAK diubah.
+ */
+const ROLE_CODE_MAP: Record<SelectableRole, string> = {
+  ADMIN: "Adm",
+  LEADER: "Ldr",
+  SALES: "Sls",
+  TEKNISI: "Tek",
+  LOGISTIK: "Log",
+};
+
+function randomizeCasing(str: string): string {
+  return str
+    .split("")
+    .map((char) => (Math.random() < 0.5 ? char.toUpperCase() : char.toLowerCase()))
+    .join("");
+}
+
+function generatePassword(nama: string, role: Role): string {
+  const firstNameRaw = nama.trim().split(/\s+/)[0] || "User";
+  const lowerFirstName = firstNameRaw.toLowerCase();
+
+  // Huruf pertama nama dipaksa kapital (biar tetap kebaca sebagai nama),
+  // sisa huruf nama diacak casing-nya satu-satu.
+  const mixedName =
+    lowerFirstName.charAt(0).toUpperCase() +
+    randomizeCasing(lowerFirstName.slice(1));
+
+  const roleCodeBase = ROLE_CODE_MAP[role as SelectableRole] ?? "Usr";
+  const mixedRoleCode = randomizeCasing(roleCodeBase);
+
+  const randomDigits = Math.floor(1000 + Math.random() * 9000); // selalu 4 digit: 1000-9999
+
+  return `${mixedName}${mixedRoleCode}${randomDigits}`;
+}
+
 export function UserFormDialog({
   mode,
   data,
@@ -148,10 +208,13 @@ export function UserFormDialog({
 
   const [showPassword, setShowPassword] = useState(false);
 
+  const namaInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+
   const selectableRoles =
     currentUserRole === "LEADER"
-      ? (["SALES", "TEKNISI"] as const)
-      : (["ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"] as const);
+      ? LEADER_SELECTABLE_ROLES
+      : ALL_SELECTABLE_ROLES;
 
   useEffect(() => {
     if (mode === "create") {
@@ -197,6 +260,10 @@ export function UserFormDialog({
       );
       setPreview(data?.foto ?? null);
       setShowPassword(false);
+    }
+
+    if (passwordInputRef.current) {
+      passwordInputRef.current.value = "";
     }
   };
 
@@ -257,6 +324,52 @@ export function UserFormDialog({
   ) => {
     const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 13);
     e.target.value = digitsOnly;
+  };
+
+  // Isi field Password dengan password hasil generate. Nama & Role WAJIB
+  // sudah diisi dulu (dipakai untuk membentuk pola password). Password
+  // TETAP bisa diedit manual setelah ini.
+  const handleGeneratePassword = () => {
+    const namaValue = namaInputRef.current?.value?.trim() ?? "";
+
+    if (!namaValue) {
+      toast.error("Isi Nama terlebih dahulu sebelum generate password.");
+      namaInputRef.current?.focus();
+      return;
+    }
+
+    if (!role) {
+      toast.error("Pilih Role terlebih dahulu sebelum generate password.");
+      return;
+    }
+
+    const generated = generatePassword(namaValue, role);
+
+    if (passwordInputRef.current) {
+      passwordInputRef.current.value = generated;
+      passwordInputRef.current.focus();
+      passwordInputRef.current.select();
+    }
+
+    setShowPassword(true);
+  };
+
+  // Auto-generate SEKALI saat field password difokus, HANYA di mode Tambah
+  // User, HANYA kalau field masih kosong, DAN HANYA kalau Nama & Role sudah
+  // diisi. Kalau Nama/Role belum diisi, biarkan field kosong (silent) --
+  // toast peringatan cukup muncul saat user sengaja klik tombol Generate.
+  const handlePasswordFocus = () => {
+    const namaValue = namaInputRef.current?.value?.trim() ?? "";
+
+    if (
+      mode === "create" &&
+      passwordInputRef.current &&
+      passwordInputRef.current.value === "" &&
+      namaValue &&
+      role
+    ) {
+      handleGeneratePassword();
+    }
   };
 
   const handleSubmit = async (
@@ -399,7 +512,7 @@ export function UserFormDialog({
               py-4
             "
           >
-            {/* ================= KODE USER ================= */}
+            {/* ================= 1. KODE USER ================= */}
             <div className="space-y-2">
               <Label
                 htmlFor="kode_user_display"
@@ -426,7 +539,7 @@ export function UserFormDialog({
               </p>
             </div>
 
-            {/* ================= FOTO USER ================= */}
+            {/* ================= 2. FOTO USER ================= */}
             <div className="space-y-3">
               <label className="text-sm font-medium dark:text-slate-300">
                 Foto User
@@ -488,13 +601,14 @@ export function UserFormDialog({
               </div>
             </div>
 
-            {/* ================= NAMA ================= */}
+            {/* ================= 3. NAMA ================= */}
             <div className="space-y-2">
               <label className="text-sm font-medium dark:text-slate-300">
                 Nama
               </label>
 
               <Input
+                ref={namaInputRef}
                 name="nama"
                 defaultValue={data?.nama}
                 placeholder="Masukkan nama lengkap"
@@ -512,7 +626,7 @@ export function UserFormDialog({
               />
             </div>
 
-            {/* ================= USERNAME ================= */}
+            {/* ================= 4. USERNAME ================= */}
             <div className="space-y-2">
               <label className="text-sm font-medium dark:text-slate-300">
                 Username
@@ -536,7 +650,54 @@ export function UserFormDialog({
               />
             </div>
 
-            {/* ================= PASSWORD ================= */}
+            {/* ================= 5. ROLE (sebelum Password) ================= */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium dark:text-slate-300">
+                Role
+              </label>
+
+              <Select
+                value={role}
+                onValueChange={(value) =>
+                  setRole(value as Role)
+                }
+              >
+                <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 bg-white px-3 text-sm shadow-sm transition-all hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                  <div className="flex items-center gap-2">
+                    {role && (() => {
+                      const meta = ROLE_META[role as keyof typeof ROLE_META];
+                      const Icon = meta.icon;
+                      return <Icon className={`h-4 w-4 ${meta.color}`} />;
+                    })()}
+                    <SelectValue placeholder="Pilih Role" />
+                  </div>
+                </SelectTrigger>
+
+                <SelectContent side="bottom" align="start" className="max-h-60 overflow-y-auto rounded-2xl border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
+                  {selectableRoles.map((item) => {
+                    const meta = ROLE_META[item as keyof typeof ROLE_META];
+                    const Icon = meta.icon;
+
+                    return (
+                      <SelectItem key={item} value={item} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
+                        <span className="flex items-center gap-2">
+                          <Icon className={`h-3.5 w-3.5 ${meta.color} shrink-0`} />
+                          <span>{meta.label}</span>
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+
+              <input
+                type="hidden"
+                name="role"
+                value={role}
+              />
+            </div>
+
+            {/* ================= 6. PASSWORD ================= */}
             <div className="space-y-2">
               <label className="text-sm font-medium dark:text-slate-300">
                 Password
@@ -544,42 +705,62 @@ export function UserFormDialog({
 
               <div className="relative">
                 <Input
+                  ref={passwordInputRef}
                   name="password"
                   type={showPassword ? "text" : "password"}
                   required={mode === "create"}
+                  onFocus={handlePasswordFocus}
                   placeholder={
                     mode === "edit"
                       ? "Kosongkan jika tidak diubah"
-                      : "Masukkan password"
+                      : "Isi Nama & Role dulu untuk auto-generate"
                   }
                   autoComplete="new-password"
                   className="
   h-12
   rounded-2xl
   border-slate-200
-  pr-12
+  pr-20
   focus-visible:ring-purple-500
   dark:border-slate-700
   dark:bg-slate-800
   dark:text-slate-100
 "
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
-                  title={showPassword ? "Sembunyikan password" : "Tampilkan password"}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
+
+                <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleGeneratePassword}
+                    className="text-slate-400 hover:text-purple-600 dark:text-slate-500 dark:hover:text-purple-400"
+                    title="Generate password otomatis"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                    title={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
+
+              {mode === "create" && (
+                <p className="text-xs text-slate-400">
+                  Isi Nama & pilih Role dulu, lalu klik ikon generate atau fokus ke field ini.
+                </p>
+              )}
             </div>
 
-            {/* ================= EMAIL & NO HP ================= */}
+            {/* ================= 7. EMAIL & NO HP ================= */}
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium dark:text-slate-300">
@@ -625,7 +806,7 @@ export function UserFormDialog({
               </div>
             </div>
 
-            {/* ================= JENIS KELAMIN ================= */}
+            {/* ================= 8. JENIS KELAMIN ================= */}
             <div className="space-y-2">
               <label className="text-sm font-medium dark:text-slate-300">
                 Jenis Kelamin
@@ -674,54 +855,7 @@ export function UserFormDialog({
               />
             </div>
 
-            {/* ================= ROLE ================= */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium dark:text-slate-300">
-                Role
-              </label>
-
-              <Select
-                value={role}
-                onValueChange={(value) =>
-                  setRole(value as Role)
-                }
-              >
-                <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 bg-white px-3 text-sm shadow-sm transition-all hover:border-purple-300 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                  <div className="flex items-center gap-2">
-                    {role && (() => {
-                      const meta = ROLE_META[role as keyof typeof ROLE_META];
-                      const Icon = meta.icon;
-                      return <Icon className={`h-4 w-4 ${meta.color}`} />;
-                    })()}
-                    <SelectValue placeholder="Pilih Role" />
-                  </div>
-                </SelectTrigger>
-
-                <SelectContent side="bottom" align="start" className="max-h-60 overflow-y-auto rounded-2xl border-slate-200 p-1.5 shadow-lg dark:border-slate-700 z-[100]">
-                  {selectableRoles.map((item) => {
-                    const meta = ROLE_META[item as keyof typeof ROLE_META];
-                    const Icon = meta.icon;
-
-                    return (
-                      <SelectItem key={item} value={item} className="rounded-xl gap-2 py-2.5 cursor-pointer focus:bg-purple-50 dark:focus:bg-purple-500/10">
-                        <span className="flex items-center gap-2">
-                          <Icon className={`h-3.5 w-3.5 ${meta.color} shrink-0`} />
-                          <span>{meta.label}</span>
-                        </span>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-
-              <input
-                type="hidden"
-                name="role"
-                value={role}
-              />
-            </div>
-
-            {/* ================= STATUS ================= */}
+            {/* ================= 9. STATUS ================= */}
             <div className="space-y-2">
               <label className="text-sm font-medium dark:text-slate-300">
                 Status

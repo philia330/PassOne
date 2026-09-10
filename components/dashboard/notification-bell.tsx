@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, AlertTriangle, CheckCircle2, Info, PackageX, Loader2 } from "lucide-react";
+import { Bell, AlertTriangle, CheckCircle2, Info, PackageX, UserCog, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NotificationItem = {
@@ -31,7 +31,7 @@ const SEVERITY_COLOR = {
 };
 
 const TYPE_TO_SEVERITY: Record<string, "warning" | "danger" | "info" | "success"> = {
-  FAB_OPEN: "info",
+  FAB_OPEN: "warning", // belum ditugaskan -- disamain sama halaman notifikasi lengkap
   FAB_ASSIGNED: "info",
   FAB_STATUS_CHANGE: "info",
   BAA_CREATED: "info",
@@ -39,8 +39,22 @@ const TYPE_TO_SEVERITY: Record<string, "warning" | "danger" | "info" | "success"
   FAB_COMPLETED: "success",
 };
 
+// Icon per JENIS notifikasi (bukan cuma severity) -- supaya beda tampilan
+// antara FAB yang belum ditugaskan, sudah ditugaskan, dan sudah selesai,
+// sama persis kayak di halaman "Semua Notifikasi". Tipe lain yang belum
+// disebut di sini otomatis jatuh ke icon severity biasa (lihat getIcon).
+const TYPE_ICON: Partial<Record<string, React.ElementType>> = {
+  FAB_OPEN: PackageX, // belum ditugaskan ke teknisi manapun
+  FAB_ASSIGNED: UserCog, // sudah ditugaskan ke seorang teknisi
+  FAB_COMPLETED: CheckCircle2, // sudah selesai dikerjakan
+};
+
 function getSeverity(type: string): "warning" | "danger" | "info" | "success" {
   return TYPE_TO_SEVERITY[type] || "info";
+}
+
+function getIcon(type: string, severity: "warning" | "danger" | "info" | "success") {
+  return TYPE_ICON[type] ?? SEVERITY_ICON[severity];
 }
 
 function formatTimeAgo(dateString: string): string {
@@ -174,7 +188,7 @@ export default function NotificationBell() {
             ) : (
               latestNotifications.map((item) => {
                 const severity = getSeverity(item.type);
-                const Icon = SEVERITY_ICON[severity];
+                const Icon = getIcon(item.type, severity);
                 return (
                   <button
                     key={item.id_notification}

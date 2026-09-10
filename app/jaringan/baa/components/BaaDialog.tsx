@@ -63,6 +63,13 @@ export const BaaDialog = ({
 
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // === POIN 1: penanda "percobaan submit yang gagal" ===
+  // React otomatis mereset field uncontrolled setelah fungsi action ini
+  // selesai (walau errornya kita tangkap sendiri lewat try/catch, di mata
+  // React action-nya tetap dianggap "berhasil"). Counter ini kita naikkan
+  // tiap kali gagal, lalu BaaForm memakainya sebagai sinyal untuk
+  // mengembalikan file foto yang sempat terhapus akibat reset otomatis itu.
+  const [errorNonce, setErrorNonce] = useState(0);
   const router = useRouter();
 
   const handleSubmit = (formData: FormData) => {
@@ -89,6 +96,7 @@ export const BaaDialog = ({
       } catch (err: unknown) {
         const error = err as Error;
         setErrorMsg(error.message ?? "Terjadi kesalahan, coba lagi.");
+        setErrorNonce((n) => n + 1);
       }
     });
   };
@@ -143,6 +151,7 @@ export const BaaDialog = ({
               ontOptions={ontOptions}
               materialOptions={materialOptions}
               currentUser={currentUser}
+              submitErrorNonce={errorNonce}
             />
 
             {errorMsg && (

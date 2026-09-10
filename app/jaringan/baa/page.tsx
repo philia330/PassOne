@@ -43,14 +43,18 @@ export default async function BaaPage({
         orderBy: { nama_olt: "asc" },
         select: { id_olt: true, nama_olt: true },
       }),
+      // === POIN 2: tambahkan jumlah_port + hitung port yang sudah dipakai,
+      // supaya bisa dihitung sisa stok port ODP di client (BaaForm) ===
       prisma.odp.findMany({
         orderBy: { nama_odp: "asc" },
-        select: { id_odp: true, nama_odp: true },
+        select: {
+          id_odp: true,
+          nama_odp: true,
+          jumlah_port: true,
+          _count: { select: { baa: true } },
+        },
       }),
       prisma.ont.findMany({
-        // Hanya tampilkan ONT yang benar-benar siap dipakai: status TERSEDIA
-        // dan belum dipakai oleh BAA manapun. ONT yang sedang dipakai BAA yang
-        // lagi diedit tetap muncul lewat mergedOntOptions di BaaForm.
         where: {
           status: "TERSEDIA",
           baa: { none: {} },
@@ -58,9 +62,10 @@ export default async function BaaPage({
         orderBy: { serial_number: "asc" },
         select: { id_ont: true, serial_number: true, pelanggan: true },
       }),
+      // === POIN 2: tambahkan stok material ===
       prisma.material.findMany({
         orderBy: { nama_material: "asc" },
-        select: { id_material: true, nama_material: true, satuan: true },
+        select: { id_material: true, nama_material: true, satuan: true, stok: true },
       }),
     ]);
 
@@ -99,7 +104,6 @@ export default async function BaaPage({
     if (item.users) {
       uniqueTeknisiMap.set(item.users.id_user, item.users);
     }
-    // Include teknisi tambahan
     item.teknisiTambahan?.forEach((tk) => {
       if (tk.users) {
         uniqueTeknisiMap.set(tk.users.id_user, tk.users);
@@ -111,12 +115,26 @@ export default async function BaaPage({
   const kodeOtomatis = `BAA${String(baa.length + 1).padStart(3, "0")}`;
 
   // Ubah semua data yang mengandung Decimal jadi Plain Object dalam 1 baris.
-  const [sanitizedFab, sanitizedOlt, sanitizedOdp, sanitizedMaterial] = [
+  const [sanitizedFab, sanitizedOlt, sanitizedOdpRaw, sanitizedMaterial] = [
     fabList,
     oltList,
     odpList,
     materialList,
   ].map((list) => JSON.parse(JSON.stringify(list)));
+
+  // === POIN 2: turunkan stok_port = jumlah_port - port yang sudah terpakai ===
+  const sanitizedOdp = (
+    sanitizedOdpRaw as {
+      id_odp: number;
+      nama_odp: string;
+      jumlah_port: number | null;
+      _count: { baa: number };
+    }[]
+  ).map((o) => ({
+    id_odp: o.id_odp,
+    nama_odp: o.nama_odp,
+    stok_port: (o.jumlah_port ?? 0) - o._count.baa,
+  }));
 
   return (
     <div className="space-y-6 p-4 sm:p-6">

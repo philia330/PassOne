@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import {
   Tag,
   Calendar,
@@ -63,6 +63,9 @@ interface BaaFormProps {
   ontOptions: OntOption[];
   materialOptions: MaterialOption[];
   currentUser: CurrentUser;
+  // === POIN 1: dinaikkan tiap kali submit gagal, dipakai untuk memicu
+  // pemulihan foto yang sempat hilang akibat form.reset() otomatis dari React ===
+  submitErrorNonce?: number;
 }
 
 interface TeknisiRow {
@@ -81,6 +84,11 @@ function toDateInputValue(date?: Date) {
 
 function makeRowId() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+function toStringOrEmpty(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") return "";
+  return String(value);
 }
 
 // ==========================================================
@@ -103,6 +111,7 @@ export const BaaForm = ({
   ontOptions,
   materialOptions,
   currentUser,
+  submitErrorNonce,
 }: BaaFormProps) => {
   const [idFab, setIdFab] = useState(defaultValues?.id_fab ? String(defaultValues.id_fab) : "");
 
@@ -180,17 +189,47 @@ export const BaaForm = ({
   );
   const [fotoFileName, setFotoFileName] = useState<string | null>(null);
   const fotoInputRef = useRef<HTMLInputElement>(null);
+  // === POIN 1: simpan File asli di ref -- input type="file" tidak bisa
+  // dibuat "controlled" oleh React, jadi kalau browser mereset input ini
+  // (lihat penjelasan submitErrorNonce di atas), satu-satunya cara
+  // memulihkannya adalah menaruh ulang File yang sama secara manual
+  // lewat DataTransfer begitu terdeteksi submit barusan gagal.
+  const fotoFileRef = useRef<File | null>(null);
 
   function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
       setFotoPreview(URL.createObjectURL(file));
       setFotoFileName(file.name);
+      fotoFileRef.current = file;
     } else {
       setFotoPreview(defaultValues?.foto_instalasi ?? null);
       setFotoFileName(null);
+      fotoFileRef.current = null;
     }
   }
+
+  // === POIN 1: pulihkan foto yang sempat hilang akibat form.reset()
+  // otomatis dari React setelah action gagal. Dilewati saat render
+  // pertama (nonce belum berubah dari nilai awalnya).
+  const isFirstErrorRenderRef = useRef(true);
+  useEffect(() => {
+    if (isFirstErrorRenderRef.current) {
+      isFirstErrorRenderRef.current = false;
+      return;
+    }
+    if (fotoFileRef.current && fotoInputRef.current) {
+      try {
+        const dt = new DataTransfer();
+        dt.items.add(fotoFileRef.current);
+        fotoInputRef.current.files = dt.files;
+      } catch {
+        // DataTransfer tidak didukung di browser ini (sangat jarang) --
+        // lewati saja, preview tetap kelihatan tapi user perlu pilih ulang
+        // filenya sebelum submit ulang.
+      }
+    }
+  }, [submitErrorNonce]);
 
   // Input file yang sama dipakai untuk dua mode -- atribut "capture" di-set
   // atau dilepas sesaat sebelum di-trigger. Di Android/iOS ini langsung
@@ -210,6 +249,19 @@ export const BaaForm = ({
   const [idOlt, setIdOlt] = useState(defaultValues?.id_olt ? String(defaultValues.id_olt) : "");
   const [idOdp, setIdOdp] = useState(defaultValues?.id_odp ? String(defaultValues.id_odp) : "");
   const [idOnt, setIdOnt] = useState(defaultValues?.id_ont ? String(defaultValues.id_ont) : "");
+
+  // === POIN 1: field-field ini SEBELUMNYA uncontrolled (cuma defaultValue),
+  // sehingga hilang saat React memanggil form.reset() otomatis setelah
+  // submit gagal. Sekarang dijadikan controlled (value+onChange) supaya
+  // React memaksa sinkron ulang ke state ini walau DOM sempat direset. ===
+  const [portOlt, setPortOlt] = useState(toStringOrEmpty(defaultValues?.port_olt));
+  const [portOdp, setPortOdp] = useState(toStringOrEmpty(defaultValues?.port_odp));
+  const [rxPower, setRxPower] = useState(toStringOrEmpty(defaultValues?.rx_power_dbm));
+  const [txPower, setTxPower] = useState(toStringOrEmpty(defaultValues?.tx_power_dbm));
+  const [speedDownload, setSpeedDownload] = useState(toStringOrEmpty(defaultValues?.speed_download));
+  const [speedUpload, setSpeedUpload] = useState(toStringOrEmpty(defaultValues?.speed_upload));
+  const [pingMs, setPingMs] = useState(toStringOrEmpty(defaultValues?.ping_ms));
+  const [catatan, setCatatan] = useState(toStringOrEmpty(defaultValues?.catatan));
 
   // ================================================================
   // TEKNISI UTAMA -- SELALU dikunci ke user yang login (sama pola
@@ -262,9 +314,6 @@ export const BaaForm = ({
 
   // Callback when ONT is created from OntFormDialog (BAA context)
   const handleOntCreated = async (ontInfo: { serial_number: string; model: string | null }) => {
-    // Refresh ontOptions from server to get the new ONT with id_ont
-    // The createOnt server action already revalidates, but we need to refresh the dropdown
-    // For now, we'll use quickCreateOnt to get the ONT with proper id
     try {
       const fd = new FormData();
       fd.set("serial_number", ontInfo.serial_number);
@@ -279,9 +328,7 @@ export const BaaForm = ({
           model: ontInfo.model,
         } as OntOption;
 
-        // Add to extraOntOptions and auto-select
         setExtraOntOptions((prev) => {
-          // Check if already exists
           const existing = prev.find(o => o.id_ont === newOnt.id_ont);
           if (existing) return prev;
           return [newOnt, ...prev];
@@ -412,6 +459,20 @@ export const BaaForm = ({
     });
   }, [extraOntOptions, mergedOntOptions]);
 
+  // === POIN 2: peringatan real-time stok port ODP -- ditampilkan begitu
+  // user memilih ODP, TANPA memblokir submit (validasi final tetap di
+  // server lewat validateOdpStock). Sengaja TIDAK mem-disable opsi ODP
+  // yang penuh di dropdown: di mode edit, ODP yang sedang dipakai BAA
+  // ini sendiri bisa saja stoknya 0 (karena port itu ya dipakai BAA ini),
+  // dan itu tetap pilihan yang valid -- kalau di-disable, opsi itu malah
+  // hilang dari daftar padahal sedang aktif dipakai.
+  const selectedOdpStock = useMemo(() => {
+    const found = mergedOdpOptions.find((o) => String(o.id_odp) === idOdp);
+    return found?.stok_port;
+  }, [idOdp, mergedOdpOptions]);
+
+  const isOdpFull = typeof selectedOdpStock === "number" && selectedOdpStock <= 0;
+
   const handleOntScanResult = (decodedText: string) => {
     setScannerOpen(false);
 
@@ -441,16 +502,12 @@ export const BaaForm = ({
       return;
     }
 
-    // Bukan URL aplikasi -> anggap serial number mentah dari stiker pabrik
     const serial = decodedText.trim();
     if (!serial) {
       toast.error("QR code tidak terbaca dengan jelas. Coba scan ulang.");
       return;
     }
 
-    // ODP wajib sudah dipilih di form BAA -- ONT baru akan otomatis
-    // mengikuti ODP (dan POP) yang sama, tidak boleh dipilih terpisah di
-    // dialog quick-add supaya data tidak nyasar ke ODP lain.
     if (!idOdp) {
       toast.error("Pilih ODP terlebih dahulu di form sebelum menambahkan ONT baru.");
       return;
@@ -486,10 +543,8 @@ export const BaaForm = ({
           model: null,
         } as OntOption;
 
-        // Jika ONT sudah ada sebelumnya, tampilkan pesan yang berbeda
         if (result.data.alreadyExists) {
           setExtraOntOptions((prev) => {
-            // Update jika sudah ada, atau tambahkan baru
             const existing = prev.find(o => o.id_ont === newOnt.id_ont);
             if (existing) {
               return prev.map(o => o.id_ont === newOnt.id_ont ? newOnt : o);
@@ -545,12 +600,6 @@ export const BaaForm = ({
         }
       `}</style>
 
-      {/* Fix panah spinner bawaan browser di input angka (RX/TX Power,
-          Port OLT/ODP, Ping) -- defaultnya putih polos dan kelihatan
-          nabrak di dark mode / rounded card. Dihilangkan total supaya
-          konsisten sama input teks lainnya; user tetap bisa ketik angka
-          biasa. Global (bukan scoped) karena harus menembus elemen
-          <input> yang dirender di dalam komponen Input dari shadcn. */}
       <style jsx global>{`
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button {
@@ -640,9 +689,6 @@ export const BaaForm = ({
               emptyText="FAB tidak ditemukan"
             />
           </div>
-          {/* Input "hantu" (bukan type=hidden) supaya tetap ikut validasi
-              HTML5 -- type=hidden dikecualikan dari constraint validation
-              browser, jadi required-nya tidak akan pernah kedeteksi. */}
           <input
             type="text"
             name="id_fab"
@@ -772,7 +818,7 @@ export const BaaForm = ({
           {fieldErrors.id_olt && <p className="text-xs text-red-500">OLT wajib dipilih.</p>}
         </div>
 
-        {/* ODP -- sekarang searchable, sama pola dengan FAB */}
+        {/* ODP -- searchable + peringatan real-time stok port (POIN 2) */}
         <div className="col-span-1 space-y-2">
           <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             <GitBranch size={13} className="text-purple-500" /> ODP
@@ -787,7 +833,10 @@ export const BaaForm = ({
               }}
               options={mergedOdpOptions.map((o) => ({
                 value: String(o.id_odp),
-                label: o.nama_odp,
+                label:
+                  typeof o.stok_port === "number" && o.stok_port <= 0
+                    ? `${o.nama_odp} (Port Penuh)`
+                    : o.nama_odp,
               }))}
               placeholder="Pilih ODP"
               searchPlaceholder="Cari nama ODP..."
@@ -806,9 +855,15 @@ export const BaaForm = ({
             className="sr-only"
           />
           {fieldErrors.id_odp && <p className="text-xs text-red-500">ODP wajib dipilih.</p>}
+          {!fieldErrors.id_odp && isOdpFull && (
+            <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+              ⚠️ Port ODP ini sudah habis (tersisa {selectedOdpStock}). Pertimbangkan pilih ODP
+              lain, atau lanjutkan kalau memang ODP ini sedang dipakai BAA yang sama.
+            </p>
+          )}
         </div>
 
-        {/* ONT -- searchable + tombol Scan + tombol Tambah ONT untuk isi cepat dari kamera atau manual */}
+        {/* ONT -- searchable + tombol Scan + tombol Tambah ONT */}
         <div className="col-span-1 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -896,10 +951,11 @@ export const BaaForm = ({
             placeholder="Contoh: 3"
             min={1}
             max={9999}
-            defaultValue={defaultValues?.port_olt ?? ""}
+            value={portOlt}
             autoComplete="off"
             onInvalid={() => markInvalid("port_olt")}
             onChange={(e) => {
+              setPortOlt(e.target.value);
               if (e.target.value.trim()) markValid("port_olt");
             }}
             className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${errorClass(
@@ -926,10 +982,11 @@ export const BaaForm = ({
             placeholder="Contoh: 5"
             min={1}
             max={9999}
-            defaultValue={defaultValues?.port_odp ?? ""}
+            value={portOdp}
             autoComplete="off"
             onInvalid={() => markInvalid("port_odp")}
             onChange={(e) => {
+              setPortOdp(e.target.value);
               if (e.target.value.trim()) markValid("port_odp");
             }}
             className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${errorClass(
@@ -956,10 +1013,11 @@ export const BaaForm = ({
             step="any"
             placeholder="Contoh: -18.5 (biasanya minus)"
             required
-            defaultValue={defaultValues?.rx_power_dbm ?? ""}
+            value={rxPower}
             autoComplete="off"
             onInvalid={() => markInvalid("rx_power_dbm")}
             onChange={(e) => {
+              setRxPower(e.target.value);
               if (e.target.value.trim()) markValid("rx_power_dbm");
             }}
             className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${errorClass(
@@ -987,10 +1045,11 @@ export const BaaForm = ({
             step="any"
             placeholder="Contoh: 3.2"
             required
-            defaultValue={defaultValues?.tx_power_dbm ?? ""}
+            value={txPower}
             autoComplete="off"
             onInvalid={() => markInvalid("tx_power_dbm")}
             onChange={(e) => {
+              setTxPower(e.target.value);
               if (e.target.value.trim()) markValid("tx_power_dbm");
             }}
             className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${errorClass(
@@ -1016,10 +1075,11 @@ export const BaaForm = ({
             name="speed_download"
             placeholder="Contoh: 50 Mbps"
             required
-            defaultValue={defaultValues?.speed_download ?? ""}
+            value={speedDownload}
             autoComplete="off"
             onInvalid={() => markInvalid("speed_download")}
             onChange={(e) => {
+              setSpeedDownload(e.target.value);
               if (e.target.value.trim()) markValid("speed_download");
             }}
             className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${errorClass(
@@ -1045,10 +1105,11 @@ export const BaaForm = ({
             name="speed_upload"
             placeholder="Contoh: 20 Mbps"
             required
-            defaultValue={defaultValues?.speed_upload ?? ""}
+            value={speedUpload}
             autoComplete="off"
             onInvalid={() => markInvalid("speed_upload")}
             onChange={(e) => {
+              setSpeedUpload(e.target.value);
               if (e.target.value.trim()) markValid("speed_upload");
             }}
             className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${errorClass(
@@ -1076,10 +1137,11 @@ export const BaaForm = ({
             step="any"
             placeholder="Contoh: 12"
             required
-            defaultValue={defaultValues?.ping_ms ?? ""}
+            value={pingMs}
             autoComplete="off"
             onInvalid={() => markInvalid("ping_ms")}
             onChange={(e) => {
+              setPingMs(e.target.value);
               if (e.target.value.trim()) markValid("ping_ms");
             }}
             className={`rounded-2xl h-12 border-slate-200 focus-visible:ring-purple-500 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${errorClass(
@@ -1089,9 +1151,7 @@ export const BaaForm = ({
           {fieldErrors.ping_ms && <p className="text-xs text-red-500">Ping wajib diisi.</p>}
         </div>
 
-        {/* ================================================ */}
-        {/* FOTO INSTALASI -- dropzone custom, ganti input file bawaan */}
-        {/* ================================================ */}
+        {/* FOTO INSTALASI */}
         <div className="col-span-1 md:col-span-2 space-y-2">
           <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             <ImageIcon size={13} className="text-purple-500" /> Foto Instalasi
@@ -1187,13 +1247,14 @@ export const BaaForm = ({
             name="catatan"
             rows={2}
             placeholder="Catatan tambahan (opsional)"
-            defaultValue={defaultValues?.catatan ?? ""}
+            value={catatan}
+            onChange={(e) => setCatatan(e.target.value)}
             autoComplete="off"
             className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 resize-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           />
         </div>
 
-        {/* DAFTAR MATERIAL */}
+        {/* DAFTAR MATERIAL -- POIN 2: peringatan real-time stok per baris */}
         <div className="col-span-1 md:col-span-2 space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-3 gap-2">
             <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -1222,63 +1283,76 @@ export const BaaForm = ({
               </p>
             ) : (
               <div className="space-y-2">
-                {materialRows.map((row) => (
-                  <div
-                    key={row.rowId}
-                    className="flex flex-col sm:flex-row items-start sm:items-center gap-2 rounded-2xl border border-slate-200 p-3 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50"
-                  >
-                    <div className="flex-1 w-full sm:w-auto space-y-1.5">
-                      <SearchableSelect
-                        value={row.id_material}
-                        onValueChange={(v) => handleMaterialChange(row.rowId, v)}
-                        options={materialOptions.map((m) => ({
-                          value: String(m.id_material),
-                          label: `${m.nama_material} (${m.satuan})`,
-                        }))}
-                        placeholder="Pilih material"
-                        searchPlaceholder="Cari nama material..."
-                        emptyText="Material tidak ditemukan"
-                      />
-                    </div>
+                {materialRows.map((row) => {
+                  const selectedMaterial = materialOptions.find(
+                    (m) => String(m.id_material) === row.id_material
+                  );
+                  const requestedQty = Number(row.jumlah) || 0;
+                  const isOverStock =
+                    selectedMaterial?.stok !== undefined &&
+                    requestedQty > selectedMaterial.stok;
 
-                    <div className="w-full sm:w-20 space-y-1.5">
-                      <Input
-                        type="number"
-                        min={1}
-                        placeholder="Jml"
-                        value={row.jumlah}
-                        onChange={(e) => updateRow(row.rowId, "jumlah", e.target.value)}
-                        className="rounded-xl h-10 border-slate-200 bg-white text-sm text-center dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                      />
-                    </div>
-
-                    <div className="flex-1 w-full sm:w-auto space-y-1.5">
-                      <Input
-                        placeholder="Keterangan (opsional)"
-                        value={row.keterangan}
-                        onChange={(e) => updateRow(row.rowId, "keterangan", e.target.value)}
-                        autoComplete="off"
-                        className="rounded-xl h-10 border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                      />
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => removeRow(row.rowId)}
-                      className="h-10 w-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 dark:hover:bg-red-500/10"
+                  return (
+                    <div
+                      key={row.rowId}
+                      className="flex flex-col sm:flex-row items-start sm:items-center gap-2 rounded-2xl border border-slate-200 p-3 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50"
                     >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex-1 w-full sm:w-auto space-y-1.5">
+                        <SearchableSelect
+                          value={row.id_material}
+                          onValueChange={(v) => handleMaterialChange(row.rowId, v)}
+                          options={materialOptions.map((m) => ({
+                            value: String(m.id_material),
+                            label: `${m.nama_material} (${m.satuan})`,
+                          }))}
+                          placeholder="Pilih material"
+                          searchPlaceholder="Cari nama material..."
+                          emptyText="Material tidak ditemukan"
+                        />
+                      </div>
+
+                      <div className="w-full sm:w-24 space-y-1">
+                        <Input
+                          type="number"
+                          min={1}
+                          placeholder="Jml"
+                          value={row.jumlah}
+                          onChange={(e) => updateRow(row.rowId, "jumlah", e.target.value)}
+                          className={`rounded-xl h-10 border-slate-200 bg-white text-sm text-center dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${
+                            isOverStock ? "border-red-400 focus-visible:ring-red-500" : ""
+                          }`}
+                        />
+                        {isOverStock && (
+                          <p className="text-[11px] leading-tight text-red-500">
+                            Stok tersisa: {selectedMaterial!.stok}, diminta: {requestedQty}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex-1 w-full sm:w-auto space-y-1.5">
+                        <Input
+                          placeholder="Keterangan (opsional)"
+                          value={row.keterangan}
+                          onChange={(e) => updateRow(row.rowId, "keterangan", e.target.value)}
+                          autoComplete="off"
+                          className="rounded-xl h-10 border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => removeRow(row.rowId)}
+                        className="h-10 w-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 dark:hover:bg-red-500/10"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* Input "hantu" khusus buat menangkap kasus "belum ada material
-              sama sekali" lewat validasi HTML5 bawaan, sama seperti trik
-              di FAB/Area/ODP/dst -- value cuma terisi kalau baris material
-              sudah ada minimal satu. */}
           <input
             type="text"
             name="_material_required_check"
@@ -1294,8 +1368,6 @@ export const BaaForm = ({
           <input type="hidden" name="baa_details" value={JSON.stringify(materialRows)} />
         </div>
 
-        {/* Scanner QR untuk ONT — bisa scan QR aplikasi (pilih ONT terdaftar)
-            atau barcode/QR stiker pabrik (tambah ONT baru) */}
         <QrScannerDialog
           open={scannerOpen}
           onOpenChange={setScannerOpen}
@@ -1304,7 +1376,6 @@ export const BaaForm = ({
           description="Scan QR aplikasi untuk pilih ONT terdaftar, atau barcode/QR stiker pabrik untuk tambah ONT baru"
         />
 
-        {/* Dialog Tambah ONT Baru (quick-add dari hasil scan barcode pabrik) */}
         <Dialog open={quickAddOntOpen} onOpenChange={setQuickAddOntOpen}>
           <DialogContent className="rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 sm:max-w-md">
             <DialogHeader>
@@ -1356,7 +1427,6 @@ export const BaaForm = ({
           </DialogContent>
         </Dialog>
 
-        {/* Dialog Tambah ONT Manual (dari tombol "Tambah ONT") - menggunakan form ONT yang sama */}
         <OntFormDialog
           mode="create"
           pops={[]}

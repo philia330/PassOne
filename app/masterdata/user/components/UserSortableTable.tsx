@@ -139,8 +139,6 @@ export function UserSortableTable({
 
   const isAdmin = currentUser?.role === "ADMIN";
   const canBulkDelete = isAdmin;
-  // Samakan hak akses export dengan ODP: ADMIN & LEADER boleh export
-  const canExport = currentUser?.role === "ADMIN" || currentUser?.role === "LEADER";
   const roleFilterOptions = currentUser?.role === "LEADER"
     ? (["ALL", "SALES", "TEKNISI"] as const)
     : (["ALL", "ADMIN", "LEADER", "SALES", "TEKNISI", "LOGISTIK"] as const);
@@ -421,9 +419,6 @@ export function UserSortableTable({
 
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             {actions}
-            {canExport && (
-              <ExportButton apiUrl="/api/user/export" filenamePrefix="Export_User" />
-            )}
             <div className="add-button">
               <UserFormDialog
                 mode="create"

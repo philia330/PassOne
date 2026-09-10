@@ -104,6 +104,10 @@ export function MaterialSortableTable({
 
   // Highlight state untuk Command Palette
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  // Double-click baris -- buka dialog riwayat pemakaian material tanpa
+  // perlu klik icon ClipboardList secara presisi. Disimpan sebagai satu id
+  // (bukan per-baris) karena cuma boleh ada 1 dialog terbuka dalam satu waktu.
+  const [detailDialogId, setDetailDialogId] = useState<number | null>(null);
   const highlightHandled = useRef(false);
   const lastHighlightId = useRef<string | null>(null);
   const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
@@ -583,7 +587,8 @@ export function MaterialSortableTable({
                           rowRefs.current.delete(item.id_material);
                         }
                       }}
-                      className={`border-b border-slate-200 dark:border-slate-800 transition-colors ${
+                      onDoubleClick={() => setDetailDialogId(item.id_material)}
+                      className={`cursor-pointer border-b border-slate-200 dark:border-slate-800 transition-colors ${
                         selectedIds.has(item.id_material)
                           ? "bg-purple-50 dark:bg-purple-500/10"
                           : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
@@ -644,6 +649,10 @@ export function MaterialSortableTable({
                             idMaterial={item.id_material}
                             namaMaterial={item.nama_material}
                             satuanMaterial={item.satuan}
+                            externalOpen={detailDialogId === item.id_material}
+                            onExternalOpenChange={(o) =>
+                              setDetailDialogId(o ? item.id_material : null)
+                            }
                           />
                           {canWrite && <MaterialDialog mode="edit" material={item} />}
                           {canDelete && <MaterialDeleteDialog id={item.id_material} namaMaterial={item.nama_material} />}
@@ -664,6 +673,7 @@ export function MaterialSortableTable({
             return (
               <div
                 key={item.id_material}
+                onDoubleClick={() => setDetailDialogId(item.id_material)}
                 className={`space-y-2 rounded-2xl border p-4 dark:border-slate-800 dark:bg-slate-800/40 ${
                   selectedIds.has(item.id_material) ? "border-purple-300 bg-purple-50 dark:bg-purple-500/10" : ""
                 } ${
@@ -699,6 +709,10 @@ export function MaterialSortableTable({
                       idMaterial={item.id_material}
                       namaMaterial={item.nama_material}
                       satuanMaterial={item.satuan}
+                      externalOpen={detailDialogId === item.id_material}
+                      onExternalOpenChange={(o) =>
+                        setDetailDialogId(o ? item.id_material : null)
+                      }
                     />
                     {canWrite && <MaterialDialog mode="edit" material={item} />}
                     {canDelete && <MaterialDeleteDialog id={item.id_material} namaMaterial={item.nama_material} />}

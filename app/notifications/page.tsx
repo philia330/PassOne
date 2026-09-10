@@ -31,20 +31,25 @@ type NotificationItem = {
   createdAt: string;
 };
 
-const TYPE_TO_SEVERITY: Record<string, "warning" | "danger" | "info"> = {
-  FAB_ASSIGNED: "info",
+const TYPE_TO_SEVERITY: Record<string, "warning" | "danger" | "info" | "success"> = {
+  FAB_OPEN: "warning", // FAB belum ditugaskan -- perlu perhatian
+  FAB_ASSIGNED: "info", // FAB sudah ditugaskan ke seorang teknisi
   FAB_STATUS_CHANGE: "info",
   BAA_CREATED: "info",
   SYSTEM: "warning",
-  FAB_COMPLETED: "success",
+  FAB_COMPLETED: "success", // FAB sudah selesai dikerjakan
 };
 
+// Icon dibedakan per tahap FAB supaya sekali lihat langsung ketahuan
+// statusnya tanpa perlu baca teksnya: belum ditugaskan / sudah
+// ditugaskan / sudah selesai masing-masing punya bentuk sendiri.
 const TYPE_ICON: Record<string, React.ElementType> = {
-  FAB_ASSIGNED: PackageX,
+  FAB_OPEN: PackageX, // belum ditugaskan ke teknisi manapun
+  FAB_ASSIGNED: UserCog, // sudah ditugaskan ke seorang teknisi
   FAB_STATUS_CHANGE: Info,
   BAA_CREATED: Info,
   SYSTEM: AlertTriangle,
-  FAB_COMPLETED: CheckCircle2,
+  FAB_COMPLETED: CheckCircle2, // sudah selesai dikerjakan
 };
 
 const TYPE_COLOR = {
@@ -83,7 +88,6 @@ export default function NotificationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
-  const [isMarkingAll, setIsMarkingAll] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [, startTransition] = useTransition();
@@ -158,24 +162,6 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleMarkAllAsRead = () => {
-    setIsMarkingAll(true);
-    startTransition(async () => {
-      try {
-        const res = await fetch("/api/notifications/mark-all-read", { method: "POST" });
-        if (res.ok) {
-          setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-          setUnreadCount(0);
-          toast.success("Semua notifikasi ditandai sudah dibaca");
-        }
-      } catch {
-        toast.error("Gagal menandai notifikasi");
-      } finally {
-        setIsMarkingAll(false);
-      }
-    });
-  };
-
   const handleDelete = () => {
     if (!deleteId) return;
     setIsDeleting(true);
@@ -209,6 +195,11 @@ export default function NotificationsPage() {
     pageRange.push(i);
   }
 
+  // Seberapa jauh "titik tiga" (ellipsis) melompat kalau diklik -- selebar
+  // jendela nomor halaman yang kelihatan (delta*2+1), jadi lompatannya
+  // terasa konsisten sama pola nomor yang tampil.
+  const ellipsisJump = delta * 2 + 1;
+
   return (
     <div className="space-y-6 p-4 sm:p-6">
       {/* Header */}
@@ -228,21 +219,6 @@ export default function NotificationsPage() {
             <ArrowLeft className="h-4 w-4" />
             Kembali
           </Button>
-          {unreadCount > 0 && (
-            <Button
-              variant="outline"
-              onClick={handleMarkAllAsRead}
-              disabled={isMarkingAll}
-              className="rounded-xl gap-2 text-purple-600 border-purple-200 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-500/10"
-            >
-              {isMarkingAll ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Check className="h-4 w-4" />
-              )}
-              Tandai Semua Dibaca
-            </Button>
-          )}
         </div>
       </div>
 
@@ -397,7 +373,28 @@ export default function NotificationsPage() {
                           1
                         </PaginationLink>
                       </PaginationItem>
-                      {start > 2 && <PaginationEllipsis />}
+                      {/* Ellipsis kiri -- sebelumnya cuma dekorasi, sekarang
+                          diklik lompat mundur sejauh lebar jendela nomor
+                          yang tampil, dan dibungkus PaginationItem (kelupaan
+                          sebelumnya, salah satu penyebab dia berasa "mati"). */}
+                      {start > 2 && (
+                        <PaginationItem>
+                          <PaginationEllipsis
+                            onClick={() => setPage(Math.max(1, start - ellipsisJump))}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setPage(Math.max(1, start - ellipsisJump));
+                              }
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            aria-hidden={false}
+                            aria-label={`Lompat ke halaman ${Math.max(1, start - ellipsisJump)}`}
+                            className="cursor-pointer transition-colors hover:text-purple-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 dark:hover:text-purple-400"
+                          />
+                        </PaginationItem>
+                      )}
                     </>
                   )}
                   {pageRange.map((p) => (
@@ -416,7 +413,26 @@ export default function NotificationsPage() {
                   ))}
                   {end < totalPages && (
                     <>
-                      {end < totalPages - 1 && <PaginationEllipsis />}
+                      {/* Ellipsis kanan -- sama, sekarang bisa diklik untuk
+                          lompat maju. */}
+                      {end < totalPages - 1 && (
+                        <PaginationItem>
+                          <PaginationEllipsis
+                            onClick={() => setPage(Math.min(totalPages, end + ellipsisJump))}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setPage(Math.min(totalPages, end + ellipsisJump));
+                              }
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            aria-hidden={false}
+                            aria-label={`Lompat ke halaman ${Math.min(totalPages, end + ellipsisJump)}`}
+                            className="cursor-pointer transition-colors hover:text-purple-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 dark:hover:text-purple-400"
+                          />
+                        </PaginationItem>
+                      )}
                       <PaginationItem>
                         <PaginationLink onClick={() => setPage(totalPages)} className="cursor-pointer rounded-xl">
                           {totalPages}

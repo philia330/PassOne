@@ -1,27 +1,40 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { UserCog, Loader2, Check, ChevronDown, Sparkles } from "lucide-react";
-import { assignFabToTeknisi, bulkAssignFabToTeknisi } from "../actions";
+import {
+  UserCog,
+  Loader2,
+  Check,
+  ChevronDown,
+  Sparkles,
+  Search,
+} from "lucide-react";
+
+import {
+  assignFabToTeknisi,
+  bulkAssignFabToTeknisi,
+} from "../actions";
+
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
+
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
+
 import { Button } from "@/components/ui/button";
 
 interface TeknisiOption {
@@ -34,17 +47,44 @@ interface TeknisiOption {
 interface FabAssignDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+
+  /**
+   * Callback ketika warning bulk dilanjutkan.
+   * FAB yang berstatus AKTIF akan dikeluarkan dari daftar.
+   */
   onBulkWarningContinue?: (filteredSelectedIds: number[]) => void;
+
+  /**
+   * Callback setelah proses bulk assignment berhasil.
+   */
   onBulkAssignSuccess?: () => void;
-  // Single assignment
+
+  /**
+   * Data untuk single assignment.
+   */
   fab?: {
     id_fab: number;
     kode_fab: string;
     nama_pelanggan: string;
-    teknisiDitugaskan?: { id_user: number; nama: string } | null;
+
+    /**
+     * Teknisi yang sedang ditugaskan ke FAB.
+     * Jika ada, akan muncul warning sebelum mengganti teknisi.
+     */
+    teknisiDitugaskan?: {
+      id_user: number;
+      nama: string;
+    } | null;
   };
-  // Bulk assignment
+
+  /**
+   * ID FAB yang dipilih untuk bulk assignment.
+   */
   selectedIds?: number[];
+
+  /**
+   * Data FAB untuk kebutuhan pengecekan status.
+   */
   selectedFabData?: Array<{
     id_fab: number;
     kode_fab?: string;
@@ -52,12 +92,24 @@ interface FabAssignDialogProps {
     status: "OPEN" | "AKTIF";
     id_penginput?: number | null;
   }>;
-  // Data teknisi options (dari server)
+
+  /**
+   * Daftar teknisi dari server.
+   */
   teknisiOptions: TeknisiOption[];
+
+  /**
+   * Status loading teknisi.
+   */
   isTeknisiLoading?: boolean;
 }
 
-// Helper component untuk avatar teknisi dengan animasi
+/**
+ * Helper untuk menampilkan avatar teknisi.
+ *
+ * Jika foto tersedia, tampilkan foto.
+ * Jika tidak ada foto, tampilkan inisial nama.
+ */
 function TeknisiAvatar({
   nama,
   foto,
@@ -77,15 +129,19 @@ function TeknisiAvatar({
 
   const initials = nama.charAt(0).toUpperCase();
 
+  /**
+   * Jika teknisi memiliki foto.
+   */
   if (foto) {
     return (
       <div
         className={cn(
-          "relative overflow-hidden rounded-full flex-shrink-0 ring-2 ring-offset-2 transition-all duration-300",
+          "relative flex-shrink-0 overflow-hidden rounded-full",
+          "ring-2 ring-offset-2 transition-all duration-300",
           sizeClasses,
           isSelected
-            ? "ring-purple-500 scale-105"
-            : "ring-transparent hover:ring-purple-300"
+            ? "scale-105 ring-purple-500"
+            : "ring-transparent hover:ring-purple-300",
         )}
       >
         <Image
@@ -99,14 +155,18 @@ function TeknisiAvatar({
     );
   }
 
+  /**
+   * Jika teknisi tidak memiliki foto.
+   */
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-full flex-shrink-0 font-bold ring-2 ring-offset-2 transition-all duration-300",
+        "flex flex-shrink-0 items-center justify-center rounded-full",
+        "font-bold ring-2 ring-offset-2 transition-all duration-300",
         sizeClasses,
         isSelected
-          ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white ring-purple-500 scale-105 shadow-lg shadow-purple-500/30"
-          : "bg-gradient-to-br from-slate-200 to-slate-300 text-slate-600 dark:from-slate-700 dark:to-slate-800 dark:text-slate-300 ring-transparent hover:ring-purple-300"
+          ? "scale-105 bg-gradient-to-br from-violet-500 to-purple-600 text-white ring-purple-500 shadow-lg shadow-purple-500/30"
+          : "bg-gradient-to-br from-slate-200 to-slate-300 text-slate-600 ring-transparent hover:ring-purple-300 dark:from-slate-700 dark:to-slate-800 dark:text-slate-300",
       )}
     >
       {initials}
@@ -126,87 +186,262 @@ export function FabAssignDialog({
   isTeknisiLoading = false,
 }: FabAssignDialogProps) {
   const router = useRouter();
+
   const [isPending, startTransition] = useTransition();
-  const [selectedTeknisi, setSelectedTeknisi] = useState<string>("");
+
+  /**
+   * ID teknisi yang dipilih.
+   */
+  const [selectedTeknisi, setSelectedTeknisi] = useState("");
+
+  /**
+   * Warning untuk bulk assignment ketika ada FAB AKTIF.
+   */
   const [showActiveWarning, setShowActiveWarning] = useState(false);
 
-  const isBulkMode = selectedIds.length > 0 && !fab;
-  const activeSelectedFab = selectedFabData.filter((item) => item.status === "AKTIF");
+  /**
+   * Warning untuk single assignment ketika FAB
+   * sudah mempunyai teknisi.
+   */
+  const [showAlreadyAssignedWarning, setShowAlreadyAssignedWarning] =
+    useState(false);
 
+  /**
+   * Keyword pencarian teknisi.
+   */
+  const [teknisiSearch, setTeknisiSearch] = useState("");
+
+  /**
+   * Menentukan mode bulk.
+   *
+   * Jika ada selectedIds dan tidak ada fab,
+   * berarti sedang melakukan bulk assignment.
+   */
+  const isBulkMode = selectedIds.length > 0 && !fab;
+
+  /**
+   * Ambil FAB yang berstatus AKTIF.
+   */
+  const activeSelectedFab = selectedFabData.filter(
+    (item) => item.status === "AKTIF",
+  );
+
+  /**
+   * Filter teknisi berdasarkan nama atau username.
+   */
+  const filteredTeknisiOptions = teknisiOptions.filter((teknisi) => {
+    const query = teknisiSearch.trim().toLowerCase();
+
+    if (!query) {
+      return true;
+    }
+
+    return (
+      teknisi.nama.toLowerCase().includes(query) ||
+      teknisi.username.toLowerCase().includes(query)
+    );
+  });
+
+  /**
+   * Tampilkan warning bulk jika terdapat FAB AKTIF.
+   */
   useEffect(() => {
-    if (open && isBulkMode && activeSelectedFab.length > 0) {
+    if (
+      open &&
+      isBulkMode &&
+      activeSelectedFab.length > 0
+    ) {
       setShowActiveWarning(true);
     }
-  }, [open, isBulkMode, activeSelectedFab.length]);
+  }, [
+    open,
+    isBulkMode,
+    activeSelectedFab.length,
+  ]);
+
+  /**
+   * Tampilkan warning single jika FAB sudah memiliki teknisi.
+   *
+   * Warning ini muncul ketika dialog dibuka.
+   */
+  useEffect(() => {
+    if (!open || isBulkMode) {
+      setShowAlreadyAssignedWarning(false);
+      return;
+    }
+
+    setShowAlreadyAssignedWarning(Boolean(fab?.teknisiDitugaskan));
+  }, [open, isBulkMode]);
+
+  /**
+   * Reset state ketika dialog ditutup.
+   */
+  useEffect(() => {
+    if (!open) {
+      setShowActiveWarning(false);
+      setShowAlreadyAssignedWarning(false);
+      setTeknisiSearch("");
+      setSelectedTeknisi("");
+    }
+  }, [open]);
+
+  /**
+   * Judul dialog berdasarkan mode.
+   */
   const title = isBulkMode
     ? `Tugaskan ${selectedIds.length} FAB ke Teknisi`
-    : `Tugaskan FAB ke Teknisi`;
+    : "Tugaskan FAB ke Teknisi";
+
+  /**
+   * Deskripsi dialog berdasarkan mode.
+   */
   const description = isBulkMode
     ? `Pilih teknisi yang akan ditugaskan untuk ${selectedIds.length} FAB yang dipilih.`
     : `Pilih teknisi yang akan mengerjakan FAB ${fab?.kode_fab} - ${fab?.nama_pelanggan}.`;
 
-  const currentTeknisiId = fab?.teknisiDitugaskan?.id_user;
+  /**
+   * ID teknisi yang sedang mengerjakan FAB.
+   */
+  const currentTeknisiId =
+    fab?.teknisiDitugaskan?.id_user;
 
-  // Cari nama teknisi yang sedang dipilih (untuk display di trigger)
+  /**
+   * Data teknisi yang sedang dipilih.
+   */
   const selectedTeknisiData = teknisiOptions.find(
-    (t) => String(t.id_user) === selectedTeknisi
+    (teknisi) =>
+      String(teknisi.id_user) === selectedTeknisi,
   );
 
+  /**
+   * Submit assignment.
+   */
   const handleSubmit = () => {
     if (!selectedTeknisi) {
       toast.error("Pilih teknisi yang akan ditugaskan.");
       return;
     }
 
-    const teknisiId = parseInt(selectedTeknisi, 10);
+    const teknisiId = Number.parseInt(
+      selectedTeknisi,
+      10,
+    );
+
+    if (Number.isNaN(teknisiId)) {
+      toast.error("Teknisi yang dipilih tidak valid.");
+      return;
+    }
 
     startTransition(async () => {
       try {
+        /**
+         * BULK ASSIGNMENT
+         */
         if (isBulkMode) {
-          const activeSelected = selectedFabData.filter((item) => item.status === "AKTIF");
+          const activeSelected = selectedFabData.filter(
+            (item) => item.status === "AKTIF",
+          );
+
           if (activeSelected.length > 0) {
-            toast.warning(`${activeSelected.length} FAB dipilih sudah berstatus Aktif dan akan dilewati.`, {
-              duration: 4000,
-            });
+            toast.warning(
+              `${activeSelected.length} FAB dipilih sudah berstatus Aktif dan akan dilewati.`,
+              {
+                duration: 4000,
+              },
+            );
           }
 
-          const result = await bulkAssignFabToTeknisi(selectedIds, teknisiId);
-          const msg = result.count > 0
-            ? `${result.count} FAB berhasil ditugaskan ke teknisi.`
-            : `Tidak ada FAB yang bisa ditugaskan.`;
-          toast.success(msg);
-          if (result.skippedCount && result.skippedCount > 0) {
-            toast.info(`${result.skippedCount} FAB dilewati karena sudah berstatus Aktif.`, {
-              duration: 4000,
-            });
+          const result = await bulkAssignFabToTeknisi(
+            selectedIds,
+            teknisiId,
+          );
+
+          const message =
+            result.count > 0
+              ? `${result.count} FAB berhasil ditugaskan ke teknisi.`
+              : "Tidak ada FAB yang bisa ditugaskan.";
+
+          toast.success(message);
+
+          if (
+            result.skippedCount &&
+            result.skippedCount > 0
+          ) {
+            toast.info(
+              `${result.skippedCount} FAB dilewati karena sudah berstatus Aktif.`,
+              {
+                duration: 4000,
+              },
+            );
           }
-          if (result.unauthorizedCount && result.unauthorizedCount > 0) {
-            toast.warning(`${result.unauthorizedCount} FAB bukan milik Anda dan dilewati.`, {
-              duration: 4000,
-            });
+
+          if (
+            result.unauthorizedCount &&
+            result.unauthorizedCount > 0
+          ) {
+            toast.warning(
+              `${result.unauthorizedCount} FAB bukan milik Anda dan dilewati.`,
+              {
+                duration: 4000,
+              },
+            );
           }
-        } else if (fab) {
-          await assignFabToTeknisi(fab.id_fab, teknisiId);
+        }
+
+        /**
+         * SINGLE ASSIGNMENT
+         */
+        else if (fab) {
+          await assignFabToTeknisi(
+            fab.id_fab,
+            teknisiId,
+          );
+
           toast.success(
-            `FAB ${fab.kode_fab} berhasil ditugaskan ke teknisi.`
+            `FAB ${fab.kode_fab} berhasil ditugaskan ke teknisi.`,
           );
         }
 
+        /**
+         * Reset state setelah berhasil.
+         */
         setSelectedTeknisi("");
+        setTeknisiSearch("");
+        setShowAlreadyAssignedWarning(false);
+        setShowActiveWarning(false);
+
         onOpenChange(false);
+
         onBulkAssignSuccess?.();
+
         router.refresh();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Terjadi kesalahan.");
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Terjadi kesalahan.",
+        );
       }
     });
   };
 
+  /**
+   * Menutup dialog dan mereset state.
+   */
   const handleClose = () => {
     setSelectedTeknisi("");
+    setTeknisiSearch("");
+    setShowActiveWarning(false);
+    setShowAlreadyAssignedWarning(false);
+
     onOpenChange(false);
   };
 
+  /**
+   * Melanjutkan warning bulk.
+   *
+   * FAB yang berstatus AKTIF tidak ikut ditugaskan.
+   */
   const handleContinueWarning = () => {
     if (!isBulkMode) {
       setShowActiveWarning(false);
@@ -214,337 +449,677 @@ export function FabAssignDialog({
     }
 
     const filteredIds = selectedIds.filter(
-      (id) => !selectedFabData.some((fabItem) => fabItem.id_fab === id && fabItem.status === "AKTIF")
+      (id) =>
+        !selectedFabData.some(
+          (fabItem) =>
+            fabItem.id_fab === id &&
+            fabItem.status === "AKTIF",
+        ),
     );
 
     setSelectedTeknisi("");
     setShowActiveWarning(false);
+
     onBulkWarningContinue?.(filteredIds);
   };
 
-  const handleTeknisiChange = (value: string | null) => {
-    setSelectedTeknisi(value || "");
+  /**
+   * Handler ketika teknisi dipilih.
+   */
+  const handleTeknisiChange = (value: string) => {
+    setSelectedTeknisi(value);
+    setTeknisiSearch("");
   };
 
   return (
     <>
-      {/* Animated Warning Modal */}
-      {isBulkMode && showActiveWarning && activeSelectedFab.length > 0 && (
-        <div
-          className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm animate-fab-fadeIn"
-        >
-          <div
-            className="w-full max-w-md rounded-3xl border border-amber-200/50 bg-white p-6 shadow-2xl dark:border-amber-500/30 dark:bg-gradient-to-br dark:from-slate-900 dark:to-slate-800 animate-fab-scaleIn"
-          >
-            {/* Animated warning icon */}
-            <div className="mb-5 flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/30 animate-fab-pulse-amber"
-                >
-                  <span className="text-2xl">⚠️</span>
-                </div>
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-amber-500">
-                    Peringatan
-                  </p>
-                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-                    FAB Aktif terdeteksi
-                  </h3>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowActiveWarning(false)}
-                className="rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                aria-label="Tutup peringatan"
-              >
-                <span className="text-xl leading-none">×</span>
-              </button>
-            </div>
+      {/* =====================================================
+          WARNING MODAL - BULK
+          FAB berstatus AKTIF
+      ====================================================== */}
 
-            <p className="mb-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              FAB berikut sudah berstatus <span className="font-semibold text-amber-600 dark:text-amber-400">Aktif</span> dan tidak bisa ditugaskan. Anda bisa melanjutkan untuk memilih data lain yang ingin ditugaskan.
-            </p>
-
-            {/* Animated list */}
-            <div
-              className="max-h-40 space-y-2 overflow-y-auto rounded-2xl border border-amber-200/50 bg-gradient-to-b from-amber-50/50 to-orange-50/30 p-3 dark:border-amber-500/20 dark:from-amber-500/5 dark:to-orange-500/5 animate-fab-slideUp stagger-1"
-            >
-              {activeSelectedFab.map((fab, index) => (
-                <div
-                  key={fab.id_fab}
-                  className="flex items-center justify-between gap-2 rounded-xl bg-white/80 px-3 py-2.5 text-sm shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.02] dark:bg-slate-800/60 animate-fab-slideIn"
-                  style={{ animationDelay: `${index * 50 + 100}ms` }}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100 text-xs font-bold text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
-                      {index + 1}
-                    </div>
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">
-                      {fab.kode_fab ?? `FAB-${fab.id_fab}`}
-                    </span>
+      {isBulkMode &&
+        showActiveWarning &&
+        activeSelectedFab.length > 0 && (
+          <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-3xl border border-amber-200/50 bg-white p-6 shadow-2xl dark:border-amber-500/30 dark:bg-gradient-to-br dark:from-slate-900 dark:to-slate-800">
+              <div className="mb-5 flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/30">
+                    <span className="text-2xl">⚠️</span>
                   </div>
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
-                    Aktif
-                  </span>
-                </div>
-              ))}
-            </div>
 
-            <div className="mt-5 flex justify-end animate-fab-slideUp stagger-2">
-              <Button
-                type="button"
-                onClick={handleContinueWarning}
-                className="h-11 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-6 font-semibold text-white shadow-lg shadow-amber-500/30 transition-all duration-200 hover:shadow-xl hover:scale-105 hover:brightness-110"
-              >
-                Lanjutkan
-              </Button>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-amber-500">
+                      Peringatan
+                    </p>
+
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+                      FAB Aktif Terdeteksi
+                    </h3>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowActiveWarning(false)
+                  }
+                  className="rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                  aria-label="Tutup peringatan"
+                >
+                  <span className="text-xl leading-none">
+                    ×
+                  </span>
+                </button>
+              </div>
+
+              <p className="mb-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                FAB berikut sudah berstatus{" "}
+                <span className="font-semibold text-amber-600 dark:text-amber-400">
+                  Aktif
+                </span>{" "}
+                dan tidak bisa ditugaskan. Anda bisa
+                melanjutkan untuk memilih data lain yang
+                ingin ditugaskan.
+              </p>
+
+              <div className="max-h-40 space-y-2 overflow-y-auto rounded-2xl border border-amber-200/50 bg-gradient-to-b from-amber-50/50 to-orange-50/30 p-3 dark:border-amber-500/20 dark:from-amber-500/5 dark:to-orange-500/5">
+                {activeSelectedFab.map(
+                  (fabItem, index) => (
+                    <div
+                      key={fabItem.id_fab}
+                      className="flex items-center justify-between gap-2 rounded-xl bg-white/80 px-3 py-2.5 text-sm shadow-sm dark:bg-slate-800/60"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100 text-xs font-bold text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+                          {index + 1}
+                        </div>
+
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                          {fabItem.kode_fab ??
+                            `FAB-${fabItem.id_fab}`}
+                        </span>
+                      </div>
+
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+                        Aktif
+                      </span>
+                    </div>
+                  ),
+                )}
+              </div>
+
+              <div className="mt-5 flex justify-end">
+                <Button
+                  type="button"
+                  onClick={handleContinueWarning}
+                  className="h-11 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-6 font-semibold text-white shadow-lg shadow-amber-500/30 transition-all duration-200 hover:scale-105 hover:brightness-110 hover:shadow-xl"
+                >
+                  Lanjutkan
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <Dialog open={open} onOpenChange={handleClose}>
+      {/* =====================================================
+          WARNING MODAL - SINGLE
+          FAB sudah mempunyai teknisi
+      ====================================================== */}
+
+      {!isBulkMode &&
+        showAlreadyAssignedWarning &&
+        fab?.teknisiDitugaskan && (
+          <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-3xl border border-amber-200/50 bg-white p-6 shadow-2xl dark:border-amber-500/30 dark:bg-gradient-to-br dark:from-slate-900 dark:to-slate-800">
+              <div className="mb-5 flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/30">
+                    <UserCog className="h-6 w-6 text-white" />
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-amber-500">
+                      Peringatan
+                    </p>
+
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+                      FAB Sudah Ditugaskan
+                    </h3>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                  aria-label="Tutup peringatan"
+                >
+                  <span className="text-xl leading-none">
+                    ×
+                  </span>
+                </button>
+              </div>
+
+              <p className="mb-5 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                FAB{" "}
+                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                  {fab.kode_fab} - {fab.nama_pelanggan}
+                </span>{" "}
+                sudah ditugaskan ke teknisi{" "}
+                <span className="font-semibold text-amber-600 dark:text-amber-400">
+                  {fab.teknisiDitugaskan.nama}
+                </span>
+                .
+                <br />
+                <br />
+                Apakah kamu ingin mengganti teknisi yang
+                ditugaskan pada FAB ini?
+              </p>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleClose}
+                  className="h-11 rounded-2xl border-2 border-slate-200/80 px-5 font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300"
+                >
+                  Batal
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setShowAlreadyAssignedWarning(false);
+                  }}
+                  className="h-11 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-6 font-semibold text-white shadow-lg shadow-amber-500/30 transition-all duration-200 hover:scale-105 hover:brightness-110 hover:shadow-xl"
+                >
+                  Lanjutkan, Ganti Teknisi
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* =====================================================
+          MAIN DIALOG
+      ====================================================== */}
+
+      <Dialog
+        open={open}
+        onOpenChange={(value) => {
+          if (!value) {
+            handleClose();
+          }
+        }}
+      >
         <DialogContent
           className={cn(
-            "sm:max-w-md rounded-3xl max-h-[90vh] flex flex-col border-0 p-0 overflow-hidden",
-            // Animated background gradients
+            "flex max-h-[90vh] flex-col overflow-hidden rounded-3xl border-0 p-0 sm:max-w-md",
+
+            // Background
             "bg-gradient-to-br from-white via-white to-violet-50/50",
             "dark:from-slate-900 dark:via-slate-900 dark:to-violet-950/30",
-            // Enhanced shadow
+
+            // Shadow
             "shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25),0_0_0_1px_rgba(120,100,255,0.1)]",
             "dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5),0_0_0_1px_rgba(120,100,255,0.2)]",
-            // Smooth open animation
-            "data-[state=open]:animate-in data-[state=closed]:animate-out",
-            "data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
-            "data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95",
-            // Slide in from bottom, slide out back to bottom (smooth)
-            "data-[state=open]:slide-in-from-bottom-[50%] data-[state=closed]:slide-out-to-bottom-[50%]",
-            "data-[state=open]:duration-300 data-[state=closed]:duration-250",
-            // Smoothe easing for close
-            "data-[state=closed]:ease-[cubic-bezier(0.4,0,0.2,1)]"
+
+            // Animation
+            "data-[state=open]:animate-in",
+            "data-[state=closed]:animate-out",
+            "data-[state=open]:fade-in-0",
+            "data-[state=closed]:fade-out-0",
+            "data-[state=open]:zoom-in-95",
+            "data-[state=closed]:zoom-out-95",
+            "data-[state=open]:slide-in-from-bottom-[50%]",
+            "data-[state=closed]:slide-out-to-bottom-[50%]",
+            "data-[state=open]:duration-300",
+            "data-[state=closed]:duration-250",
           )}
         >
-          {/* Animated header with gradient */}
+          {/* =================================================
+              HEADER
+          ================================================== */}
+
           <div className="relative overflow-hidden">
-            {/* Decorative gradient blob */}
+            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-violet-400/20 to-purple-400/20 blur-2xl" />
+
             <div
-              className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-violet-400/20 to-purple-400/20 blur-2xl animate-fab-float"
-            />
-            <div
-              className="absolute -left-10 -bottom-10 h-24 w-24 rounded-full bg-gradient-to-br from-purple-400/20 to-pink-400/20 blur-2xl animate-fab-float"
-              style={{ animationDelay: "3s" }}
+              className="absolute -bottom-10 -left-10 h-24 w-24 rounded-full bg-gradient-to-br from-purple-400/20 to-pink-400/20 blur-2xl"
+              style={{
+                animationDelay: "3s",
+              }}
             />
 
             <div className="relative border-b border-slate-100/80 bg-gradient-to-r from-violet-50/80 via-purple-50/50 to-transparent px-6 py-5 dark:border-slate-700/50 dark:from-violet-500/10 dark:via-purple-500/5 dark:to-transparent">
               <DialogHeader className="space-y-4">
                 <DialogTitle className="flex items-center gap-4 text-left text-xl font-bold text-slate-800 dark:text-slate-100">
-                  {/* Animated icon */}
-                  <div
-                    className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-purple-500/30 animate-fab-bounceIn"
-                  >
+                  <div className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-purple-500/30">
                     <UserCog className="h-6 w-6 text-white" />
-                    {/* Sparkle effect */}
-                    <Sparkles className="absolute -right-1 -top-1 h-4 w-4 text-yellow-300 animate-fab-sparkle" />
+
+                    <Sparkles className="absolute -right-1 -top-1 h-4 w-4 text-yellow-300" />
                   </div>
-                  <div>
-                    <span className="bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-200 bg-clip-text">
+
+                  <div className="min-w-0">
+                    <span className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text dark:from-white dark:to-slate-200">
                       {title}
                     </span>
                   </div>
                 </DialogTitle>
-                <DialogDescription className="text-left text-sm leading-relaxed text-slate-600 dark:text-slate-300 animate-fab-slideUp stagger-1">
+
+                <DialogDescription className="text-left text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                   {description}
                 </DialogDescription>
               </DialogHeader>
             </div>
           </div>
 
-          {/* Content area */}
-          <div className="space-y-4 p-6 pb-4 overflow-y-auto flex-1">
-            {/* Current assigned teknisi info (for single mode) */}
-            {fab?.teknisiDitugaskan && !isBulkMode && (
-              <div
-                className="group relative overflow-hidden rounded-2xl border border-amber-200/50 bg-gradient-to-br from-amber-50 to-orange-50/50 p-4 dark:border-amber-500/30 dark:from-amber-500/10 dark:to-orange-500/5 animate-fab-slideUp stagger-2"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-500/20">
-                    <span className="text-lg">👤</span>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                      Teknisi saat ini
-                    </p>
-                    <p className="mt-0.5 font-bold text-amber-800 dark:text-amber-300">
-                      {fab.teknisiDitugaskan.nama}
-                    </p>
-                    <p className="mt-1 text-xs text-amber-600/80 dark:text-amber-500/80">
-                      Memilih teknisi lain akan menggantinya.
-                    </p>
+          {/* =================================================
+              CONTENT
+          ================================================== */}
+
+          <div className="flex-1 space-y-4 overflow-y-auto p-6 pb-4">
+            {/* Teknisi yang sedang ditugaskan */}
+
+            {fab?.teknisiDitugaskan &&
+              !isBulkMode && (
+                <div className="group relative overflow-hidden rounded-2xl border border-amber-200/50 bg-gradient-to-br from-amber-50 to-orange-50/50 p-4 dark:border-amber-500/30 dark:from-amber-500/10 dark:to-orange-500/5">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-500/20">
+                      <span className="text-lg">👤</span>
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                        Teknisi Saat Ini
+                      </p>
+
+                      <p className="mt-0.5 font-bold text-amber-800 dark:text-amber-300">
+                        {fab.teknisiDitugaskan.nama}
+                      </p>
+
+                      <p className="mt-1 text-xs text-amber-600/80 dark:text-amber-500/80">
+                        Memilih teknisi lain akan
+                        menggantinya.
+                      </p>
+                    </div>
                   </div>
                 </div>
-                {/* Animated border effect */}
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-200/0 via-amber-200/50 to-amber-200/0 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-              </div>
-            )}
+              )}
 
-            {/* Teknisi select with enhanced styling */}
-            <div
-              className="space-y-3 rounded-2xl bg-slate-50/80 p-4 dark:bg-slate-800/40 animate-fab-slideUp stagger-3"
-            >
+            {/* =================================================
+                TEKNISI SELECT
+            ================================================== */}
+
+            <div className="space-y-3 rounded-2xl bg-slate-50/80 p-4 dark:bg-slate-800/40">
               <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
                 <span className="flex h-5 w-5 items-center justify-center rounded-md bg-violet-100 text-xs font-bold text-violet-600 dark:bg-violet-500/20 dark:text-violet-400">
                   *
                 </span>
+
                 Pilih Teknisi
               </label>
-              <Select value={selectedTeknisi} onValueChange={handleTeknisiChange}>
+
+              <Select
+                value={selectedTeknisi}
+                onValueChange={handleTeknisiChange}
+                onOpenChange={(isSelectOpen) => {
+                  if (!isSelectOpen) {
+                    setTeknisiSearch("");
+                  }
+                }}
+              >
+                {/* =================================================
+                    SELECT TRIGGER
+                    Ikon bawaan disembunyikan agar tidak muncul
+                    dua segitiga.
+                ================================================== */}
+
                 <SelectTrigger
                   className={cn(
-                    "group h-14 rounded-2xl border-2 border-slate-200/80 bg-white px-4 transition-all duration-300",
-                    "dark:border-slate-700/80 dark:bg-slate-900",
-                    "hover:border-violet-300 hover:shadow-lg hover:shadow-violet-500/10",
+                    "group h-14 rounded-2xl border-2 border-slate-200/80 bg-white px-4",
+                    "transition-all duration-200",
+                    "hover:border-violet-300 hover:shadow-md",
                     "focus:border-violet-500 focus:ring-4 focus:ring-violet-500/20",
+                    "dark:border-slate-700/80 dark:bg-slate-900",
                     "data-[placeholder]:text-slate-400",
-                    // Remove Radix arrow indicator with CSS
-                    "[&>svg]:hidden"
+
+                    // Menyembunyikan ikon bawaan Select.
+                    "[&>svg]:hidden",
                   )}
                 >
                   {isTeknisiLoading ? (
                     <div className="flex items-center gap-3">
-                      <div className="relative flex h-7 w-7 items-center justify-center">
-                        <Loader2 className="h-5 w-5 animate-spin text-violet-500" />
-                      </div>
-                      <span className="text-slate-400">Memuat teknisi...</span>
-                      <ChevronDown className="ml-auto h-4 w-4 text-slate-400 transition-transform duration-300 group-data-[state=open]:rotate-180" />
+                      <Loader2 className="h-5 w-5 animate-spin text-violet-500" />
+
+                      <span className="text-slate-400">
+                        Memuat teknisi...
+                      </span>
                     </div>
                   ) : selectedTeknisiData ? (
-                    <div className="flex items-center gap-3 flex-1">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
                       <TeknisiAvatar
                         nama={selectedTeknisiData.nama}
                         foto={selectedTeknisiData.foto}
                         size="sm"
-                        isSelected={false}
                       />
-                      <div className="flex flex-col flex-1">
-                        <span className="font-semibold text-slate-800 dark:text-slate-100">{selectedTeknisiData.nama}</span>
-                        <span className="text-xs text-slate-400">
+
+                      <div className="flex min-w-0 flex-1 flex-col text-left">
+                        <span className="truncate font-semibold text-slate-800 dark:text-slate-100">
+                          {selectedTeknisiData.nama}
+                        </span>
+
+                        <span className="truncate text-xs text-slate-400">
                           @{selectedTeknisiData.username}
                         </span>
                       </div>
-                      <ChevronDown className="h-4 w-4 text-slate-400 transition-transform duration-300 group-data-[state=open]:rotate-180" />
+
+                      {/* Hanya ikon ini yang ditampilkan */}
+                      <ChevronDown className="h-4 w-4 flex-shrink-0 text-slate-400 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-slate-400 flex-1">
+                    <div className="flex flex-1 items-center gap-2 text-slate-400">
                       <UserCog className="h-5 w-5" />
-                      <span className="flex-1">-- Pilih Teknisi --</span>
-                      <ChevronDown className="h-4 w-4 transition-transform duration-300 group-data-[state=open]:rotate-180" />
+
+                      <span className="flex-1 text-left">
+                        -- Pilih Teknisi --
+                      </span>
+
+                      {/* Hanya ikon ini yang ditampilkan */}
+                      <ChevronDown className="h-4 w-4 flex-shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                     </div>
                   )}
                 </SelectTrigger>
+
+                {/* =================================================
+                    SELECT CONTENT
+                ================================================== */}
+
                 <SelectContent
+                  position="popper"
+                  sideOffset={6}
                   className={cn(
-                    // Increased height for better visibility
-                    "max-h-[420px] overflow-y-auto rounded-2xl border-2 border-slate-200/50 bg-white p-2 shadow-2xl shadow-slate-900/15",
-                    "dark:border-slate-700/50 dark:bg-slate-900",
-                    // Smooth open/close animations - slide from top with smooth ease
-                    "data-[state=open]:animate-in data-[state=closed]:animate-out",
-                    "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-                    "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-                    // Slide out back to top (same direction as open)
-                    "data-[state=open]:slide-in-from-[var(--radix-select-content-transform-origin)] data-[state=closed]:slide-out-to-[var(--radix-select-content-transform-origin)]",
-                    "data-[state=closed]:ease-[cubic-bezier(0.4,0,0.2,1)]",
-                    "data-[state=open]:duration-250 data-[state=closed]:duration-200",
-                    // Custom scrollbar
-                    "teknisi-dropdown-scroll [&::-webkit-scrollbar]:w-2",
-                    // Glow effect on open
-                    "data-[state=open]:shadow-[0_25px_50px_-12px_rgba(124,58,237,0.25),0_0_0_1px_rgba(124,58,237,0.1)]",
-                    "dark:data-[state=open]:shadow-[0_25px_50px_-12px_rgba(139,92,246,0.3),0_0_0_1px_rgba(139,92,246,0.2)]"
+                    "w-[var(--radix-select-trigger-width)] min-w-[280px]",
+                    "overflow-hidden rounded-2xl border-2 border-slate-200/80 bg-white p-0",
+                    "shadow-xl shadow-slate-900/10",
+                    "dark:border-slate-700/80 dark:bg-slate-900",
                   )}
                 >
-                  {teknisiOptions.length === 0 && !isTeknisiLoading ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-sm text-slate-400 animate-fab-slideUp">
-                      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-                        <UserCog className="h-7 w-7 opacity-50" />
-                      </div>
-                      <span>Tidak ada teknisi tersedia</span>
-                    </div>
-                  ) : (
-                    <>
-                      {teknisiOptions.map((teknisi, index) => (
-                      <SelectItem
-                        key={teknisi.id_user}
-                        value={String(teknisi.id_user)}
+                  {/* =================================================
+                      SEARCH BAR
+                  ================================================== */}
+
+                  <div
+                    className="sticky top-0 z-20 border-b border-slate-100 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
+                    onPointerDown={(event) => {
+                      event.stopPropagation();
+                    }}
+                    onMouseDown={(event) => {
+                      event.stopPropagation();
+                    }}
+                  >
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+                      <input
+                        type="text"
+                        value={teknisiSearch}
+                        onChange={(event) =>
+                          setTeknisiSearch(
+                            event.target.value,
+                          )
+                        }
+                        onKeyDown={(event) => {
+                          /**
+                           * Mencegah keyboard Radix Select
+                           * mengambil alih input search.
+                           */
+                          event.stopPropagation();
+                        }}
+                        onPointerDown={(event) => {
+                          event.stopPropagation();
+                        }}
+                        onMouseDown={(event) => {
+                          event.stopPropagation();
+                        }}
+                        placeholder="Cari nama atau username..."
+                        autoFocus
                         className={cn(
-                          "rounded-xl gap-3 py-3 px-3 cursor-pointer transition-all duration-200",
-                          "hover:bg-gradient-to-r hover:from-violet-50 hover:to-purple-50 hover:shadow-md hover:scale-[1.02]",
-                          "dark:hover:bg-gradient-to-r dark:hover:from-violet-500/15 dark:hover:to-purple-500/15 dark:hover:shadow-lg dark:hover:shadow-purple-500/10",
-                          "focus:bg-gradient-to-r focus:from-violet-100 focus:to-purple-50",
-                          "dark:focus:bg-violet-500/25",
-                          currentTeknisiId === teknisi.id_user &&
-                            "bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-500/25 dark:to-purple-500/15",
-                          "data-[disabled]:opacity-50"
+                          "h-10 w-full rounded-xl",
+                          "border border-slate-200",
+                          "bg-slate-50",
+                          "pl-9 pr-9",
+                          "text-sm text-slate-700",
+                          "placeholder:text-slate-400",
+                          "outline-none",
+                          "transition-all duration-200",
+                          "focus:border-violet-400",
+                          "focus:bg-white",
+                          "focus:ring-2 focus:ring-violet-400/20",
+                          "dark:border-slate-700",
+                          "dark:bg-slate-800",
+                          "dark:text-slate-100",
+                          "dark:focus:bg-slate-800",
                         )}
-                        style={{ animation: `fab-slideIn 0.2s ease-out ${index * 30}ms both` }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <TeknisiAvatar
-                            nama={teknisi.nama}
-                            foto={teknisi.foto}
-                            size="lg"
-                            isSelected={currentTeknisiId === teknisi.id_user}
-                          />
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-slate-800 dark:text-slate-100">{teknisi.nama}</span>
-                            <span className="text-xs text-slate-400">
-                              @{teknisi.username}
-                            </span>
-                          </div>
-                          {currentTeknisiId === teknisi.id_user && (
-                            <div className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-purple-500/30">
-                              <Check className="h-3.5 w-3.5" />
-                            </div>
-                          )}
+                      />
+
+                      {/* Tombol hapus pencarian */}
+
+                      {teknisiSearch && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setTeknisiSearch("")
+                          }
+                          onPointerDown={(event) =>
+                            event.stopPropagation()
+                          }
+                          className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                          aria-label="Hapus pencarian"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Informasi hasil pencarian */}
+
+                    {!isTeknisiLoading &&
+                      teknisiOptions.length > 0 &&
+                      teknisiSearch && (
+                        <div className="mt-2 px-1 text-[11px] text-slate-400">
+                          {filteredTeknisiOptions.length}{" "}
+                          teknisi ditemukan
                         </div>
-                      </SelectItem>
-                    ))}
-                    </>
-                  )}
+                      )}
+                  </div>
+
+                  {/* =================================================
+                      LIST TEKNISI
+                  ================================================== */}
+
+                  <div
+                    className={cn(
+                      "max-h-[300px] overflow-y-auto p-2",
+
+                      // Scrollbar light mode
+                      "[&::-webkit-scrollbar]:w-2",
+                      "[&::-webkit-scrollbar-track]:rounded-full",
+                      "[&::-webkit-scrollbar-track]:bg-slate-100",
+                      "[&::-webkit-scrollbar-thumb]:rounded-full",
+                      "[&::-webkit-scrollbar-thumb]:bg-slate-300",
+                      "[&::-webkit-scrollbar-thumb:hover]:bg-slate-400",
+
+                      // Scrollbar dark mode
+                      "dark:[&::-webkit-scrollbar-track]:bg-slate-800",
+                      "dark:[&::-webkit-scrollbar-thumb]:bg-slate-600",
+                      "dark:[&::-webkit-scrollbar-thumb:hover]:bg-slate-500",
+                    )}
+                  >
+                    {/* Loading */}
+
+                    {isTeknisiLoading ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-sm text-slate-400">
+                        <Loader2 className="mb-3 h-7 w-7 animate-spin text-violet-500" />
+
+                        <span>
+                          Memuat teknisi...
+                        </span>
+                      </div>
+                    ) : teknisiOptions.length === 0 ? (
+                      /* Tidak ada teknisi */
+                      <div className="flex flex-col items-center justify-center py-10 text-sm text-slate-400">
+                        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                          <UserCog className="h-7 w-7 opacity-50" />
+                        </div>
+
+                        <span>
+                          Tidak ada teknisi tersedia
+                        </span>
+                      </div>
+                    ) : filteredTeknisiOptions.length ===
+                      0 ? (
+                      /* Search tidak menemukan */
+                      <div className="flex flex-col items-center justify-center py-10 text-sm text-slate-400">
+                        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                          <Search className="h-6 w-6 opacity-50" />
+                        </div>
+
+                        <span className="text-center">
+                          Teknisi &quot;{teknisiSearch}&quot;
+                          <br />
+                          tidak ditemukan
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setTeknisiSearch("")
+                          }
+                          className="mt-3 rounded-lg px-3 py-1.5 text-xs font-medium text-violet-600 transition-colors hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-500/10"
+                        >
+                          Hapus pencarian
+                        </button>
+                      </div>
+                    ) : (
+                      /* Daftar teknisi */
+                      filteredTeknisiOptions.map(
+                        (teknisi) => {
+                          const isSelected =
+                            selectedTeknisi ===
+                            String(teknisi.id_user);
+
+                          const isCurrent =
+                            currentTeknisiId ===
+                            teknisi.id_user;
+
+                          return (
+                            <SelectItem
+                              key={teknisi.id_user}
+                              value={String(
+                                teknisi.id_user,
+                              )}
+                              className={cn(
+                                "mb-1 cursor-pointer rounded-xl",
+                                "px-3 py-3",
+                                "transition-colors duration-150",
+                                "focus:bg-violet-50",
+                                "dark:focus:bg-violet-500/15",
+                                isSelected &&
+                                  "bg-violet-50 dark:bg-violet-500/15",
+                              )}
+                            >
+                              <div className="flex w-full items-center gap-3">
+                                <TeknisiAvatar
+                                  nama={teknisi.nama}
+                                  foto={teknisi.foto}
+                                  size="lg"
+                                  isSelected={
+                                    isSelected ||
+                                    isCurrent
+                                  }
+                                />
+
+                                <div className="flex min-w-0 flex-1 flex-col">
+                                  <span className="truncate font-semibold text-slate-800 dark:text-slate-100">
+                                    {teknisi.nama}
+                                  </span>
+
+                                  <span className="truncate text-xs text-slate-400">
+                                    @{teknisi.username}
+                                  </span>
+                                </div>
+
+                                {isCurrent && (
+                                  <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
+                                    Saat ini
+                                  </span>
+                                )}
+
+                                {isSelected && (
+                                  <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-md shadow-purple-500/20">
+                                    <Check className="h-3.5 w-3.5" />
+                                  </div>
+                                )}
+                              </div>
+                            </SelectItem>
+                          );
+                        },
+                      )
+                    )}
+                  </div>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {/* Footer with enhanced buttons */}
-          <div className="border-t border-slate-100/80 bg-gradient-to-r from-slate-50/80 to-violet-50/30 px-6 py-5 dark:border-slate-700/50 dark:from-slate-900/80 dark:to-violet-950/20 animate-fab-slideUp stagger-4">
+          {/* =================================================
+              FOOTER
+          ================================================== */}
+
+          <div className="border-t border-slate-100/80 bg-gradient-to-r from-slate-50/80 to-violet-50/30 px-6 py-5 dark:border-slate-700/50 dark:from-slate-900/80 dark:to-violet-950/20">
             <div className="flex items-center justify-between gap-4">
+              {/* BATAL */}
+
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleClose}
                 disabled={isPending}
                 className={cn(
-                  "h-11 rounded-2xl border-2 border-slate-200/80 bg-white/80 px-5 font-semibold text-slate-600",
+                  "h-11 rounded-2xl border-2 border-slate-200/80",
+                  "bg-white/80 px-5 font-semibold text-slate-600",
                   "transition-all duration-300",
                   "hover:border-slate-300 hover:bg-white hover:shadow-lg",
                   "dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300",
-                  "dark:hover:border-slate-600 dark:hover:bg-slate-800"
+                  "dark:hover:border-slate-600 dark:hover:bg-slate-800",
                 )}
               >
                 Batal
               </Button>
 
+              {/* TUGASKAN */}
+
               <Button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isPending || !selectedTeknisi || isTeknisiLoading}
+                disabled={
+                  isPending ||
+                  !selectedTeknisi ||
+                  isTeknisiLoading
+                }
                 className={cn(
-                  "h-11 rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-pink-500 px-6 font-bold text-white shadow-xl shadow-purple-500/30",
+                  "h-11 rounded-2xl",
+                  "bg-gradient-to-r from-violet-600 via-purple-600 to-pink-500",
+                  "px-6 font-bold text-white",
+                  "shadow-xl shadow-purple-500/30",
                   "transition-all duration-300",
-                  "hover:shadow-2xl hover:shadow-purple-500/40 hover:scale-105 hover:brightness-110",
+                  "hover:scale-105 hover:brightness-110 hover:shadow-2xl hover:shadow-purple-500/40",
                   "active:scale-95",
-                  "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-xl"
+                  "disabled:cursor-not-allowed disabled:opacity-50",
+                  "disabled:hover:scale-100 disabled:hover:shadow-xl",
                 )}
               >
                 {isPending ? (
@@ -555,7 +1130,10 @@ export function FabAssignDialog({
                 ) : (
                   <div className="flex items-center gap-2">
                     <UserCog className="h-5 w-5" />
-                    {isBulkMode ? "Tugaskan Semua" : "Tugaskan"}
+
+                    {isBulkMode
+                      ? "Tugaskan Semua"
+                      : "Tugaskan"}
                   </div>
                 )}
               </Button>

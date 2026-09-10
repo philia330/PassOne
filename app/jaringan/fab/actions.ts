@@ -116,6 +116,48 @@ async function renumberKodeFab() {
 
 /**
  * ======================================
+ * HELPER: Notifikasi broadcast "FAB sudah ditugaskan"
+ * ======================================
+ * Dikirim ke ADMIN, LEADER, dan SALES lain (BUKAN teknisi -- teknisi sudah
+ * dapat notifikasi "FAB Ditugaskan" sendiri) supaya semua pihak yang
+ * berkepentingan tetap tahu FAB mana sudah dipegang siapa. Orang yang
+ * BARU SAJA melakukan penugasan ini SENGAJA dilewati -- percuma dikasih
+ * tahu soal hal yang baru saja dia lakukan sendiri.
+ */
+async function notifyFabAssignedBroadcast({
+  excludeUserId,
+  message,
+  link,
+}: {
+  excludeUserId: number;
+  message: string;
+  link: string;
+}) {
+  const targets = await prisma.user.findMany({
+    where: {
+      role: { in: ["ADMIN", "LEADER", "SALES"] },
+      status: true,
+      id_user: { not: excludeUserId },
+    },
+    select: { id_user: true },
+  });
+
+  if (targets.length === 0) return;
+
+  await prisma.notification.createMany({
+    data: targets.map((u) => ({
+      id_user: u.id_user,
+      title: "FAB Sudah Ditugaskan",
+      message,
+      link,
+      type: "FAB_ASSIGNED" as const,
+      is_read: false,
+    })),
+  });
+}
+
+/**
+ * ======================================
  * CREATE FAB - dengan proteksi duplikat
  * ======================================
  */
@@ -565,8 +607,12 @@ export async function assignFabToTeknisi(idFab: number, idTeknisi: number) {
     },
   });
 
-  // Buat notifikasi untuk teknisi - TAMPILKAN siapa yang assign dan role-nya
+  const teknisiName = teknisi.nama;
+  const penginputName = session.user.nama;
   const notificationLink = `/jaringan/fab?highlight=${idFab}`;
+
+  // 1) Notifikasi untuk TEKNISI yang ditugaskan -- TAMPILKAN siapa yang
+  //    assign dan role-nya.
   await prisma.notification.create({
     data: {
       id_user: idTeknisi,
@@ -578,9 +624,17 @@ export async function assignFabToTeknisi(idFab: number, idTeknisi: number) {
     },
   });
 
+  // 2) Notifikasi broadcast ke ADMIN/LEADER/SALES lain (bukan si penugas)
+  //    supaya semua pihak terkait tahu FAB mana sudah dipegang siapa, oleh
+  //    siapa. Kalau yang menugaskan SALES, dia sendiri tetap dilewati --
+  //    Admin/Leader/Sales lain tetap dapat notif ini.
+  await notifyFabAssignedBroadcast({
+    excludeUserId: Number(session.user.id_user),
+    message: `${fab.kode_fab} - ${fab.nama_pelanggan} sudah ditugaskan ke teknisi ${teknisiName} oleh ${penginputName} (${session.user.role}).`,
+    link: notificationLink,
+  });
+
   // Log activity
-  const teknisiName = teknisi.nama;
-  const penginputName = session.user.nama;
   await logActivity(
     "FAB_UPDATED",
     `FAB ${fab.kode_fab} - ${fab.nama_pelanggan} ditugaskan ke teknisi ${teknisiName} oleh ${penginputName}`
@@ -684,7 +738,8 @@ export async function bulkAssignFabToTeknisi(idFabs: number[], idTeknisi: number
     },
   });
 
-  // Bulk create notifications untuk teknisi - TAMPILKAN siapa yang assign dan role-nya
+  // 1) Bulk create notifications untuk TEKNISI -- satu per FAB, TAMPILKAN
+  //    siapa yang assign dan role-nya (sama seperti versi single).
   const notifications = fabsToAssign.map((fab) => ({
     id_user: idTeknisi,
     title: "FAB Ditugaskan",
@@ -695,6 +750,22 @@ export async function bulkAssignFabToTeknisi(idFabs: number[], idTeknisi: number
   }));
 
   await prisma.notification.createMany({ data: notifications });
+
+  // 2) Notifikasi broadcast ke ADMIN/LEADER/SALES lain (bukan si penugas) --
+  //    DIGABUNG jadi satu notifikasi ringkas (bukan satu-satu per FAB)
+  //    supaya tidak membanjiri orang lain kalau yang ditugaskan banyak
+  //    sekaligus.
+  const kodeList = fabsToAssign.map((f) => f.kode_fab).join(", ");
+  const broadcastMessage =
+    fabsToAssign.length === 1
+      ? `${fabsToAssign[0].kode_fab} - ${fabsToAssign[0].nama_pelanggan} sudah ditugaskan ke teknisi ${teknisi.nama} oleh ${session.user.nama} (${session.user.role}).`
+      : `${fabsToAssign.length} FAB (${kodeList}) sudah ditugaskan ke teknisi ${teknisi.nama} oleh ${session.user.nama} (${session.user.role}).`;
+
+  await notifyFabAssignedBroadcast({
+    excludeUserId: Number(session.user.id_user),
+    message: broadcastMessage,
+    link: "/jaringan/fab",
+  });
 
   // Log activity
   const skippedMsg = skippedFabs.length > 0 ? ` (${skippedFabs.length} FAB berstatus Aktif dilewati)` : "";

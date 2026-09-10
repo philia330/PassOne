@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eye, Loader2, Package, Calendar, User, Hash, FileText, ExternalLink, Download } from "lucide-react";
+import { ClipboardList, Loader2, Package, Calendar, User, Hash, FileText, ExternalLink, Download } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -27,14 +27,31 @@ interface MaterialBaaUsageDialogProps {
   idMaterial: number;
   namaMaterial: string;
   satuanMaterial: string;
+  // === Kontrol dari luar (dipakai untuk buka dialog ini lewat double-click
+  // baris tabel) -- kalau tidak diisi, komponen tetap jalan mandiri seperti
+  // sebelumnya (dibuka lewat klik icon ClipboardList). Pola sama seperti
+  // BaaDialog (isControlled). ===
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
+  // Sembunyikan tombol trigger icon-nya (dipakai kalau parent sudah punya
+  // trigger lain / cuma mau kontrol lewat externalOpen saja). Default: tampil.
+  hideTrigger?: boolean;
 }
 
 export function MaterialBaaUsageDialog({
   idMaterial,
   namaMaterial,
   satuanMaterial,
+  externalOpen,
+  onExternalOpenChange,
+  hideTrigger = false,
 }: MaterialBaaUsageDialogProps) {
-  const [open, setOpen] = useState(false);
+  const isControlled = externalOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  const open = isControlled ? externalOpen : internalOpen;
+  const setOpen = isControlled ? (onExternalOpenChange ?? (() => {})) : setInternalOpen;
+
   const [loading, setLoading] = useState(false);
   const [usageData, setUsageData] = useState<BaaUsageData[]>([]);
   const [totalDigunakan, setTotalDigunakan] = useState(0);
@@ -96,16 +113,18 @@ export function MaterialBaaUsageDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="cursor-pointer rounded-xl hover:scale-125 active:scale-90 transition-transform duration-200"
-          title={`Lihat penggunaan di BAA`}
-        >
-          <Eye className="h-4 w-4 text-purple-600 hover:text-purple-700 active:scale-90 transition-all dark:text-purple-400 dark:hover:text-purple-300" />
-        </Button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="cursor-pointer rounded-xl hover:scale-125 active:scale-90 transition-transform duration-200"
+            title={`Lihat riwayat pemakaian di BAA`}
+          >
+            <ClipboardList className="h-4 w-4 text-purple-600 hover:text-purple-700 active:scale-90 transition-all dark:text-purple-400 dark:hover:text-purple-300" />
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent
         className="
@@ -171,7 +190,7 @@ export function MaterialBaaUsageDialog({
               {/* BAA List */}
               <ScrollArea className="flex-1">
                 <div className="p-4 space-y-3">
-                  {usageData.map((baa) => (
+                     {usageData.map((baa) => (
                     <a
                       key={baa.id_baa}
                       href={`/workspace?view=baa&id_baa=${baa.id_baa}`}

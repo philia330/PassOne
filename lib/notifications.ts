@@ -23,8 +23,16 @@ export async function getLiveNotifications(role: Role, userId: number): Promise<
   const canSeeFab = isAdmin || role === "SALES" || role === "LEADER";
 
   if (canSeeFab) {
+    // PERBAIKAN BUG: sebelumnya cuma cek `status: "OPEN"` -- padahal assign
+    // teknisi (assignFabToTeknisi/bulkAssignFabToTeknisi di actions.ts) TIDAK
+    // mengubah status jadi "AKTIF", status baru berubah nanti pas BAA-nya
+    // selesai dibuat. Akibatnya FAB yang SUDAH ditugaskan (tapi BAA-nya
+    // belum dibuat) tetap kejaring di sini dan notif "belum ditugaskan"
+    // terus muncul lagi walau sudah ada teknisinya. Sekarang ditambah syarat
+    // id_teknisi_ditugaskan masih null -- notif ini cuma buat FAB yang
+    // BENERAN belum ada teknisinya sama sekali.
     const fabOpen = await prisma.fab.findMany({
-      where: { status: "OPEN" },
+      where: { status: "OPEN", id_teknisi_ditugaskan: null },
       orderBy: { createdAt: "asc" },
       select: { id_fab: true, kode_fab: true, nama_pelanggan: true, createdAt: true },
     });

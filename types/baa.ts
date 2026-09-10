@@ -130,6 +130,14 @@ export interface OltOption {
 export interface OdpOption {
   id_odp: number;
   nama_odp: string;
+  stok_port?: number; // sisa port tersedia = jumlah_port - port terpakai
+}
+
+export interface MaterialOption {
+  id_material: number;
+  nama_material: string;
+  satuan: string;
+  stok?: number;
 }
 
 export interface OntOption {
@@ -139,11 +147,6 @@ export interface OntOption {
   pelanggan?: string | null;
 }
 
-export interface MaterialOption {
-  id_material: number;
-  nama_material: string;
-  satuan: string;
-}
 
 // ================================================================
 // BARIS MATERIAL DINAMIS (Client State)
