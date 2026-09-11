@@ -14,9 +14,15 @@ export async function getSettings() {
     login_title: map.login_title ?? "Selamat Datang Kembali",
     login_subtitle: map.login_subtitle ?? "Masuk untuk mengelola sistem jaringan PASSNET",
     login_logo: map.login_logo ?? null,
+    login_logo_dark: map.login_logo_dark || null,
     favicon: map.favicon || null,
     app_font: map.app_font ?? "inter",
     app_font_size: Number(map.app_font_size ?? 16),
     footer_text: map.footer_text ?? "© 2026 PASSNET. All rights reserved.",
+    primary_color: map.primary_color ?? "#4f46e5",
+    timezone: map.timezone ?? "Asia/Jakarta",
+    maintenance_mode: map.maintenance_mode === "true",
+    maintenance_message:
+      map.maintenance_message ?? "Aplikasi sedang dalam pemeliharaan. Silakan kembali beberapa saat lagi.",
   };
 }

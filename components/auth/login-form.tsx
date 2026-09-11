@@ -189,7 +189,7 @@ export default function LoginForm({
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-purple-600"
+                className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-slate-500 hover:text-purple-600"
               >
                 {showPassword ? (
                   <EyeOff size={20} />
@@ -215,7 +215,21 @@ export default function LoginForm({
               text-base
               font-semibold
               text-white
+              cursor-pointer
+              shadow-md
+              transition-all
+              duration-300
+              ease-out
+              hover:scale-[1.02]
+              hover:shadow-xl
+              hover:shadow-purple-300/50
+              hover:brightness-110
+              active:scale-[0.97]
+              disabled:cursor-not-allowed
               disabled:opacity-70
+              disabled:hover:scale-100
+              disabled:hover:shadow-md
+              disabled:hover:brightness-100
               sm:h-14
               sm:text-lg
             "

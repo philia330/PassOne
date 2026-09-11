@@ -47,6 +47,7 @@ export default function PasswordInput({
           -translate-y-1/2
           text-slate-400
           hover:text-purple-600
+          cursor-pointer
           transition
         "
       >

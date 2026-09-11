@@ -24,6 +24,20 @@ function getImageExtension(file: File) {
   return extensions[file.type];
 }
 
+async function saveUploadedImage(file: File, prefix: string) {
+  await mkdir(UPLOAD_DIR, { recursive: true });
+
+  const ext = getImageExtension(file);
+  if (!ext) throw new Error(`Format ${prefix} tidak didukung.`);
+  const fileName = `${prefix}-${Date.now()}.${ext}`;
+  const filePath = path.join(UPLOAD_DIR, fileName);
+
+  const bytes = await file.arrayBuffer();
+  await writeFile(filePath, Buffer.from(bytes));
+
+  return `/uploads/logo/${fileName}`;
+}
+
 export async function updateSettings(formData: FormData) {
   const session = await auth();
 
@@ -39,8 +53,15 @@ export async function updateSettings(formData: FormData) {
   const appFontSize = formData.get("app_font_size") as string;
   const footerText = formData.get("footer_text") as string;
   const logoFile = formData.get("logo") as File | null;
+  const logoDarkFile = formData.get("logo_dark") as File | null;
+  const removeLogoDark = formData.get("remove_logo_dark") === "true";
   const faviconFile = formData.get("favicon") as File | null;
   const removeFavicon = formData.get("remove_favicon") === "true";
+
+  const primaryColor = formData.get("primary_color") as string | null;
+  const timezone = formData.get("timezone") as string | null;
+  const maintenanceMode = formData.get("maintenance_mode") === "true";
+  const maintenanceMessage = formData.get("maintenance_message") as string | null;
 
   const updates: { key: string; value: string }[] = [
     { key: "app_name", value: appName },
@@ -50,41 +71,34 @@ export async function updateSettings(formData: FormData) {
     { key: "app_font", value: appFont },
     { key: "app_font_size", value: appFontSize },
     { key: "footer_text", value: footerText },
+    { key: "maintenance_mode", value: maintenanceMode ? "true" : "false" },
   ];
 
-  // Kalau ada file logo baru diupload
+  if (primaryColor) updates.push({ key: "primary_color", value: primaryColor });
+  if (timezone) updates.push({ key: "timezone", value: timezone });
+  if (maintenanceMessage !== null) {
+    updates.push({ key: "maintenance_message", value: maintenanceMessage });
+  }
+
   if (logoFile && logoFile.size > 0) {
-    await mkdir(UPLOAD_DIR, { recursive: true });
-
-    const ext = getImageExtension(logoFile);
-    if (!ext) throw new Error("Format logo tidak didukung.");
-    const fileName = `logo-${Date.now()}.${ext}`;
-    const filePath = path.join(UPLOAD_DIR, fileName);
-
-    const bytes = await logoFile.arrayBuffer();
-    await writeFile(filePath, Buffer.from(bytes));
-
-    const publicPath = `/uploads/logo/${fileName}`;
+    const publicPath = await saveUploadedImage(logoFile, "logo");
     updates.push({ key: "login_logo", value: publicPath });
   }
 
+  if (logoDarkFile && logoDarkFile.size > 0) {
+    const publicPath = await saveUploadedImage(logoDarkFile, "logo-dark");
+    updates.push({ key: "login_logo_dark", value: publicPath });
+  } else if (removeLogoDark) {
+    updates.push({ key: "login_logo_dark", value: "" });
+  }
+
   if (faviconFile && faviconFile.size > 0) {
-    await mkdir(UPLOAD_DIR, { recursive: true });
-
-    const ext = getImageExtension(faviconFile);
-    if (!ext) throw new Error("Format icon tidak didukung.");
-    const fileName = `favicon-${Date.now()}.${ext}`;
-    const filePath = path.join(UPLOAD_DIR, fileName);
-
-    const bytes = await faviconFile.arrayBuffer();
-    await writeFile(filePath, Buffer.from(bytes));
-
-    updates.push({ key: "favicon", value: `/uploads/logo/${fileName}` });
+    const publicPath = await saveUploadedImage(faviconFile, "favicon");
+    updates.push({ key: "favicon", value: publicPath });
   } else if (removeFavicon) {
     updates.push({ key: "favicon", value: "" });
   }
 
-  // Upsert semua settings
   await Promise.all(
     updates.map((item) =>
       prisma.settings.upsert({
@@ -95,7 +109,11 @@ export async function updateSettings(formData: FormData) {
     )
   );
 
-await logActivity("SETTINGS_UPDATED", `Pengaturan aplikasi diperbarui oleh ${session.user.nama}.`, session.user.id_user);
+  await logActivity(
+    "SETTINGS_UPDATED",
+    `Pengaturan aplikasi diperbarui oleh ${session.user.nama}.`,
+    session.user.id_user
+  );
 
   revalidatePath("/", "layout");
 

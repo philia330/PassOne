@@ -90,6 +90,17 @@ export default function Navbar({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
+        {now && (
+          <div className="flex flex-col items-end mr-1 text-right">
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+              {formattedTime}
+            </span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              {formattedDate}
+            </span>
+          </div>
+        )}
+
         {/* Search button with keyboard shortcut hint - responsive */}
         <button
           onClick={openCommandPalette}
@@ -121,16 +132,6 @@ export default function Navbar({
           </kbd>
         </button>
 
-        {now && (
-          <div className="flex flex-col items-end mr-1 text-right">
-            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-              {formattedTime}
-            </span>
-            <span className="text-xs text-slate-400 dark:text-slate-500">
-              {formattedDate}
-            </span>
-          </div>
-        )}
         <ThemeToggle />
         <NotificationBell />
 
